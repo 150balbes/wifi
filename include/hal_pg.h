@@ -581,50 +581,6 @@
 #define	EEPROM_MAC_ADDR_8723DS			0x11A
 #define	EEPROM_Voltage_ADDR_8723D		0x8
 
-/*
- * ====================================================
- *	EEPROM/Efuse PG Offset for 8822C
- * ====================================================
- */
-#define	EEPROM_TX_PWR_INX_8822C			0x10
-#define	EEPROM_ChannelPlan_8822C		0xB8
-#define	EEPROM_XTAL_8822C			0xB9
-#define	EEPROM_IQK_LCK_8822C			0xBB
-#define	EEPROM_2G_5G_PA_TYPE_8822C		0xBC
-/* PATH A & PATH B */
-#define	EEPROM_2G_LNA_TYPE_GAIN_SEL_AB_8822C	0xBD
-/* PATH C & PATH D */
-#define	EEPROM_2G_LNA_TYPE_GAIN_SEL_CD_8822C	0xBE
-/* PATH A & PATH B */
-#define	EEPROM_5G_LNA_TYPE_GAIN_SEL_AB_8822C	0xBF
-/* PATH C & PATH D */
-#define	EEPROM_5G_LNA_TYPE_GAIN_SEL_CD_8822C	0xC0
-
-#define	EEPROM_RF_BOARD_OPTION_8822C		0xC1
-#define	EEPROM_FEATURE_OPTION_8822C		0xC2
-#define	EEPROM_RF_BT_SETTING_8822C		0xC3
-#define	EEPROM_VERSION_8822C			0xC4
-#define	EEPROM_CustomID_8822C			0xC5
-#define	EEPROM_TX_BBSWING_2G_8822C		0xC6
-#define	EEPROM_TX_PWR_CALIBRATE_RATE_8822C	0xC8
-#define	EEPROM_RF_ANTENNA_OPT_8822C		0xC9
-#define	EEPROM_RFE_OPTION_8822C			0xCA
-#define EEPROM_COUNTRY_CODE_8822C		0xCB
-#define	EEPROM_THERMAL_METER_A_8822C		0xD0
-#define	EEPROM_THERMAL_METER_B_8822C		0xD1
-/* RTL8822CU */
-#define EEPROM_MAC_ADDR_8822CU			0x157
-#define EEPROM_VID_8822CU			0x100
-#define EEPROM_PID_8822CU			0x102
-#define EEPROM_USB_OPTIONAL_FUNCTION0_8822CU	0x104
-#define EEPROM_USB_MODE_8822CU			0x06
-
-/* RTL8822CS */
-#define	EEPROM_MAC_ADDR_8822CS			0x16A
-
-/* RTL8822CE */
-#define	EEPROM_MAC_ADDR_8822CE			0x120
-
 /* ****************************************************
  *	EEPROM/Efuse PG Offset for 8192F
  * **************************************************** */
@@ -764,7 +720,6 @@
 #define EEPROM_Default_CrystalCap_8188F			0x20
 #define EEPROM_Default_CrystalCap_8188GTV		0x20
 #define EEPROM_Default_CrystalCap_8192F			0x20
-#define EEPROM_Default_CrystalCap_8822C			0x3F
 #define EEPROM_Default_CrystalFreq				0x0
 #define EEPROM_Default_TxPowerLevel_92C		0x22
 #define EEPROM_Default_TxPowerLevel_2G			0x2C
@@ -914,7 +869,6 @@ typedef	enum _BT_CoType {
 	BT_RTL8723D		= 14,
 	BT_RTL8821C		= 15,
 	BT_RTL8192F		= 16,
-	BT_RTL8822C		= 17	
 } BT_CoType, *PBT_CoType;
 
 typedef	enum _BT_RadioShared {

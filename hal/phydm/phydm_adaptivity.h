@@ -26,19 +26,10 @@
 #ifndef __PHYDMADAPTIVITY_H__
 #define __PHYDMADAPTIVITY_H__
 
-#define ADAPTIVITY_VERSION "9.6.07" /*@20181107 changed by Kevin,
-				     *remove pwdB mode with non-adaptivity case
-				     */
+#define ADAPTIVITY_VERSION "9.5.20" /*20180306 changed by Kevin, remove phydm lna set and use halrf part*/
 
 #define PWDB_UPPER_BOUND 7
 #define DFIR_LOSS 7
-#define ADC_BACKOFF 12
-#define EDCCA_TH_L2H_LB 0x30
-#define TH_L2H_DIFF_IGI 8
-#define EDCCA_HL_DIFF_NORMAL 8
-
-#define ODM_IC_PWDB_EDCCA (ODM_RTL8188E | ODM_RTL8723B | ODM_RTL8192E |\
-			   ODM_RTL8881A | ODM_RTL8821 | ODM_RTL8812)
 
 #if (DM_ODM_SUPPORT_TYPE & (ODM_CE | ODM_AP))
 	#define ADAPT_DC_BACKOFF 2
@@ -67,7 +58,7 @@ enum phydm_adapinfo {
 };
 
 enum phydm_mac_edcca_type {
-	PHYDM_IGNORE_EDCCA		= 0,
+	PHYDM_IGNORE_EDCCA			= 0,
 	PHYDM_DONT_IGNORE_EDCCA		= 1
 };
 
@@ -75,35 +66,43 @@ enum phydm_adaptivity_mode {
 	PHYDM_ADAPT_MSG			= 0,
 	PHYDM_ADAPT_DEBUG		= 1,
 	PHYDM_ADAPT_RESUME		= 2,
-	PHYDM_EDCCA_TH_PAUSE		= 3,
-	PHYDM_EDCCA_TH_RESUME		= 4
+	PHYDM_EDCCA_TH_PAUSE	= 3,
+	PHYDM_EDCCA_RESUME		= 4
 };
 
 struct phydm_adaptivity_struct {
 	s8			th_l2h_ini_backup;
 	s8			th_edcca_hl_diff_backup;
 	s8			igi_base;
+	u8			igi_target;
 	s8			h2l_lb;
 	s8			l2h_lb;
 	u8			ap_num_th;
-	u8			adjust_l2h;
+	u8			adajust_igi_level;
+	boolean			is_stop_edcca;
+#if (DM_ODM_SUPPORT_TYPE & ODM_WIN)
+	RT_WORK_ITEM	phydm_pause_edcca_work_item;
+	RT_WORK_ITEM	phydm_resume_edcca_work_item;
+#endif
 	u32			adaptivity_dbg_port; /*N:0x208, AC:0x209*/
 	u8			debug_mode;
-	u16			igi_up_bound_lmt_cnt;	/*@When igi_up_bound_lmt_cnt !=0, limit IGI upper bound to "adapt_igi_up"*/
-	u16			igi_up_bound_lmt_val;	/*@max value of igi_up_bound_lmt_cnt*/
-	boolean			igi_lmt_en;
+	u16			igi_up_bound_lmt_cnt;	/*When igi_up_bound_lmt_cnt !=0, limit IGI upper bound to "adapt_igi_up"*/
+	u16			igi_up_bound_lmt_val;	/*max value of igi_up_bound_lmt_cnt*/
+	boolean		igi_lmt_en;
 	u8			adapt_igi_up;
-	u32			rvrt_val[2];
+	s8			rvrt_val[2];
 	s8			th_l2h;
 	s8			th_h2l;
 	u8			regulation_2g;
 	u8			regulation_5g;
 	boolean			is_adapt_en;
 	boolean			edcca_en;
+	s8			th_l2h_ini_mode2;
+	s8			th_edcca_hl_diff_mode2;
 };
 
 #ifdef PHYDM_SUPPORT_ADAPTIVITY
-void phydm_adaptivity_debug(void *dm_void, char input[][16], u32 *_used,
+void phydm_adaptivity_debug(void *dm_void, u32 *const dm_value, u32 *_used,
 			    char *output, u32 *_out_len);
 
 void phydm_set_edcca_val(void *dm_void, u32 *val_buf, u8 val_len);
@@ -120,5 +119,23 @@ void phydm_adaptivity_info_update(void *dm_void, enum phydm_adapinfo cmn_info,
 void phydm_adaptivity_init(void *dm_void);
 
 void phydm_adaptivity(void *dm_void);
+
+void phydm_pause_edcca(void *dm_void, boolean is_pasue_edcca);
+
+void phydm_pause_edcca_work_item_callback(
+#if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
+					  void *adapter
+#else
+					  void *dm_void
+#endif
+					  );
+
+void phydm_resume_edcca_work_item_callback(
+#if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
+					   void *adapter
+#else
+					   void *dm_void
+#endif
+					   );
 
 #endif

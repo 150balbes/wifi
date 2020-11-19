@@ -23,7 +23,7 @@
  *
  *****************************************************************************/
 
-/*@************************************************************
+/*************************************************************
  * include files
  ************************************************************/
 
@@ -71,7 +71,7 @@ odm_config_rf_with_header_file(struct dm_struct *dm,
 		  "support_platform: 0x%X, support_interface: 0x%X, board_type: 0x%X\n",
 		  dm->support_platform, dm->support_interface, dm->board_type);
 
-/* @1 AP doesn't use PHYDM power tracking table in these ICs */
+/* 1 AP doesn't use PHYDM power tracking table in these ICs */
 #if (DM_ODM_SUPPORT_TYPE != ODM_AP)
 #if (RTL8812A_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8812) {
@@ -147,7 +147,7 @@ odm_config_rf_with_header_file(struct dm_struct *dm,
 		}
 	}
 #endif
-/* @JJ ADD 20161014 */
+/* JJ ADD 20161014 */
 #if (RTL8710B_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8710B) {
 		if (config_type == CONFIG_RF_RADIO) {
@@ -158,8 +158,8 @@ odm_config_rf_with_header_file(struct dm_struct *dm,
 	}
 #endif
 
-#endif /* @(DM_ODM_SUPPORT_TYPE !=  ODM_AP) */
-/* @1 All platforms support */
+#endif /* (DM_ODM_SUPPORT_TYPE !=  ODM_AP) */
+/* 1 All platforms support */
 #if (RTL8188E_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8188E) {
 		if (config_type == CONFIG_RF_RADIO) {
@@ -249,8 +249,6 @@ odm_config_rf_with_header_file(struct dm_struct *dm,
 				READ_AND_CONFIG_MP(8822b, _txpwr_lmt_type16);
 			else if (dm->rfe_type == 17)
 				READ_AND_CONFIG_MP(8822b, _txpwr_lmt_type17);
-			else if (dm->rfe_type == 18)
-				READ_AND_CONFIG_MP(8822b, _txpwr_lmt_type18);
 			else
 				READ_AND_CONFIG_MP(8822b, _txpwr_lmt);
 		}
@@ -267,7 +265,7 @@ odm_config_rf_with_header_file(struct dm_struct *dm,
 		}
 	}
 #endif
-/*@jj add 20170822*/
+/*jj add 20170822*/
 #if (RTL8192F_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8192F) {
 		if (config_type == CONFIG_RF_RADIO) {
@@ -345,15 +343,6 @@ odm_config_rf_with_header_file(struct dm_struct *dm,
 		}
 	}
 #endif
-#if (RTL8721D_SUPPORT == 1)
-	if (dm->support_ic_type == ODM_RTL8721D) {
-		if (config_type == CONFIG_RF_RADIO) {
-			if (e_rf_path == RF_PATH_A)
-				READ_AND_CONFIG_MP(8721d, _radioa);
-		} else if (config_type == CONFIG_RF_TXPWR_LMT)
-			READ_AND_CONFIG_MP(8721d, _txpwr_lmt);
-	}
-#endif
 #if (RTL8821C_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8821C) {
 		if (config_type == CONFIG_RF_RADIO) {
@@ -364,93 +353,6 @@ odm_config_rf_with_header_file(struct dm_struct *dm,
 		}
 	}
 #endif
-#if (RTL8195B_SUPPORT == 1)
-	if (dm->support_ic_type == ODM_RTL8195B) {
-		if (config_type == CONFIG_RF_RADIO) {
-			if (e_rf_path == RF_PATH_A)
-				READ_AND_CONFIG(8195b, _radioa);
-		}
-		#if 0
-		else if (config_type == CONFIG_RF_TXPWR_LMT) {
-			READ_AND_CONFIG(8821c, _txpwr_lmt);
-			/*@*/
-		}
-		#endif
-	}
-#endif
-#if (RTL8198F_SUPPORT == 1)
-	if (dm->support_ic_type == ODM_RTL8198F) {
-		if (config_type == CONFIG_RF_RADIO) {
-			if (e_rf_path == RF_PATH_A)
-				READ_AND_CONFIG_MP(8198f, _radioa);
-			else if (e_rf_path == RF_PATH_B)
-				READ_AND_CONFIG_MP(8198f, _radiob);
-			else if (e_rf_path == RF_PATH_C)
-				READ_AND_CONFIG_MP(8198f, _radioc);
-			else if (e_rf_path == RF_PATH_D)
-				READ_AND_CONFIG_MP(8198f, _radiod);
-		}
-	}
-#endif
-/*#if (RTL8814B_SUPPORT == 1)
-	if (dm->support_ic_type == ODM_RTL8814B) {
-		if (config_type == CONFIG_RF_RADIO) {
-			if (e_rf_path == RF_PATH_A)
-				READ_AND_CONFIG_MP(8814b, _radioa);
-			else if (e_rf_path == RF_PATH_B)
-				READ_AND_CONFIG_MP(8814b, _radiob);
-			else if (e_rf_path == RF_PATH_C)
-				READ_AND_CONFIG_MP(8814b, _radioc);
-			else if (e_rf_path == RF_PATH_D)
-				READ_AND_CONFIG_MP(8814b, _radiod);
-		}
-	}
-#endif
-*/
-#if (RTL8822C_SUPPORT)
-	if (dm->support_ic_type == ODM_RTL8822C) {
-		if (config_type == CONFIG_RF_RADIO) {
-			if (e_rf_path == RF_PATH_A)
-				READ_AND_CONFIG_MP(8822c, _radioa);
-			else if (e_rf_path == RF_PATH_B)
-				READ_AND_CONFIG_MP(8822c, _radiob);
-		} else if (config_type == CONFIG_RF_TXPWR_LMT) {
-			READ_AND_CONFIG_MP(8822c, _txpwr_lmt);
-		}
-	}
-#endif
-#if (RTL8812F_SUPPORT)
-	if (dm->support_ic_type == ODM_RTL8812F) {
-		if (config_type == CONFIG_RF_RADIO) {
-			if (e_rf_path == RF_PATH_A)
-				READ_AND_CONFIG_MP(8812f, _radioa);
-			else if (e_rf_path == RF_PATH_B)
-				READ_AND_CONFIG_MP(8812f, _radiob);
-		}
-	}
-#endif
-
- /*8814B need review, when phydm has related files*/
- #if (RTL8814B_SUPPORT)
-	if (dm->support_ic_type == ODM_RTL8814B) {
-		if (config_type == CONFIG_RF_RADIO) {
-			if (e_rf_path == RF_PATH_A)
-				READ_AND_CONFIG_MP(8814b, _radioa);
-			else if (e_rf_path == RF_PATH_B)
-				READ_AND_CONFIG_MP(8814b, _radiob);
-			else if (e_rf_path == RF_PATH_C)
-				READ_AND_CONFIG_MP(8814b, _radioc);
-			else if (e_rf_path == RF_PATH_D)
-				READ_AND_CONFIG_MP(8814b, _radiod);
-		}
-		if (config_type == CONFIG_RF_SYN_RADIO) {
-			if (e_rf_path == RF_SYN0)
-				READ_AND_CONFIG_MP(8814b, _radiosyn0);
-			else if (e_rf_path == RF_SYN1)
-				READ_AND_CONFIG_MP(8814b, _radiosyn1);
-		}
-	}
-  #endif
 
 	if (config_type == CONFIG_RF_RADIO) {
 		if (dm->fw_offload_ability & PHYDM_PHY_PARAM_OFFLOAD) {
@@ -466,6 +368,21 @@ odm_config_rf_with_header_file(struct dm_struct *dm,
 		}
 	}
 
+#if (RTL8198F_SUPPORT == 1)
+	if (dm->support_ic_type == ODM_RTL8198F) {
+		if (config_type == CONFIG_RF_RADIO) {
+			if (e_rf_path == RF_PATH_A)
+				READ_AND_CONFIG_MP(8198f, _radioa);
+			else if (e_rf_path == RF_PATH_B)
+				READ_AND_CONFIG_MP(8198f, _radiob);
+			else if (e_rf_path == RF_PATH_C)
+				READ_AND_CONFIG_MP(8198f, _radioc);
+			else if (e_rf_path == RF_PATH_D)
+				READ_AND_CONFIG_MP(8198f, _radiod);
+		}
+	}
+#endif
+
 	return result;
 }
 
@@ -478,7 +395,7 @@ odm_config_rf_with_tx_pwr_track_header_file(struct dm_struct *dm)
 		  "support_platform: 0x%X, support_interface: 0x%X, board_type: 0x%X\n",
 		  dm->support_platform, dm->support_interface, dm->board_type);
 
-/* @1 AP doesn't use PHYDM power tracking table in these ICs */
+/* 1 AP doesn't use PHYDM power tracking table in these ICs */
 #if (DM_ODM_SUPPORT_TYPE != ODM_AP)
 #if RTL8821A_SUPPORT
 	if (dm->support_ic_type == ODM_RTL8821) {
@@ -524,7 +441,7 @@ odm_config_rf_with_tx_pwr_track_header_file(struct dm_struct *dm)
 		READ_AND_CONFIG_MP(8723d, _txxtaltrack);
 	}
 #endif
-/* @JJ ADD 20161014 */
+/* JJ ADD 20161014 */
 #if RTL8710B_SUPPORT
 	if (dm->support_ic_type == ODM_RTL8710B) {
 		if (dm->package_type == 1)
@@ -537,14 +454,14 @@ odm_config_rf_with_tx_pwr_track_header_file(struct dm_struct *dm)
 #endif
 #if RTL8188E_SUPPORT
 	if (dm->support_ic_type == ODM_RTL8188E) {
-		if (odm_get_mac_reg(dm, R_0xf0, 0xF000) >= 8) { /*@if 0xF0[15:12] >= 8, SMIC*/
+		if (odm_get_mac_reg(dm, R_0xf0, 0xF000) >= 8) { /*if 0xF0[15:12] >= 8, SMIC*/
 			if (dm->support_interface == ODM_ITRF_PCIE)
 				READ_AND_CONFIG_MP(8188e, _txpowertrack_pcie_icut);
 			else if (dm->support_interface == ODM_ITRF_USB)
 				READ_AND_CONFIG_MP(8188e, _txpowertrack_usb_icut);
 			else if (dm->support_interface == ODM_ITRF_SDIO)
 				READ_AND_CONFIG_MP(8188e, _txpowertrack_sdio_icut);
-		} else { /*@else 0xF0[15:12] < 8, TSMC*/
+		} else { /*else 0xF0[15:12] < 8, TSMC*/
 			if (dm->support_interface == ODM_ITRF_PCIE)
 				READ_AND_CONFIG_MP(8188e, _txpowertrack_pcie);
 			else if (dm->support_interface == ODM_ITRF_USB)
@@ -554,8 +471,8 @@ odm_config_rf_with_tx_pwr_track_header_file(struct dm_struct *dm)
 		}
 	}
 #endif
-#endif /* @(DM_ODM_SUPPORT_TYPE !=  ODM_AP) */
-/* @1 All platforms support */
+#endif /* (DM_ODM_SUPPORT_TYPE !=  ODM_AP) */
+/* 1 All platforms support */
 #if RTL8723B_SUPPORT
 	if (dm->support_ic_type == ODM_RTL8723B) {
 		if (dm->support_interface == ODM_ITRF_PCIE)
@@ -638,8 +555,6 @@ odm_config_rf_with_tx_pwr_track_header_file(struct dm_struct *dm)
 			READ_AND_CONFIG_MP(8822b, _txpowertrack_type16);
 		else if (dm->rfe_type == 17)
 			READ_AND_CONFIG_MP(8822b, _txpowertrack_type17);
-		else if (dm->rfe_type == 18)
-			READ_AND_CONFIG_MP(8822b, _txpowertrack_type18);
 		else
 			READ_AND_CONFIG_MP(8822b, _txpowertrack);
 	}
@@ -654,7 +569,7 @@ odm_config_rf_with_tx_pwr_track_header_file(struct dm_struct *dm)
 			READ_AND_CONFIG_MP(8197f, _txpowertrack);
 	}
 #endif
-/*@jj add 20170822*/
+/*jj add 20170822*/
 #if RTL8192F_SUPPORT
 	if (dm->support_ic_type == ODM_RTL8192F) {
 		if (dm->rfe_type == 0)
@@ -727,19 +642,6 @@ odm_config_rf_with_tx_pwr_track_header_file(struct dm_struct *dm)
 		READ_AND_CONFIG_MP(8192f, _txxtaltrack);
 	}
 #endif
-
-#if RTL8721D_SUPPORT
-	if (dm->support_ic_type == ODM_RTL8721D) {
-		#if 0
-		if (dm->package_type == 1)
-			READ_AND_CONFIG_MP(8721d, _txpowertrack_qfn48m_smic);
-		else if (dm->package_type == 5)
-			READ_AND_CONFIG_MP(8721d, _txpowertrack_qfn48m_umc);
-		#endif
-		READ_AND_CONFIG_MP(8721d, _txpowertrack);
-		READ_AND_CONFIG_MP(8721d, _txxtaltrack);
-	}
-#endif
 #if RTL8821C_SUPPORT
 	if (dm->support_ic_type == ODM_RTL8821C) {
 		if (dm->rfe_type == 0x5)
@@ -752,14 +654,8 @@ odm_config_rf_with_tx_pwr_track_header_file(struct dm_struct *dm)
 #endif
 
 #if RTL8198F_SUPPORT
-	if (dm->support_ic_type == ODM_RTL8198F) {
-		if (dm->rfe_type == 0)
-			READ_AND_CONFIG_MP(8198f, _txpowertrack_type0);
-		else if (dm->rfe_type == 1)
-			READ_AND_CONFIG_MP(8198f, _txpowertrack_type1);
-		else
-			READ_AND_CONFIG_MP(8198f, _txpowertrack);
-		}
+	if (dm->support_ic_type == ODM_RTL8198F)
+		READ_AND_CONFIG_MP(8198f, _txpowertrack);
 #endif
 
 #if RTL8195B_SUPPORT
@@ -767,21 +663,6 @@ odm_config_rf_with_tx_pwr_track_header_file(struct dm_struct *dm)
 		READ_AND_CONFIG_MP(8195b, _txpowertrack);
 		READ_AND_CONFIG_MP(8195b, _txxtaltrack);
 	}
-#endif
-
-#if (RTL8822C_SUPPORT)
-	if (dm->support_ic_type == ODM_RTL8822C)
-		READ_AND_CONFIG_MP(8822c, _txpowertrack);
-#endif
-
-#if (RTL8812F_SUPPORT)
-	if (dm->support_ic_type == ODM_RTL8812F)
-		READ_AND_CONFIG_MP(8812f, _txpowertrack);
-#endif
-
-#if RTL8814B_SUPPORT
-		if (dm->support_ic_type == ODM_RTL8814B)
-			READ_AND_CONFIG_MP(8814b, _txpowertrack);
 #endif
 
 	return HAL_STATUS_SUCCESS;
@@ -797,7 +678,7 @@ odm_config_bb_with_header_file(struct dm_struct *dm,
 #endif
 	enum hal_status result = HAL_STATUS_SUCCESS;
 
-/* @1 AP doesn't use PHYDM initialization in these ICs */
+/* 1 AP doesn't use PHYDM initialization in these ICs */
 #if (DM_ODM_SUPPORT_TYPE != ODM_AP)
 #if (RTL8812A_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8812) {
@@ -812,7 +693,7 @@ odm_config_bb_with_header_file(struct dm_struct *dm,
 			else if (mgnt_info->CustomerID == RT_CID_WNC_NEC && dm->is_mp_chip)
 				READ_AND_CONFIG_MP(8812a, _phy_reg_pg_nec);
 #if RT_PLATFORM == PLATFORM_MACOSX
-			/*@{1827}{1024} for BUFFALO power by rate table. Isaiah 2013-11-29*/
+			/*{1827}{1024} for BUFFALO power by rate table. Isaiah 2013-11-29*/
 			else if (mgnt_info->CustomerID == RT_CID_DNI_BUFFALO)
 				READ_AND_CONFIG_MP(8812a, _phy_reg_pg_dni);
 			/* TP-Link T4UH, Isaiah 2015-03-16*/
@@ -828,7 +709,7 @@ odm_config_bb_with_header_file(struct dm_struct *dm,
 			READ_AND_CONFIG_MP(8812a, _phy_reg_mp);
 		else if (config_type == CONFIG_BB_AGC_TAB_DIFF) {
 			dm->fw_offload_ability &= ~PHYDM_PHY_PARAM_OFFLOAD;
-			/*@AGC_TAB DIFF dont support FW offload*/
+			/*AGC_TAB DIFF dont support FW offload*/
 			if ((*dm->channel >= 36) && (*dm->channel <= 64))
 				AGC_DIFF_CONFIG_MP(8812a, lb);
 			else if (*dm->channel >= 100)
@@ -852,9 +733,9 @@ odm_config_bb_with_header_file(struct dm_struct *dm,
 			else
 #endif
 #if (RT_PLATFORM == PLATFORM_MACOSX)
-				/*@  for BUFFALO pwr by rate table */
+				/*{1827}{1022} for BUFFALO power by rate table. Isaiah 2013-10-18*/
 				if (mgnt_info->CustomerID == RT_CID_DNI_BUFFALO) {
-				/*@  for BUFFALO pwr by rate table (JP/US)*/
+				/*{1024} for BUFFALO power by rate table. (JP/US)*/
 				if (mgnt_info->ChannelPlan == RT_CHANNEL_DOMAIN_US_2G_CANADA_5G)
 					READ_AND_CONFIG_MP(8821a, _phy_reg_pg_dni_us);
 				else
@@ -886,7 +767,7 @@ odm_config_bb_with_header_file(struct dm_struct *dm,
 			READ_AND_CONFIG_MP(8723d, _phy_reg_pg);
 	}
 #endif
-/* @JJ ADD 20161014 */
+/* JJ ADD 20161014 */
 #if (RTL8710B_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8710B) {
 		if (config_type == CONFIG_BB_PHY_REG)
@@ -898,8 +779,8 @@ odm_config_bb_with_header_file(struct dm_struct *dm,
 	}
 #endif
 
-#endif /* @(DM_ODM_SUPPORT_TYPE !=  ODM_AP) */
-/* @1 All platforms support */
+#endif /* (DM_ODM_SUPPORT_TYPE !=  ODM_AP) */
+/* 1 All platforms support */
 #if (RTL8188E_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8188E) {
 		if (config_type == CONFIG_BB_PHY_REG)
@@ -990,8 +871,6 @@ odm_config_bb_with_header_file(struct dm_struct *dm,
 				READ_AND_CONFIG_MP(8822b, _phy_reg_pg_type16);
 			else if (dm->rfe_type == 17)
 				READ_AND_CONFIG_MP(8822b, _phy_reg_pg_type17);
-			else if (dm->rfe_type == 18)
-				READ_AND_CONFIG_MP(8822b, _phy_reg_pg_type18);
 			else
 				READ_AND_CONFIG_MP(8822b, _phy_reg_pg);
 		}
@@ -1008,7 +887,7 @@ odm_config_bb_with_header_file(struct dm_struct *dm,
 			READ_AND_CONFIG_MP(8197f, _agc_tab);
 	}
 #endif
-/*@jj add 20170822*/
+/*jj add 20170822*/
 #if (RTL8192F_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8192F) {
 		if (config_type == CONFIG_BB_PHY_REG) {
@@ -1085,23 +964,13 @@ odm_config_bb_with_header_file(struct dm_struct *dm,
 		}
 	}
 #endif
-#if (RTL8721D_SUPPORT == 1)
-	if (dm->support_ic_type == ODM_RTL8721D) {
-		if (config_type == CONFIG_BB_PHY_REG)
-			READ_AND_CONFIG_MP(8721d, _phy_reg);
-		else if (config_type == CONFIG_BB_AGC_TAB)
-			READ_AND_CONFIG_MP(8721d, _agc_tab);
-		else if (config_type == CONFIG_BB_PHY_REG_PG)
-			READ_AND_CONFIG_MP(8721d, _phy_reg_pg);
-	}
-#endif
 #if (RTL8821C_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8821C) {
 		if (config_type == CONFIG_BB_PHY_REG) {
 			READ_AND_CONFIG(8821c, _phy_reg);
 		} else if (config_type == CONFIG_BB_AGC_TAB) {
 			READ_AND_CONFIG(8821c, _agc_tab);
-			/* @According to RFEtype, choosing correct AGC table*/
+			/* According to RFEtype, choosing correct AGC table*/
 			if (dm->default_rf_set_8821c == SWITCH_TO_BTG)
 				AGC_DIFF_CONFIG_MP(8821c, btg);
 		} else if (config_type == CONFIG_BB_PHY_REG_PG) {
@@ -1111,7 +980,7 @@ odm_config_bb_with_header_file(struct dm_struct *dm,
 				READ_AND_CONFIG(8821c, _phy_reg_pg);
 		} else if (config_type == CONFIG_BB_AGC_TAB_DIFF) {
 			dm->fw_offload_ability &= ~PHYDM_PHY_PARAM_OFFLOAD;
-			/*@AGC_TAB DIFF dont support FW offload*/
+			/*AGC_TAB DIFF dont support FW offload*/
 			if (dm->current_rf_set_8821c == SWITCH_TO_BTG)
 				AGC_DIFF_CONFIG_MP(8821c, btg);
 			else if (dm->current_rf_set_8821c == SWITCH_TO_WLG)
@@ -1132,16 +1001,6 @@ odm_config_bb_with_header_file(struct dm_struct *dm,
 			READ_AND_CONFIG(8195a, _phy_reg_pg);
 	}
 #endif
-#if (RTL8195B_SUPPORT == 1)
-	if (dm->support_ic_type == ODM_RTL8195B) {
-		if (config_type == CONFIG_BB_PHY_REG)
-			READ_AND_CONFIG(8195b, _phy_reg);
-		else if (config_type == CONFIG_BB_AGC_TAB)
-			READ_AND_CONFIG(8195b, _agc_tab);
-		else if (config_type == CONFIG_BB_PHY_REG_PG)
-			READ_AND_CONFIG(8195b, _phy_reg_pg);
-	}
-#endif
 #if (RTL8198F_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8198F) {
 		if (config_type == CONFIG_BB_PHY_REG)
@@ -1150,39 +1009,8 @@ odm_config_bb_with_header_file(struct dm_struct *dm,
 			READ_AND_CONFIG_MP(8198f, _agc_tab);
 	}
 #endif
-#if (RTL8814B_SUPPORT == 1)
-	if (dm->support_ic_type == ODM_RTL8814B) {
-		if (config_type == CONFIG_BB_PHY_REG)
-			READ_AND_CONFIG_MP(8814b, _phy_reg);
-		else if (config_type == CONFIG_BB_AGC_TAB)
-			READ_AND_CONFIG_MP(8814b, _agc_tab);
-		else if (config_type == CONFIG_BB_PHY_REG_PG)
-			READ_AND_CONFIG(8814b, _phy_reg_pg);
-	}
-#endif
-#if (RTL8822C_SUPPORT)
-	if (dm->support_ic_type == ODM_RTL8822C) {
-		if (config_type == CONFIG_BB_PHY_REG)
-			READ_AND_CONFIG_MP(8822c, _phy_reg);
-		else if (config_type == CONFIG_BB_AGC_TAB)
-			READ_AND_CONFIG_MP(8822c, _agc_tab);
-		else if (config_type == CONFIG_BB_PHY_REG_PG)
-			READ_AND_CONFIG(8822c, _phy_reg_pg);
-	}
-#endif
-#if (RTL8812F_SUPPORT)
-	if (dm->support_ic_type == ODM_RTL8812F) {
-		if (config_type == CONFIG_BB_PHY_REG)
-			READ_AND_CONFIG_MP(8812f, _phy_reg);
-		else if (config_type == CONFIG_BB_AGC_TAB)
-			READ_AND_CONFIG_MP(8812f, _agc_tab);
-		else if (config_type == CONFIG_BB_PHY_REG_PG)
-			READ_AND_CONFIG(8812f, _phy_reg_pg);
-	}
-#endif
 
-	if (config_type == CONFIG_BB_PHY_REG ||
-	    config_type == CONFIG_BB_AGC_TAB)
+	if (config_type == CONFIG_BB_PHY_REG || config_type == CONFIG_BB_AGC_TAB)
 		if (dm->fw_offload_ability & PHYDM_PHY_PARAM_OFFLOAD) {
 			result = phydm_set_reg_by_fw(dm,
 						     PHYDM_HALMAC_CMD_END,
@@ -1209,7 +1037,7 @@ odm_config_mac_with_header_file(struct dm_struct *dm)
 		  "support_platform: 0x%X, support_interface: 0x%X, board_type: 0x%X\n",
 		  dm->support_platform, dm->support_interface, dm->board_type);
 
-/* @1 AP doesn't use PHYDM initialization in these ICs */
+/* 1 AP doesn't use PHYDM initialization in these ICs */
 #if (DM_ODM_SUPPORT_TYPE != ODM_AP)
 #if (RTL8812A_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8812)
@@ -1227,13 +1055,13 @@ odm_config_mac_with_header_file(struct dm_struct *dm)
 	if (dm->support_ic_type == ODM_RTL8723D)
 		READ_AND_CONFIG_MP(8723d, _mac_reg);
 #endif
-/* @JJ ADD 20161014 */
+/* JJ ADD 20161014 */
 #if (RTL8710B_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8710B)
 		READ_AND_CONFIG_MP(8710b, _mac_reg);
 #endif
-#endif /* @(DM_ODM_SUPPORT_TYPE !=  ODM_AP) */
-/* @1 All platforms support */
+#endif /* (DM_ODM_SUPPORT_TYPE !=  ODM_AP) */
+/* 1 All platforms support */
 #if (RTL8188E_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8188E)
 		READ_AND_CONFIG_MP(8188e, _mac_reg);
@@ -1263,15 +1091,10 @@ odm_config_mac_with_header_file(struct dm_struct *dm)
 		READ_AND_CONFIG_MP(8197f, _mac_reg);
 #endif
 
-/*@jj add 20170822*/
+/*jj add 20170822*/
 #if (RTL8192F_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8192F)
 		READ_AND_CONFIG_MP(8192f, _mac_reg);
-#endif
-
-#if (RTL8721D_SUPPORT == 1)
-	if (dm->support_ic_type == ODM_RTL8721D)
-		READ_AND_CONFIG_MP(8721d, _mac_reg);
 #endif
 #if (RTL8821C_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8821C)
@@ -1281,25 +1104,10 @@ odm_config_mac_with_header_file(struct dm_struct *dm)
 	if (dm->support_ic_type == ODM_RTL8195A)
 		READ_AND_CONFIG_MP(8195a, _mac_reg);
 #endif
-#if (RTL8195B_SUPPORT == 1)
-	if (dm->support_ic_type == ODM_RTL8195B)
-		READ_AND_CONFIG_MP(8195b, _mac_reg);
-#endif
+
 #if (RTL8198F_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8198F)
 		READ_AND_CONFIG_MP(8198f, _mac_reg);
-#endif
-#if (RTL8814B_SUPPORT == 1)
-	if (dm->support_ic_type == ODM_RTL8814B)
-		READ_AND_CONFIG_MP(8814b, _mac_reg);
-#endif
-#if 0 /*(RTL8822C_SUPPORT)*/
-	if (dm->support_ic_type == ODM_RTL8822C)
-		READ_AND_CONFIG_MP(8822c, _mac_reg);
-#endif
-#if (RTL8812F_SUPPORT)
-	if (dm->support_ic_type == ODM_RTL8812F)
-		READ_AND_CONFIG_MP(8812f, _mac_reg);
 #endif
 
 	if (dm->fw_offload_ability & PHYDM_PHY_PARAM_OFFLOAD) {
@@ -1321,7 +1129,7 @@ u32 odm_get_hw_img_version(struct dm_struct *dm)
 {
 	u32 version = 0;
 
-/* @1 AP doesn't use PHYDM initialization in these ICs */
+/* 1 AP doesn't use PHYDM initialization in these ICs */
 #if (DM_ODM_SUPPORT_TYPE != ODM_AP)
 #if (RTL8821A_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8821)
@@ -1339,14 +1147,14 @@ u32 odm_get_hw_img_version(struct dm_struct *dm)
 	if (dm->support_ic_type == ODM_RTL8723D)
 		version = GET_VERSION_MP(8723d, _mac_reg);
 #endif
-/* @JJ ADD 20161014 */
+/* JJ ADD 20161014 */
 #if (RTL8710B_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8710B)
 		version = GET_VERSION_MP(8710b, _mac_reg);
 #endif
-#endif /* @(DM_ODM_SUPPORT_TYPE != ODM_AP) */
+#endif /* (DM_ODM_SUPPORT_TYPE != ODM_AP) */
 
-/*@1 All platforms support*/
+/*1 All platforms support*/
 #if (RTL8188E_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8188E)
 		version = GET_VERSION_MP(8188e, _mac_reg);
@@ -1376,38 +1184,19 @@ u32 odm_get_hw_img_version(struct dm_struct *dm)
 		version = GET_VERSION_MP(8197f, _mac_reg);
 #endif
 
-/*@jj add 20170822*/
+/*jj add 20170822*/
 #if (RTL8192F_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8192F)
 		version = GET_VERSION_MP(8192f, _mac_reg);
-#endif
-#if (RTL8721D_SUPPORT == 1)
-	if (dm->support_ic_type == ODM_RTL8721D)
-		version = GET_VERSION_MP(8721d, _mac_reg);
 #endif
 #if (RTL8821C_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8821C)
 		version = GET_VERSION(8821c, _mac_reg);
 #endif
-#if (RTL8195B_SUPPORT == 1)
-	if (dm->support_ic_type == ODM_RTL8195B)
-		version = GET_VERSION(8195b, _mac_reg);
-#endif
+
 #if (RTL8198F_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8198F)
 		version = GET_VERSION_MP(8198f, _mac_reg);
-#endif
-#if 0 /*(RTL8822C_SUPPORT)*/
-	if (dm->support_ic_type == ODM_RTL8822C)
-		version = GET_VERSION_MP(8822c, _mac_reg);
-#endif
-#if (RTL8812F_SUPPORT)
-	if (dm->support_ic_type == ODM_RTL8812F)
-		version = GET_VERSION_MP(8812f, _mac_reg);
-#endif
-#if (RTL8814B_SUPPORT == 1)
-	if (dm->support_ic_type == ODM_RTL8814B)
-		version = GET_VERSION_MP(8814b, _mac_reg);
 #endif
 
 	return version;
@@ -1421,10 +1210,7 @@ u32 query_phydm_trx_capability(struct dm_struct *dm)
 	if (dm->support_ic_type == ODM_RTL8821C)
 		value32 = query_phydm_trx_capability_8821c(dm);
 #endif
-#if (RTL8195B_SUPPORT == 1)
-	if (dm->support_ic_type == ODM_RTL8195B)
-		value32 = query_phydm_trx_capability_8195b(dm);
-#endif
+
 	return value32;
 }
 
@@ -1435,10 +1221,6 @@ u32 query_phydm_stbc_capability(struct dm_struct *dm)
 #if (RTL8821C_SUPPORT == 1)
 	if (dm->support_ic_type == ODM_RTL8821C)
 		value32 = query_phydm_stbc_capability_8821c(dm);
-#endif
-#if (RTL8195B_SUPPORT == 1)
-	if (dm->support_ic_type == ODM_RTL8195B)
-		value32 = query_phydm_stbc_capability_8195b(dm);
 #endif
 
 	return value32;
@@ -1452,10 +1234,7 @@ u32 query_phydm_ldpc_capability(struct dm_struct *dm)
 	if (dm->support_ic_type == ODM_RTL8821C)
 		value32 = query_phydm_ldpc_capability_8821c(dm);
 #endif
-#if (RTL8195B_SUPPORT == 1)
-	if (dm->support_ic_type == ODM_RTL8195B)
-		value32 = query_phydm_ldpc_capability_8195b(dm);
-#endif
+
 	return value32;
 }
 
@@ -1467,10 +1246,7 @@ u32 query_phydm_txbf_parameters(struct dm_struct *dm)
 	if (dm->support_ic_type == ODM_RTL8821C)
 		value32 = query_phydm_txbf_parameters_8821c(dm);
 #endif
-#if (RTL8195B_SUPPORT == 1)
-	if (dm->support_ic_type == ODM_RTL8195B)
-		value32 = query_phydm_txbf_parameters_8195b(dm);
-#endif
+
 	return value32;
 }
 
@@ -1482,9 +1258,6 @@ u32 query_phydm_txbf_capability(struct dm_struct *dm)
 	if (dm->support_ic_type == ODM_RTL8821C)
 		value32 = query_phydm_txbf_capability_8821c(dm);
 #endif
-#if (RTL8195B_SUPPORT == 1)
-	if (dm->support_ic_type == ODM_RTL8195B)
-		value32 = query_phydm_txbf_capability_8195b(dm);
-#endif
+
 	return value32;
 }

@@ -470,51 +470,6 @@ u32 cck_swing_table_ch1_ch14_8192f[CCK_TABLE_SIZE_8192F] = {
 	0x7FF,
 };
 
-/* Winnita ADD 201805 PathA 0xAB4[10:0]*/
-u32 cck_swing_table_ch1_ch14_8721d[CCK_TABLE_SIZE_8721D] = {
-	0x0CD,			 /*0 ,    -20dB*/
-	0x0D9,
-	0x0E6,
-	0x0F3,
-	0x102,
-	0x111,
-	0x121,
-	0x132,
-	0x144,
-	0x158,
-	0x16C,
-	0x182,
-	0x198,
-	0x1B1,
-	0x1CA,
-	0x1E5,
-	0x202,
-	0x221,
-	0x241,
-	0x263,		/*19*/
-	0x287,		/*20*/
-	0x2AE,		/*21*/
-	0x2D6,		/*22*/
-	0x301,		/*23*/
-	0x32F,		/*24*/
-	0x35F,		/*25*/
-	0x392,		/*26*/
-	0x3C9,		/*27*/
-	0x402,		/*28*/
-	0x43F,		/*29*/
-	0x47F,		/*30*/
-	0x4C3,		/*31*/
-	0x50C,		/*32*/
-	0x558,		/*33*/
-	0x5A9,		/*34*/
-	0x5FF,		/*35*/
-	0x65A,		/*36*/
-	0x6BA,
-	0x720,
-	0x78C,
-	0x7FF,
-};
-
 u32 tx_scaling_table_jaguar[TXSCALE_TABLE_SIZE] = {
 	0x081, /* 0,  -12.0dB*/
 	0x088, /* 1,  -11.5dB*/
@@ -651,9 +606,6 @@ odm_txpowertracking_thermal_meter_init(
 		if (dm->support_ic_type == ODM_RTL8195B) {
 			cali_info->default_ofdm_index = (default_swing_index >= TXSCALE_TABLE_SIZE) ? 24 : default_swing_index;
 			cali_info->default_cck_index = 24;
-		} else if (dm->support_ic_type == ODM_RTL8721D) {
-			cali_info->default_ofdm_index = 28;	/*OFDM: -1dB*/
-			cali_info->default_cck_index = 28;	/*CCK: -6dB*/
 		}
 		cali_info->default_bb_swing_index_flag = true;
 	}
@@ -697,9 +649,6 @@ odm_txpowertracking_check_iot(
 	if (!dm->rf_calibrate_info.tm_trigger) {
 		if (dm->support_ic_type == ODM_RTL8195B)
 			odm_set_rf_reg(dm, RF_PATH_A, RF_T_METER_NEW, (BIT(17) | BIT(16)), 0x03);
-		else if (dm->support_ic_type == ODM_RTL8721D)
-			odm_set_rf_reg(dm, RF_PATH_A, RF_T_METER_NEW,
-				       (BIT(12) | BIT(11)), 0x03);
 
 		dm->rf_calibrate_info.tm_trigger = 1;
 		return;

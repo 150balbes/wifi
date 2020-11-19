@@ -59,12 +59,7 @@ enum pwrtrack_method {
 typedef void	(*func_set_pwr)(void *, enum pwrtrack_method, u8, u8);
 typedef void(*func_iqk)(void *, u8, u8, u8);
 typedef void	(*func_lck)(void *);
-#if (RTL8721D_SUPPORT == 1)
-	typedef void	(*func_swing)(void *, u8 **, u8 **, u8 **, u8 **,
-				      u8 **, u8 **, u8 **, u8 **);
-#else
-	typedef void	(*func_swing)(void *, u8 **, u8 **, u8 **, u8 **);
-#endif
+typedef void	(*func_swing)(void *, u8 **, u8 **, u8 **, u8 **);
 typedef void	(*func_swing8814only)(void *, u8 **, u8 **, u8 **, u8 **);
 typedef void(*func_swing_xtal)(void *, s8 **, s8 **);
 typedef void(*func_set_xtal)(void *);

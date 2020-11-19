@@ -1479,9 +1479,9 @@ SwLedBlink12(
 
 }
 
-void
+VOID
 SwLedBlink13(
-	PLED_USB			pLed
+	IN PLED_USB			pLed
 )
 {
 	PADAPTER Adapter = pLed->padapter;
@@ -1540,9 +1540,9 @@ SwLedBlink13(
 
 }
 
-void
+VOID
 SwLedBlink14(
-	PLED_USB			pLed
+	IN PLED_USB			pLed
 )
 {
 	PADAPTER Adapter = pLed->padapter;
@@ -1597,9 +1597,9 @@ SwLedBlink14(
 
 }
 
-void
+VOID
 SwLedBlink15(
-	PLED_USB			pLed
+	IN PLED_USB			pLed
 )
 {
 	PADAPTER Adapter = pLed->padapter;
@@ -1843,7 +1843,7 @@ void BlinkTimerCallback(void *data)
 	}
 
 #ifdef CONFIG_RTW_LED_HANDLED_BY_CMD_THREAD
-	rtw_led_blink_cmd(padapter, (void *)pLed);
+	rtw_led_blink_cmd(padapter, (PVOID)pLed);
 #else
 	_set_workitem(&(pLed->BlinkWorkItem));
 #endif
@@ -3086,8 +3086,8 @@ SwLedControlMode8(
 /* page added for Belkin AC950, 20120813 */
 void
 SwLedControlMode9(
-		PADAPTER			Adapter,
-		LED_CTL_MODE		LedAction
+	IN	PADAPTER			Adapter,
+	IN	LED_CTL_MODE		LedAction
 )
 {
 	struct led_priv	*ledpriv = adapter_to_led(Adapter);
@@ -3683,7 +3683,7 @@ SwLedControlMode11(
 
 /* page added for NEC */
 
-void
+VOID
 SwLedControlMode12(
 	PADAPTER			Adapter,
 	LED_CTL_MODE		LedAction
@@ -3764,10 +3764,10 @@ SwLedControlMode12(
 
 /* Maddest add for NETGEAR R6100 */
 
-void
+VOID
 SwLedControlMode13(
-		PADAPTER			Adapter,
-		LED_CTL_MODE		LedAction
+	IN	PADAPTER			Adapter,
+	IN	LED_CTL_MODE		LedAction
 )
 {
 	struct led_priv	*ledpriv = adapter_to_led(Adapter);
@@ -3910,10 +3910,10 @@ SwLedControlMode13(
 
 /* Maddest add for DNI Buffalo */
 
-void
+VOID
 SwLedControlMode14(
-		PADAPTER			Adapter,
-		LED_CTL_MODE		LedAction
+	IN	PADAPTER			Adapter,
+	IN	LED_CTL_MODE		LedAction
 )
 {
 	struct led_priv	*ledpriv = adapter_to_led(Adapter);
@@ -3969,10 +3969,10 @@ SwLedControlMode14(
 
 /* Maddest add for Dlink */
 
-void
+VOID
 SwLedControlMode15(
-		PADAPTER			Adapter,
-		LED_CTL_MODE		LedAction
+	IN	PADAPTER			Adapter,
+	IN	LED_CTL_MODE		LedAction
 )
 {
 	struct led_priv	*ledpriv = adapter_to_led(Adapter);

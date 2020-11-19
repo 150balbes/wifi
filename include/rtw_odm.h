@@ -85,18 +85,12 @@ void rtw_odm_releasespinlock(_adapter *adapter,	enum rt_spinlock_type type);
 u8 rtw_odm_get_dfs_domain(struct dvobj_priv *dvobj);
 u8 rtw_odm_dfs_domain_unknown(struct dvobj_priv *dvobj);
 #ifdef CONFIG_DFS_MASTER
-void rtw_odm_radar_detect_reset(_adapter *adapter);
-void rtw_odm_radar_detect_disable(_adapter *adapter);
-void rtw_odm_radar_detect_enable(_adapter *adapter);
+VOID rtw_odm_radar_detect_reset(_adapter *adapter);
+VOID rtw_odm_radar_detect_disable(_adapter *adapter);
+VOID rtw_odm_radar_detect_enable(_adapter *adapter);
 BOOLEAN rtw_odm_radar_detect(_adapter *adapter);
-u8 rtw_odm_radar_detect_polling_int_ms(struct dvobj_priv *dvobj);
 #endif /* CONFIG_DFS_MASTER */
 
 void rtw_odm_parse_rx_phy_status_chinfo(union recv_frame *rframe, u8 *phys);
-
-#if defined(CONFIG_RTL8822C) && defined(CONFIG_LPS_PG)
-void odm_iqk_get_cfir2fw_8822c(void *dm_void, u8 *buf, u32 *buf_size);
-void odm_lps_pg_debug_8822c(void *dm_void);
-#endif
 
 #endif /* __RTW_ODM_H__ */

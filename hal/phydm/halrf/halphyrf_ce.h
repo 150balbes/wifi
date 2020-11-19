@@ -46,11 +46,6 @@
 #include "halrf/rtl8195b/halrf_dpk_8195b.h"
 #endif
 
-#if (RTL8814B_SUPPORT == 1)
-	#include "halrf/rtl8814b/halrf_iqk_8814b.h"	
-	#include "halrf/rtl8814b/halrf_dpk_8814b.h"
-#endif
-
 #include "halrf/halrf_powertracking_ce.h"
 
 enum spur_cal_method {
@@ -64,8 +59,7 @@ enum pwrtrack_method {
 	MIX_MODE,
 	TSSI_MODE,
 	MIX_2G_TSSI_5G_MODE,
-	MIX_5G_TSSI_2G_MODE,
-	CLEAN_MODE
+	MIX_5G_TSSI_2G_MODE
 };
 
 typedef void (*func_set_pwr)(void *, enum pwrtrack_method, u8, u8);
@@ -97,17 +91,15 @@ void configure_txpower_track(void *dm_void, struct txpwrtrack_cfg *config);
 
 void odm_clear_txpowertracking_state(void *dm_void);
 
+void odm_txpowertracking_callback_thermal_meter(
 #if (DM_ODM_SUPPORT_TYPE & ODM_AP)
-void odm_txpowertracking_callback_thermal_meter(void *dm_void);
+						void *dm_void
 #elif (DM_ODM_SUPPORT_TYPE & ODM_CE)
-void odm_txpowertracking_callback_thermal_meter(void *dm);
+						void *dm
 #else
-void odm_txpowertracking_callback_thermal_meter(void *adapter);
+						void *adapter
 #endif
-
-#if (RTL8822C_SUPPORT == 1)
-void odm_txpowertracking_new_callback_thermal_meter(void *dm_void);
-#endif
+						);
 
 #define ODM_TARGET_CHNL_NUM_2G_5G 59
 
@@ -117,4 +109,4 @@ u8 odm_get_right_chnl_place_for_iqk(u8 chnl);
 void phydm_rf_init(void *dm_void);
 void phydm_rf_watchdog(void *dm_void);
 
-#endif /*__HALPHYRF_H__*/
+#endif /*#ifndef __HALPHYRF_H__*/

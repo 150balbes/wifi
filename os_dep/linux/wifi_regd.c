@@ -265,7 +265,7 @@ void rtw_regd_apply_flags(struct wiphy *wiphy)
 	u16 channel;
 	u32 freq;
 
-	/* all channels enable */
+	/* all channels disable */
 	for (i = 0; i < NUM_NL80211_BANDS; i++) {
 		sband = wiphy->bands[i];
 
@@ -274,9 +274,7 @@ void rtw_regd_apply_flags(struct wiphy *wiphy)
 				ch = &sband->channels[j];
 
 				if (ch)
-					ch->flags &= ~(IEEE80211_CHAN_DISABLED|IEEE80211_CHAN_NO_HT40PLUS|
-						IEEE80211_CHAN_NO_HT40MINUS|IEEE80211_CHAN_NO_80MHZ|
-						IEEE80211_CHAN_NO_160MHZ|IEEE80211_CHAN_NO_IR);
+					ch->flags = IEEE80211_CHAN_DISABLED;
 			}
 		}
 	}
@@ -389,6 +387,17 @@ static void _rtw_regd_init_wiphy(struct rtw_regulatory *reg, struct wiphy *wiphy
 	wiphy_apply_custom_regulatory(wiphy, regd);
 
 	rtw_regd_apply_flags(wiphy);
+}
+
+static struct country_code_to_enum_rd *_rtw_regd_find_country(u16 countrycode)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(allCountries); i++) {
+		if (allCountries[i].countrycode == countrycode)
+			return &allCountries[i];
+	}
+	return NULL;
 }
 
 int rtw_regd_init(struct wiphy *wiphy)

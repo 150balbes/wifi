@@ -23,7 +23,7 @@
  *
  *****************************************************************************/
 
-/*@************************************************************
+/* ************************************************************
  * include files
  * ************************************************************
  */
@@ -37,16 +37,6 @@ void halrf_basic_profile(void *dm_void, u32 *_used, char *output, u32 *_out_len)
 	struct dm_struct *dm = (struct dm_struct *)dm_void;
 	u32 used = *_used;
 	u32 out_len = *_out_len;
-	u32 rf_release_ver = 0;
-
-#if (RTL8822C_SUPPORT)
-	if (dm->support_ic_type == ODM_RTL8822C) {
-		rf_release_ver = RF_RELEASE_VERSION_8822C;
-	}
-#endif
-
-	PDM_SNPF(out_len, used, output + used, out_len - used, "  %-35s: %d\n",
-		 "RF Para Release Ver", rf_release_ver);
 
 	/* HAL RF version List */
 	PDM_SNPF(out_len, used, output + used, out_len - used, "%-35s\n",
@@ -86,9 +76,11 @@ void halrf_debug_trace(void *dm_void, char input[][16], u32 *_used,
 	u32 rf_var[10] = {0};
 	u8 i;
 
-	for (i = 0; i < 5; i++)
-		if (input[i + 1])
+	for (i = 0; i < 5; i++) {
+		if (input[i + 1]) {
 			PHYDM_SSCANF(input[i + 2], DCMD_DECIMAL, &rf_var[i]);
+		}
+	}
 
 	if (rf_var[0] == 100) {
 		PDM_SNPF(out_len, used, output + used, out_len - used,
@@ -169,8 +161,8 @@ void halrf_cmd_parser(void *dm_void, char input[][16], u32 *_used, char *output,
 	u8 id = 0;
 	u32 rf_var[10] = {0};
 	u32 i, input_idx = 0;
-	u32 halrf_ary_size =
-			sizeof(halrf_cmd_ary) / sizeof(struct halrf_command);
+	u32 halrf_ary_size = sizeof(halrf_cmd_ary) / sizeof(struct halrf_command);
+	char help[] = "-h";
 	u32 used = *_used;
 	u32 out_len = *_out_len;
 
@@ -199,8 +191,7 @@ void halrf_cmd_parser(void *dm_void, char input[][16], u32 *_used, char *output,
 		}
 		break;
 	case HALRF_SUPPORTABILITY:
-		halrf_support_ability_debug(dm, &input[0], &used, output,
-					    &out_len);
+		halrf_support_ability_debug(dm, &input[0], &used, output, &out_len);
 		break;
 	case HALRF_DBG_COMP:
 		halrf_debug_trace(dm, &input[0], &used, output, &out_len);
@@ -225,8 +216,7 @@ void halrf_cmd_parser(void *dm_void, char input[][16], u32 *_used, char *output,
 
 		for (i = 0; i < 5; i++) {
 			if (input[i + 1]) {
-				PHYDM_SSCANF(input[i + 2], DCMD_HEX,
-					     &rf_var[i]);
+				PHYDM_SSCANF(input[i + 2], DCMD_HEX, &rf_var[i]);
 				input_idx++;
 			}
 		}
@@ -234,8 +224,7 @@ void halrf_cmd_parser(void *dm_void, char input[][16], u32 *_used, char *output,
 		if (input_idx >= 1) {
 #if (RTL8822B_SUPPORT == 1 || RTL8821C_SUPPORT == 1)
 			if (dm->support_ic_type & (ODM_RTL8822B | ODM_RTL8821C))
-				halrf_iqk_debug(dm, (u32 *)rf_var, &used,
-						output, &out_len);
+				halrf_iqk_debug(dm, (u32 *)rf_var, &used, output, &out_len);
 #endif
 		}
 		break;
@@ -260,9 +249,7 @@ void halrf_init_debug_setting(void *dm_void)
 	/*DBG_RF_IQK		| */
 	/*DBG_RF_LCK		| */
 	/*DBG_RF_DPK		| */
-	/*DBG_RF_DACK		| */
 	/*DBG_RF_TXGAPK		| */
-	/*DBG_RF_MP			| */
 	/*DBG_RF_TMP		| */
 	/*DBG_RF_INIT		| */
 #endif

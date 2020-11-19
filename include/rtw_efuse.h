@@ -218,7 +218,7 @@ void	EFUSE_ShadowRead(PADAPTER pAdapter, u8 Type, u16 Offset, u32 *Value);
 BOOLEAN rtw_file_efuse_IsMasked(PADAPTER pAdapter, u16 Offset);
 BOOLEAN efuse_IsMasked(PADAPTER pAdapter, u16 Offset);
 
-void	hal_ReadEFuse_BT_logic_map(
+VOID	hal_ReadEFuse_BT_logic_map(
 	PADAPTER	padapter,
 	u16			_offset,
 	u16			_size_byte,

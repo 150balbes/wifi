@@ -34,7 +34,6 @@ const u32 _chip_type_to_odm_ic_type[] = {
 	ODM_RTL8821C,
 	ODM_RTL8710B,
 	ODM_RTL8192F,
-	ODM_RTL8822C,
 	0,
 };
 
@@ -130,6 +129,16 @@ void rtw_hal_def_value_init(_adapter *padapter)
 		adapter_to_dvobj(padapter)->p0_tsf.offset = 0;
 		#endif
 
+		{
+			struct dvobj_priv *dvobj = adapter_to_dvobj(padapter);
+			struct hal_spec_t *hal_spec = GET_HAL_SPEC(padapter);
+
+			/* hal_spec is ready here */
+			dvobj->macid_ctl.num = rtw_min(hal_spec->macid_num, MACID_NUM_SW_LIMIT);
+
+			dvobj->cam_ctl.sec_cap = hal_spec->sec_cap;
+			dvobj->cam_ctl.num = rtw_min(hal_spec->sec_cam_ent_num, SEC_CAM_ENT_NUM_SW_LIMIT);
+		}
 		GET_HAL_DATA(padapter)->rx_tsf_addr_filter_config = 0;
 	}
 }
@@ -242,7 +251,6 @@ void rtw_hal_power_off(_adapter *padapter)
 	struct macid_ctl_t *macid_ctl = &padapter->dvobj->macid_ctl;
 
 	_rtw_memset(macid_ctl->h2c_msr, 0, MACID_NUM_SW_LIMIT);
-	_rtw_memset(macid_ctl->op_num, 0, H2C_MSR_ROLE_MAX);
 
 #ifdef CONFIG_BT_COEXIST
 	rtw_btcoex_PowerOffSetting(padapter);
@@ -319,12 +327,6 @@ uint rtw_hal_init(_adapter *padapter)
 		rtw_dyn_soml_config(padapter);
 		#endif
 		#endif
-		#ifdef CONFIG_TDMADIG
-		rtw_phydm_tdmadig(padapter, TDMADIG_INIT);
-		#endif/*CONFIG_TDMADIG*/
-#ifdef CONFIG_RTW_TX_2PATH_EN
-		rtw_phydm_tx_2path_en(padapter);
-#endif
 	} else {
 		rtw_set_hw_init_completed(padapter, _FALSE);
 		RTW_ERR("%s: hal_init fail\n", __func__);
@@ -371,13 +373,7 @@ uint	 rtw_hal_init(_adapter *padapter)
 		rtw_dyn_soml_config(padapter);
 #endif
 #endif
-		#ifdef CONFIG_TDMADIG
-		rtw_phydm_tdmadig(padapter, TDMADIG_INIT);
-		#endif/*CONFIG_TDMADIG*/
 
-#ifdef CONFIG_RTW_TX_2PATH_EN
-		rtw_phydm_tx_2path_en(padapter);
-#endif
 	} else {
 		rtw_set_hw_init_completed(padapter, _FALSE);
 		RTW_ERR("%s: fail\n", __func__);
@@ -417,20 +413,20 @@ void rtw_hal_get_hwreg(_adapter *padapter, u8 variable, u8 *val)
 	padapter->hal_func.GetHwRegHandler(padapter, variable, val);
 }
 
-u8 rtw_hal_set_def_var(_adapter *padapter, HAL_DEF_VARIABLE eVariable, void *pValue)
+u8 rtw_hal_set_def_var(_adapter *padapter, HAL_DEF_VARIABLE eVariable, PVOID pValue)
 {
 	return padapter->hal_func.SetHalDefVarHandler(padapter, eVariable, pValue);
 }
-u8 rtw_hal_get_def_var(_adapter *padapter, HAL_DEF_VARIABLE eVariable, void *pValue)
+u8 rtw_hal_get_def_var(_adapter *padapter, HAL_DEF_VARIABLE eVariable, PVOID pValue)
 {
 	return padapter->hal_func.get_hal_def_var_handler(padapter, eVariable, pValue);
 }
 
-void rtw_hal_set_odm_var(_adapter *padapter, HAL_ODM_VARIABLE eVariable, void *pValue1, BOOLEAN bSet)
+void rtw_hal_set_odm_var(_adapter *padapter, HAL_ODM_VARIABLE eVariable, PVOID pValue1, BOOLEAN bSet)
 {
 	padapter->hal_func.SetHalODMVarHandler(padapter, eVariable, pValue1, bSet);
 }
-void	rtw_hal_get_odm_var(_adapter *padapter, HAL_ODM_VARIABLE eVariable, void *pValue1, void *pValue2)
+void	rtw_hal_get_odm_var(_adapter *padapter, HAL_ODM_VARIABLE eVariable, PVOID pValue1, PVOID pValue2)
 {
 	padapter->hal_func.GetHalODMVarHandler(padapter, eVariable, pValue1, pValue2);
 }
@@ -608,6 +604,7 @@ s32	rtw_hal_mgnt_xmit(_adapter *padapter, struct xmit_frame *pmgntframe)
 		rtw_mgmt_xmitframe_coalesce(padapter, pmgntframe->pkt, pmgntframe);
 #endif
 
+no_mgmt_coalesce:
 	ret = padapter->hal_func.mgnt_xmit(padapter, pmgntframe);
 	return ret;
 }
@@ -711,12 +708,10 @@ u32 rtw_hal_read_rfreg(_adapter *padapter, enum rf_path eRFPath, u32 RegAddr, u3
 	if (padapter->hal_func.read_rfreg) {
 		data = padapter->hal_func.read_rfreg(padapter, eRFPath, RegAddr, BitMask);
 
-		#ifdef DBG_IO
-		if (match_rf_read_sniff_ranges(padapter, eRFPath, RegAddr, BitMask)) {
+		if (match_rf_read_sniff_ranges(eRFPath, RegAddr, BitMask)) {
 			RTW_INFO("DBG_IO rtw_hal_read_rfreg(%u, 0x%04x, 0x%08x) read:0x%08x(0x%08x)\n"
 				, eRFPath, RegAddr, BitMask, (data << PHY_CalculateBitShift(BitMask)), data);
 		}
-		#endif
 	}
 
 	return data;
@@ -726,12 +721,10 @@ void rtw_hal_write_rfreg(_adapter *padapter, enum rf_path eRFPath, u32 RegAddr, 
 {
 	if (padapter->hal_func.write_rfreg) {
 
-		#ifdef DBG_IO
-		if (match_rf_write_sniff_ranges(padapter, eRFPath, RegAddr, BitMask)) {
+		if (match_rf_write_sniff_ranges(eRFPath, RegAddr, BitMask)) {
 			RTW_INFO("DBG_IO rtw_hal_write_rfreg(%u, 0x%04x, 0x%08x) write:0x%08x(0x%08x)\n"
 				, eRFPath, RegAddr, BitMask, (Data << PHY_CalculateBitShift(BitMask)), Data);
 		}
-		#endif
 
 		padapter->hal_func.write_rfreg(padapter, eRFPath, RegAddr, BitMask, Data);
 
@@ -765,11 +758,6 @@ s32	rtw_hal_interrupt_handler(_adapter *padapter)
 	s32 ret = _FAIL;
 	ret = padapter->hal_func.interrupt_handler(padapter);
 	return ret;
-}
-
-void	rtw_hal_unmap_beacon_icf(_adapter *padapter)
-{
-	padapter->hal_func.unmap_beacon_icf(padapter);
 }
 #endif
 #if defined(CONFIG_USB_HCI) && defined(CONFIG_SUPPORT_USB_INT)
@@ -815,6 +803,18 @@ void	rtw_hal_set_chnl_bw(_adapter *padapter, u8 channel, enum channel_width Band
 			, pHalData->cch_80, pHalData->cch_40, pHalData->cch_20);
 
 	padapter->hal_func.set_chnl_bw_handler(padapter, channel, Bandwidth, Offset40, Offset80);
+}
+
+void	rtw_hal_set_tx_power_level(_adapter *padapter, u8 channel)
+{
+	if (padapter->hal_func.set_tx_power_level_handler)
+		padapter->hal_func.set_tx_power_level_handler(padapter, channel);
+}
+
+void	rtw_hal_get_tx_power_level(_adapter *padapter, s32 *powerlevel)
+{
+	if (padapter->hal_func.get_tx_power_level_handler)
+		padapter->hal_func.get_tx_power_level_handler(padapter, powerlevel);
 }
 
 void	rtw_hal_dm_watchdog(_adapter *padapter)
@@ -1061,13 +1061,14 @@ s32 c2h_handler(_adapter *adapter, u8 id, u8 seq, u8 plen, u8 *payload)
 	case C2H_EXTEND:
 		sub_id = payload[0];
 		/* no handle, goto default */
-		__attribute__ ((__fallthrough__));
+
 	default:
 		if (phydm_c2H_content_parsing(adapter_to_phydm(adapter), id, plen, payload) != TRUE)
 			ret = _FAIL;
 		break;
 	}
 
+exit:
 	if (ret != _SUCCESS) {
 		if (id == C2H_EXTEND)
 			RTW_WARN("%s: unknown C2H(0x%02x, 0x%02x)\n", __func__, id, sub_id);
@@ -1192,36 +1193,32 @@ static s32 _rtw_hal_macid_bmp_sleep(_adapter *adapter, struct macid_bmp *bmp, u8
 {
 	struct macid_ctl_t *macid_ctl = adapter_to_macidctl(adapter);
 	u16 reg_sleep;
-	u32 m;
+	u32 *m = &bmp->m0;
 	u8 mid = 0;
 	u32 val32;
 
 	do {
-		if (mid == 0) {
-			m = bmp->m0;
+		if (*m == 0)
+			goto move_next;
+
+		if (mid == 0)
 			reg_sleep = macid_ctl->reg_sleep_m0;
 		#if (MACID_NUM_SW_LIMIT > 32)
-		} else if (mid == 1) {
-			m = bmp->m1;
+		else if (mid == 1)
 			reg_sleep = macid_ctl->reg_sleep_m1;
 		#endif
 		#if (MACID_NUM_SW_LIMIT > 64)
-		} else if (mid == 2) {
-			m = bmp->m2;
+		else if (mid == 2)
 			reg_sleep = macid_ctl->reg_sleep_m2;
 		#endif
 		#if (MACID_NUM_SW_LIMIT > 96)
-		} else if (mid == 3) {
-			m = bmp->m3;
+		else if (mid == 3)
 			reg_sleep = macid_ctl->reg_sleep_m3;
 		#endif
-		} else {
+		else {
 			rtw_warn_on(1);
 			break;
 		}
-
-		if (m == 0)
-			goto move_next;
 
 		if (!reg_sleep) {
 			rtw_warn_on(1);
@@ -1231,21 +1228,22 @@ static s32 _rtw_hal_macid_bmp_sleep(_adapter *adapter, struct macid_bmp *bmp, u8
 		val32 = rtw_read32(adapter, reg_sleep);
 		RTW_INFO(ADPT_FMT" %s m%u=0x%08x, ori reg_0x%03x=0x%08x\n"
 			, ADPT_ARG(adapter), sleep ? "sleep" : "wakeup"
-			, mid, m, reg_sleep, val32);
+			, mid, *m, reg_sleep, val32);
 
 		if (sleep) {
-			if ((val32 & m) == m)
+			if ((val32 & *m) == *m)
 				goto move_next;
-			val32 |= m;
+			val32 |= *m;
 		} else {
-			if ((val32 & m) == 0)
+			if ((val32 & *m) == 0)
 				goto move_next;
-			val32 &= ~m;
+			val32 &= ~(*m);
 		}
 
 		rtw_write32(adapter, reg_sleep, val32);
 
 move_next:
+		m++;
 		mid++;
 	} while (mid * 32 < MACID_NUM_SW_LIMIT);
 
@@ -1333,29 +1331,14 @@ void rtw_hal_fw_correct_bcn(_adapter *padapter)
 }
 #endif
 
-void rtw_hal_set_tx_power_level(_adapter *adapter, u8 channel)
+void rtw_hal_set_tx_power_index(PADAPTER padapter, u32 powerindex, enum rf_path rfpath, u8 rate)
 {
-	adapter->hal_func.set_tx_power_level_handler(adapter, channel);
-	rtw_hal_set_txpwr_done(adapter);
+	return padapter->hal_func.set_tx_power_index_handler(padapter, powerindex, rfpath, rate);
 }
 
-void rtw_hal_set_txpwr_done(_adapter *adapter)
+u8 rtw_hal_get_tx_power_index(PADAPTER padapter, enum rf_path rfpath, u8 rate, u8 bandwidth, u8 channel, struct txpwr_idx_comp *tic)
 {
-	if (adapter->hal_func.set_txpwr_done)
-		adapter->hal_func.set_txpwr_done(adapter);
-}
-
-void rtw_hal_set_tx_power_index(_adapter *adapter, u32 powerindex
-	, enum rf_path rfpath, u8 rate)
-{
-	adapter->hal_func.set_tx_power_index_handler(adapter, powerindex, rfpath, rate);
-}
-
-u8 rtw_hal_get_tx_power_index(_adapter *adapter, enum rf_path rfpath, u8 rate
-	, u8 bandwidth, u8 channel, struct txpwr_idx_comp *tic)
-{
-	return adapter->hal_func.get_tx_power_index_handler(adapter, rfpath, rate
-		, bandwidth, channel, tic);
+	return padapter->hal_func.get_tx_power_index_handler(padapter, rfpath, rate, bandwidth, channel, tic);
 }
 
 #ifdef RTW_HALMAC
@@ -1632,6 +1615,13 @@ u8 rtw_hal_ops_check(_adapter *padapter)
 		ret = _FAIL;
 	}
 
+#if defined(RTW_HALMAC) && defined(CONFIG_LPS_PG)
+	if (NULL == padapter->hal_func.fw_mem_dl) {
+		rtw_hal_error_msg("fw_mem_dl");
+		ret = _FAIL;
+	}
+#endif
+
 	#ifdef CONFIG_FW_CORRECT_BCN
 	if (IS_HARDWARE_TYPE_8814A(padapter)
 	    && NULL == padapter->hal_func.fw_correct_bcn) {
@@ -1640,10 +1630,6 @@ u8 rtw_hal_ops_check(_adapter *padapter)
 	}
 	#endif
 
-	if (!padapter->hal_func.set_tx_power_level_handler) {
-		rtw_hal_error_msg("set_tx_power_level_handler");
-		ret = _FAIL;
-	}
 	if (!padapter->hal_func.set_tx_power_index_handler) {
 		rtw_hal_error_msg("set_tx_power_index_handler");
 		ret = _FAIL;

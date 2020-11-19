@@ -395,10 +395,6 @@
 #define REG_LTR_IDLE_LATENCY_V1_8192F		0x0798
 #define REG_LTR_ACTIVE_LATENCY_V1_8192F	0x079C
 
-/* GPIO Control */
-#define REG_SW_GPIO_SHARE_CTRL_8192F	0x1038
-#define REG_SW_GPIO_A_OUT_8192F			0x1040
-#define REG_SW_GPIO_A_OEN_8192F			0x1044
 
 /* ************************************************************
  * SDIO Bus Specification

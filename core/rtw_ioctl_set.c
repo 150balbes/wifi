@@ -197,6 +197,84 @@ exit:
 	return ret;
 }
 
+#ifdef PLATFORM_WINDOWS
+u8 rtw_pnp_set_power_wakeup(_adapter *padapter)
+{
+	u8 res = _SUCCESS;
+
+
+
+	res = rtw_setstandby_cmd(padapter, 0);
+
+
+
+	return res;
+}
+
+u8 rtw_pnp_set_power_sleep(_adapter *padapter)
+{
+	u8 res = _SUCCESS;
+
+
+	/* DbgPrint("+rtw_pnp_set_power_sleep\n"); */
+
+	res = rtw_setstandby_cmd(padapter, 1);
+
+
+
+	return res;
+}
+
+u8 rtw_set_802_11_reload_defaults(_adapter *padapter, NDIS_802_11_RELOAD_DEFAULTS reloadDefaults)
+{
+
+
+
+	/* SecClearAllKeys(Adapter); */
+	/* 8711 CAM was not for En/Decrypt only */
+	/* so, we can't clear all keys. */
+	/* should we disable WPAcfg (ox0088) bit 1-2, instead of clear all CAM */
+
+	/* TO DO... */
+
+
+	return _TRUE;
+}
+
+u8 set_802_11_test(_adapter *padapter, NDIS_802_11_TEST *test)
+{
+	u8 ret = _TRUE;
+
+
+	switch (test->Type) {
+	case 1:
+		NdisMIndicateStatus(padapter->hndis_adapter, NDIS_STATUS_MEDIA_SPECIFIC_INDICATION, (PVOID)&test->AuthenticationEvent, test->Length - 8);
+		NdisMIndicateStatusComplete(padapter->hndis_adapter);
+		break;
+
+	case 2:
+		NdisMIndicateStatus(padapter->hndis_adapter, NDIS_STATUS_MEDIA_SPECIFIC_INDICATION, (PVOID)&test->RssiTrigger, sizeof(NDIS_802_11_RSSI));
+		NdisMIndicateStatusComplete(padapter->hndis_adapter);
+		break;
+
+	default:
+		ret = _FALSE;
+		break;
+	}
+
+
+	return ret;
+}
+
+u8	rtw_set_802_11_pmkid(_adapter	*padapter, NDIS_802_11_PMKID *pmkid)
+{
+	u8	ret = _SUCCESS;
+
+	return ret;
+}
+
+#endif
+
 u8 rtw_set_802_11_bssid(_adapter *padapter, u8 *bssid)
 {
 	_irqL irqL;
@@ -234,7 +312,7 @@ u8 rtw_set_802_11_bssid(_adapter *padapter, u8 *bssid)
 			if (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE)
 				rtw_indicate_disconnect(padapter, 0, _FALSE);
 
-			rtw_free_assoc_resources_cmd(padapter, _TRUE, 0);
+			rtw_free_assoc_resources_cmd(padapter, _TRUE);
 
 			if ((check_fwstate(pmlmepriv, WIFI_ADHOC_MASTER_STATE) == _TRUE)) {
 				_clr_fwstate_(pmlmepriv, WIFI_ADHOC_MASTER_STATE);
@@ -305,7 +383,7 @@ u8 rtw_set_802_11_ssid(_adapter *padapter, NDIS_802_11_SSID *ssid)
 					if (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE)
 						rtw_indicate_disconnect(padapter, 0, _FALSE);
 
-					rtw_free_assoc_resources_cmd(padapter, _TRUE, 0);
+					rtw_free_assoc_resources_cmd(padapter, _TRUE);
 
 					if (check_fwstate(pmlmepriv, WIFI_ADHOC_MASTER_STATE) == _TRUE) {
 						_clr_fwstate_(pmlmepriv, WIFI_ADHOC_MASTER_STATE);
@@ -317,7 +395,7 @@ u8 rtw_set_802_11_ssid(_adapter *padapter, NDIS_802_11_SSID *ssid)
 			}
 #ifdef CONFIG_LPS
 			else
-				rtw_lps_ctrl_wk_cmd(padapter, LPS_CTRL_JOINBSS, 0);
+				rtw_lps_ctrl_wk_cmd(padapter, LPS_CTRL_JOINBSS, 1);
 #endif
 		} else {
 
@@ -326,7 +404,7 @@ u8 rtw_set_802_11_ssid(_adapter *padapter, NDIS_802_11_SSID *ssid)
 			if (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE)
 				rtw_indicate_disconnect(padapter, 0, _FALSE);
 
-			rtw_free_assoc_resources_cmd(padapter, _TRUE, 0);
+			rtw_free_assoc_resources_cmd(padapter, _TRUE);
 
 			if (check_fwstate(pmlmepriv, WIFI_ADHOC_MASTER_STATE) == _TRUE) {
 				_clr_fwstate_(pmlmepriv, WIFI_ADHOC_MASTER_STATE);
@@ -463,7 +541,7 @@ u8 rtw_set_802_11_infrastructure_mode(_adapter *padapter,
 
 		if ((check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE) ||
 		    (check_fwstate(pmlmepriv, WIFI_ADHOC_MASTER_STATE) == _TRUE))
-			rtw_free_assoc_resources_cmd(padapter, _TRUE, 0);
+			rtw_free_assoc_resources_cmd(padapter, _TRUE);
 
 		if ((*pold_state == Ndis802_11Infrastructure) || (*pold_state == Ndis802_11IBSS)) {
 			if (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE) {
@@ -537,7 +615,7 @@ u8 rtw_set_802_11_disassociate(_adapter *padapter)
 		rtw_disassoc_cmd(padapter, 0, 0);
 		rtw_indicate_disconnect(padapter, 0, _FALSE);
 		/* modify for CONFIG_IEEE80211W, none 11w can use it */
-		rtw_free_assoc_resources_cmd(padapter, _TRUE, 0);
+		rtw_free_assoc_resources_cmd(padapter, _TRUE);
 		if (_FAIL == rtw_pwr_wakeup(padapter))
 			RTW_INFO("%s(): rtw_pwr_wakeup fail !!!\n", __FUNCTION__);
 	}

@@ -1,80 +1,83 @@
-## rtl8188eus v5.7.6.1
+# Realtek RTL8811CU/RTL8821CU USB wifi adapter driver version 5.4.1 for Linux 4.4.x up to 5.x
 
-# Realtek rtl8188eus &amp; rtl8188eu &amp; rtl8188etv WiFi driver
+Before build this driver make sure `make`, `gcc`, `linux-header` and `git` have been installed.
 
-[![Monitor mode](https://img.shields.io/badge/monitor%20mode-supported-brightgreen.svg)](#)
-[![Frame Injection](https://img.shields.io/badge/frame%20injection-supported-brightgreen.svg)](#)
-[![MESH Mode](https://img.shields.io/badge/mesh%20mode-supported-brightgreen.svg)](#)
-[![GitHub issues](https://img.shields.io/github/issues/aircrack-ng/rtl8188eus.svg)](https://github.com/aircrack-ng/rtl8188eus/issues)
-[![GitHub forks](https://img.shields.io/github/forks/aircrack-ng/rtl8188eus.svg)](https://github.com/aircrack-ng/rtl8188eus/network)
-[![GitHub stars](https://img.shields.io/github/stars/aircrack-ng/rtl8188eus.svg)](https://github.com/aircrack-ng/rtl8188eus/stargazers)
-[![GitHub license](https://img.shields.io/github/license/aircrack-ng/rtl8812au.svg)](https://github.com/aircrack-ng/rtl8188eus/blob/master/LICENSE)<br>
-[![Android](https://img.shields.io/badge/android%20(8)-supported-brightgreen.svg)](#)
-[![aircrack-ng](https://img.shields.io/badge/aircrack--ng-supported-blue.svg)](#)
+## First, clone this repository
+```
+mkdir -p ~/build
+cd ~/build
+git clone https://github.com/brektrou/rtl8821CU.git
+```
+## Build and install with DKMS
 
+DKMS is a system which will automatically recompile and install a kernel module when a new kernel gets installed or updated. To make use of DKMS, install the dkms package.
 
-# Supports
-* Android 9
-* WPA3-SAE
-* P2P Mode
-* WiFi Direct
-* MESH Support
-* Monitor mode
-* Frame injection
-* Supported up to kernel v5.4+
-... And a bunch of various wifi chipsets
-
-# Howto download/build/install
-```sh
-1. Clone the repo with "git clone https://github.com/aircrack-ng/rtl8188eus -b v5.7.6.1"
-2. Enter the folder with "cd rtl8188eus"
-2. Then run "make && make install"
-3. And reboot in order to blacklist the module and load this module instead.
+### Debian/Ubuntu:
+```
+sudo apt-get install dkms
+```
+### Arch Linux/Manjaro:
+```
+sudo pacman -S dkms
+```
+To make use of the **DKMS** feature with this project, just run:
+```
+./dkms-install.sh
+```
+If you later on want to remove it, run:
+```
+./dkms-remove.sh
 ```
 
-# MONITOR MODE howto
-Use these steps to enter monitor mode.
-```sh
-$ airmon-ng check-kill
-$ ip link set <interface> down
-$ iw dev <interface> set type monitor
+### Plug your USB-wifi-adapter into your PC
+If wifi can be detected, congratulations.
+If not, maybe you need to switch your device usb mode by the following steps in terminal:
+1. find your usb-wifi-adapter device ID, like "0bda:1a2b", by type:
 ```
-To set txpower to a higher level.
-```sh
-$ iw <interface> set txpower fixed 3000
+lsusb
 ```
+2. switch the mode by type: (the device ID must be yours.)
 
-Frame injection test may be performed with
-```sh
-$ aireplay -9 <interface>
+Need install `usb_modeswitch` (Archlinux: `sudo pacman -S usb_modeswitch`)
+```
+sudo usb_modeswitch -KW -v 0bda -p 1a2b
+systemctl start bluetooth.service - starting Bluetooth service if it's in inactive state
 ```
 
-# NetworkManager configuration
-Add these lines below to "NetworkManager.conf" and ADD YOUR ADAPTER MAC below [keyfile]
-This will make the Network-Manager ignore the device, and therefor don't cause problems.
-```sh
-[device]
-wifi.scan-rand-mac-address=no
+It should work.
 
-[ifupdown]
-managed=false
-
-[connection]
-wifi.powersave=0
-
-[main]
-plugins=keyfile
-
-[keyfile]
-unmanaged-devices=mac:A7:A7:A7:A7:A7
+## Build and install without DKMS
+Use following commands:
 ```
+cd ~/build/rtl8821CU
+make
+sudo make install
+```
+If you later on want to remove it, do the following:
+```
+cd ~/build/rtl8821CU
+sudo make uninstall
+```
+## Checking installed driver
+If you successfully install the driver, the driver is installed on `/lib/modules/<linux version>/kernel/drivers/net/wireless/realtek/rtl8821cu`. Check the driver with the `ls` command:
+```
+ls /lib/modules/$(uname -r)/kernel/drivers/net/wireless/realtek/rtl8821cu
+```
+Make sure `8821cu.ko` file present on that directory
 
-# TODO
-* Turn down log level / DEBUG
-  (we want it now for some months just to see)
+### Check with **DKMS** (if installing via **DKMS**):
 
-* Unlock all channels and check the DFS setting
-
-* Implement txpower control
-
-* Remove Windows (NDIS) code
+``
+sudo dkms status
+``
+### ARM architecture tweak for this driver (this solves compilation problem of this driver):
+```
+sudo cp /lib/modules/$(uname -r)/build/arch/arm/Makefile /lib/modules/$(uname -r)/build/arch/arm/Makefile.$(date +%Y%m%d%H%M)
+sudo sed -i 's/-msoft-float//' /lib/modules/$(uname -r)/build/arch/arm/Makefile
+sudo ln -s /lib/modules/$(uname -r)/build/arch/arm /lib/modules/$(uname -r)/build/arch/armv7l
+```
+### Monitor mode
+Use the tool 'iw', please don't use other tools like 'airmon-ng'
+```
+iw dev wlan0 set monitor none
+```

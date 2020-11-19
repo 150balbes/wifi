@@ -754,6 +754,12 @@ void rtw_mi_buddy_intf_stop(_adapter *adapter)
 }
 
 #ifdef CONFIG_NEW_NETDEV_HDL
+static u8 _rtw_mi_hal_iface_init(_adapter *padapter, void *data)
+{
+	if (rtw_hal_iface_init(padapter) == _SUCCESS)
+		return _TRUE;
+	return _FALSE;
+}
 u8 rtw_mi_hal_iface_init(_adapter *padapter)
 {
 	int i;
@@ -887,6 +893,7 @@ u8 _rtw_mi_busy_traffic_check(_adapter *padapter, void *data)
 		if (check_sc_interval) {
 			/* Miracast can't do AP scan*/
 			passtime = rtw_get_passing_time_ms(pmlmepriv->lastscantime);
+			pmlmepriv->lastscantime = rtw_get_current_time();
 			if (passtime > BUSY_TRAFFIC_SCAN_DENY_PERIOD) {
 				RTW_INFO(ADPT_FMT" bBusyTraffic == _TRUE\n", ADPT_ARG(padapter));
 				return _TRUE;
@@ -1184,7 +1191,7 @@ static u8 _rtw_mi_tx_beacon_hdl(_adapter *adapter, void *data)
 	) {
 		adapter->mlmepriv.update_bcn = _TRUE;
 #ifndef CONFIG_INTERRUPT_BASED_TXBCN
-#if defined(CONFIG_USB_HCI) || defined(CONFIG_SDIO_HCI) || defined(CONFIG_GSPI_HCI) || defined(CONFIG_PCI_BCN_POLLING)
+#if defined(CONFIG_USB_HCI) || defined(CONFIG_SDIO_HCI) || defined(CONFIG_GSPI_HCI)
 		tx_beacon_hdl(adapter, NULL);
 #endif
 #endif
@@ -1459,25 +1466,6 @@ _adapter *rtw_mi_get_ap_adapter(_adapter *padapter)
 	return iface;
 }
 #endif
-
-u8 rtw_mi_get_ld_sta_ifbmp(_adapter *adapter)
-{
-	struct dvobj_priv *dvobj = adapter_to_dvobj(adapter);
-	int i;
-	_adapter *iface = NULL;
-	u8 ifbmp = 0;
-
-	for (i = 0; i < dvobj->iface_nums; i++) {
-		iface = dvobj->padapters[i];
-		if (!iface)
-			continue;
-
-		if (MLME_IS_STA(iface) && MLME_IS_ASOC(iface))
-			ifbmp |= BIT(i);
-	}
-
-	return ifbmp;
-}
 
 u8 rtw_mi_get_ap_mesh_ifbmp(_adapter *adapter)
 {

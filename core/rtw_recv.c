@@ -17,6 +17,13 @@
 #include <drv_types.h>
 #include <hal_data.h>
 
+#if defined(PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
+
+	#error "Shall be Linux or Windows, but not both!\n"
+
+#endif
+
+
 #ifdef CONFIG_NEW_SIGNAL_STAT_PROCESS
 static void rtw_signal_stat_timer_hdl(void *ctx);
 
@@ -45,9 +52,6 @@ static u8 SNAP_ETH_TYPE_APPLETALK_AARP[2] = {0x80, 0xf3};
 static u8 SNAP_ETH_TYPE_TDLS[2] = {0x89, 0x0d};
 #endif
 
-#ifdef CONFIG_CUSTOMER_ALIBABA_GENERAL
-int recv_frame_monitor(_adapter *padapter, union recv_frame *rframe);
-#endif
 void _rtw_init_sta_recv_priv(struct sta_recv_priv *psta_recvpriv)
 {
 
@@ -778,6 +782,34 @@ union recv_frame *portctrl(_adapter *adapter, union recv_frame *precv_frame)
 
 }
 
+sint recv_decache(union recv_frame *precv_frame, u16 *tid_rxseq)
+{
+	struct sta_info *sta = precv_frame->u.hdr.psta;
+
+	sint tid = precv_frame->u.hdr.attrib.priority;
+	u16 seq_ctrl = ((precv_frame->u.hdr.attrib.seq_num & 0xffff) << 4) |
+		       (precv_frame->u.hdr.attrib.frag_num & 0xf);
+
+	if (tid > 15)
+		return _FAIL;
+
+	if (seq_ctrl == tid_rxseq[tid]) {
+		/* for non-AMPDU case	*/
+		sta->sta_stats.duplicate_cnt++;
+
+		if (sta->sta_stats.duplicate_cnt % 100 == 0)
+			RTW_INFO("%s: tid=%u seq=%d frag=%d\n", __func__
+				, tid, precv_frame->u.hdr.attrib.seq_num
+				, precv_frame->u.hdr.attrib.frag_num);
+
+		return _FAIL;
+	}
+
+	tid_rxseq[tid] = seq_ctrl;
+
+	return _SUCCESS;
+}
+
 /* VALID_PN_CHK
  * Return true when PN is legal, otherwise false.
  * Legal PN:
@@ -847,61 +879,6 @@ sint recv_bcast_pn_decache(union recv_frame *precv_frame)
 
 		*(u64*)psecuritypriv->iv_seq[key_id] = cpu_to_le64(pkt_pn);
 	}
-
-	return _SUCCESS;
-}
-
-sint recv_decache(union recv_frame *precv_frame)
-{
-	struct sta_info *psta = precv_frame->u.hdr.psta;
-	struct rx_pkt_attrib *pattrib = &precv_frame->u.hdr.attrib;
-	_adapter *adapter = psta->padapter;
-	sint tid = pattrib->priority;
-	u16 seq_ctrl = ((precv_frame->u.hdr.attrib.seq_num & 0xffff) << 4) |
-		       (precv_frame->u.hdr.attrib.frag_num & 0xf);
-	u16 *prxseq;
-
-	if (tid > 15)
-		return _FAIL;
-
-	if (pattrib->qos) {
-		if (IS_MCAST(pattrib->ra))
-			prxseq = &psta->sta_recvpriv.bmc_tid_rxseq[tid];
-		else
-			prxseq = &psta->sta_recvpriv.rxcache.tid_rxseq[tid];
-	} else {
-		if (IS_MCAST(pattrib->ra)) {
-			prxseq = &psta->sta_recvpriv.nonqos_bmc_rxseq;
-			#ifdef DBG_RX_SEQ
-			RTW_INFO("DBG_RX_SEQ "FUNC_ADPT_FMT" nonqos bmc seq_num:%d\n"
-				, FUNC_ADPT_ARG(adapter), pattrib->seq_num);
-			#endif
-
-		} else {
-			prxseq = &psta->sta_recvpriv.nonqos_rxseq;
-			#ifdef DBG_RX_SEQ
-			RTW_INFO("DBG_RX_SEQ "FUNC_ADPT_FMT" nonqos seq_num:%d\n"
-				, FUNC_ADPT_ARG(adapter), pattrib->seq_num);
-			#endif
-		}
-	}
-
-	if (seq_ctrl == *prxseq) {
-		/* for non-AMPDU case	*/
-		psta->sta_stats.duplicate_cnt++;
-
-		if (psta->sta_stats.duplicate_cnt % 100 == 0)
-			RTW_INFO("%s: tid=%u seq=%d frag=%d\n", __func__
-				, tid, precv_frame->u.hdr.attrib.seq_num
-				, precv_frame->u.hdr.attrib.frag_num);
-
-		#ifdef DBG_RX_DROP_FRAME
-		RTW_INFO("DBG_RX_DROP_FRAME "FUNC_ADPT_FMT" recv_decache _FAIL for sta="MAC_FMT"\n"
-			, FUNC_ADPT_ARG(adapter), MAC_ARG(psta->cmn.mac_addr));
-		#endif
-		return _FAIL;
-	}
-	*prxseq = seq_ctrl;
 
 	return _SUCCESS;
 }
@@ -1151,19 +1128,11 @@ void count_rx_stats(_adapter *padapter, union recv_frame *prframe, struct sta_in
 #ifdef CONFIG_DYNAMIC_SOML
 		rtw_dyn_soml_byte_update(padapter, pattrib->data_rate, sz);
 #endif
-#if defined(CONFIG_CHECK_LEAVE_LPS) && defined(CONFIG_LPS_CHK_BY_TP)
-		if (adapter_to_pwrctl(padapter)->lps_chk_by_tp)
-			traffic_check_for_leave_lps_by_tp(padapter, _FALSE, psta);
-#endif /* CONFIG_LPS */
-
 	}
 
 #ifdef CONFIG_CHECK_LEAVE_LPS
-#ifdef CONFIG_LPS_CHK_BY_TP
-	if (!adapter_to_pwrctl(padapter)->lps_chk_by_tp)
-#endif
-		traffic_check_for_leave_lps(padapter, _FALSE, 0);
-#endif /* CONFIG_CHECK_LEAVE_LPS */
+	traffic_check_for_leave_lps(padapter, _FALSE, 0);
+#endif /* CONFIG_LPS */
 
 }
 
@@ -1395,14 +1364,12 @@ sint ap2sta_data_frame(
 			RTW_INFO("DBG_RX_DROP_FRAME "FUNC_ADPT_FMT" BSSID="MAC_FMT", mybssid="MAC_FMT"\n"
 				, FUNC_ADPT_ARG(adapter), MAC_ARG(pattrib->bssid), MAC_ARG(mybssid));
 			#endif
-#ifndef CONFIG_CUSTOMER_ALIBABA_GENERAL
-			if (!bmcast
-				&& !IS_RADAR_DETECTED(adapter_to_rfctl(adapter))
-			) {
+
+			if (!bmcast) {
 				RTW_INFO(ADPT_FMT" -issue_deauth to the nonassociated ap=" MAC_FMT " for the reason(7)\n", ADPT_ARG(adapter), MAC_ARG(pattrib->bssid));
 				issue_deauth(adapter, pattrib->bssid, WLAN_REASON_CLASS3_FRAME_FROM_NONASSOC_STA);
 			}
-#endif
+
 			ret = _FAIL;
 			goto exit;
 		}
@@ -1508,13 +1475,21 @@ sint sta2ap_data_frame(
 
 		*psta = rtw_get_stainfo(pstapriv, pattrib->ta);
 		if (*psta == NULL) {
-			if (!IS_RADAR_DETECTED(adapter_to_rfctl(adapter))) {
-#ifndef CONFIG_CUSTOMER_ALIBABA_GENERAL
-				RTW_INFO("issue_deauth to sta=" MAC_FMT " for the reason(7)\n", MAC_ARG(pattrib->src));
-				issue_deauth(adapter, pattrib->src, WLAN_REASON_CLASS3_FRAME_FROM_NONASSOC_STA);
-#endif
-			}
+			#ifdef CONFIG_DFS_MASTER
+			struct rf_ctl_t *rfctl = adapter_to_rfctl(adapter);
 
+			/* prevent RX tasklet blocks cmd_thread */
+			if (rfctl->radar_detected == 1)
+				goto bypass_deauth7;
+			#endif
+
+			RTW_INFO("issue_deauth to sta=" MAC_FMT " for the reason(7)\n", MAC_ARG(pattrib->src));
+
+			issue_deauth(adapter, pattrib->src, WLAN_REASON_CLASS3_FRAME_FROM_NONASSOC_STA);
+
+#ifdef CONFIG_DFS_MASTER
+bypass_deauth7:
+#endif
 			ret = RTW_RX_HANDLED;
 			goto exit;
 		}
@@ -1556,10 +1531,8 @@ sint sta2ap_data_frame(
 			ret = RTW_RX_HANDLED;
 			goto exit;
 		}
-#ifndef CONFIG_CUSTOMER_ALIBABA_GENERAL
 		RTW_INFO("issue_deauth to sta=" MAC_FMT " for the reason(7)\n", MAC_ARG(pattrib->src));
 		issue_deauth(adapter, pattrib->src, WLAN_REASON_CLASS3_FRAME_FROM_NONASSOC_STA);
-#endif
 		ret = RTW_RX_HANDLED;
 		goto exit;
 	}
@@ -1995,6 +1968,53 @@ sint validate_recv_mgnt_frame(PADAPTER padapter, union recv_frame *precv_frame)
 		}
 	}
 
+#ifdef CONFIG_INTEL_PROXIM
+	if (padapter->proximity.proxim_on == _TRUE) {
+		struct rx_pkt_attrib *pattrib = &precv_frame->u.hdr.attrib;
+		struct recv_stat *prxstat = (struct recv_stat *)  precv_frame->u.hdr.rx_head ;
+		u8 *pda, *psa, *pbssid, *ptr;
+		ptr = precv_frame->u.hdr.rx_data;
+		pda = get_da(ptr);
+		psa = get_sa(ptr);
+		pbssid = get_hdr_bssid(ptr);
+
+
+		_rtw_memcpy(pattrib->dst, pda, ETH_ALEN);
+		_rtw_memcpy(pattrib->src, psa, ETH_ALEN);
+
+		_rtw_memcpy(pattrib->bssid, pbssid, ETH_ALEN);
+
+		switch (pattrib->to_fr_ds) {
+		case 0:
+			_rtw_memcpy(pattrib->ra, pda, ETH_ALEN);
+			_rtw_memcpy(pattrib->ta, psa, ETH_ALEN);
+			break;
+
+		case 1:
+			_rtw_memcpy(pattrib->ra, pda, ETH_ALEN);
+			_rtw_memcpy(pattrib->ta, pbssid, ETH_ALEN);
+			break;
+
+		case 2:
+			_rtw_memcpy(pattrib->ra, pbssid, ETH_ALEN);
+			_rtw_memcpy(pattrib->ta, psa, ETH_ALEN);
+			break;
+
+		case 3:
+			_rtw_memcpy(pattrib->ra, GetAddr1Ptr(ptr), ETH_ALEN);
+			_rtw_memcpy(pattrib->ta, get_addr2_ptr(ptr), ETH_ALEN);
+			break;
+
+		default:
+			break;
+
+		}
+		pattrib->priority = 0;
+		pattrib->hdrlen = pattrib->to_fr_ds == 3 ? 30 : 24;
+
+		padapter->proximity.proxim_rx(padapter, precv_frame);
+	}
+#endif
 	mgt_dispatcher(padapter, precv_frame);
 
 #if defined(CONFIG_IEEE80211W) || defined(CONFIG_RTW_MESH)
@@ -2087,7 +2107,7 @@ pre_validate_status_chk:
 	}
 
 	precv_frame->u.hdr.psta = psta;
-	precv_frame->u.hdr.preorder_ctrl = NULL;
+
 	pattrib->ack_policy = 0;
 
 	/* parsing QC field */
@@ -2104,19 +2124,21 @@ pre_validate_status_chk:
 		pattrib->hdrlen = WLAN_HDR_A3_LEN + a4_shift;
 	}
 
+
 	if (pattrib->order) /* HT-CTRL 11n */
 		pattrib->hdrlen += 4;
 
 	/* decache, drop duplicate recv packets */
-	ret = recv_decache(precv_frame);
-	if (ret  == _FAIL)
-		goto exit;
-
 	if (!IS_MCAST(pattrib->ra)) {
-
-		if (pattrib->qos)
-			precv_frame->u.hdr.preorder_ctrl = &psta->recvreorder_ctrl[pattrib->priority];
-
+		precv_frame->u.hdr.preorder_ctrl = &psta->recvreorder_ctrl[pattrib->priority];
+		if (recv_decache(precv_frame, psta->sta_recvpriv.rxcache.tid_rxseq) == _FAIL) {
+			#ifdef DBG_RX_DROP_FRAME
+			RTW_INFO("DBG_RX_DROP_FRAME "FUNC_ADPT_FMT" recv_decache uc return _FAIL for sta="MAC_FMT"\n"
+				, FUNC_ADPT_ARG(adapter), MAC_ARG(psta->cmn.mac_addr));
+			#endif
+			ret = _FAIL;
+			goto exit;
+		}
 		if (recv_ucast_pn_decache(precv_frame) == _FAIL) {
 			#ifdef DBG_RX_DROP_FRAME
 			RTW_INFO("DBG_RX_DROP_FRAME "FUNC_ADPT_FMT" recv_ucast_pn_decache return _FAIL for sta="MAC_FMT"\n"
@@ -2126,6 +2148,15 @@ pre_validate_status_chk:
 			goto exit;
 		}
 	} else {
+		precv_frame->u.hdr.preorder_ctrl = NULL;
+		if (recv_decache(precv_frame, psta->sta_recvpriv.bmc_tid_rxseq) == _FAIL) {
+			#ifdef DBG_RX_DROP_FRAME
+			RTW_INFO("DBG_RX_DROP_FRAME "FUNC_ADPT_FMT" recv_decache bmc return _FAIL for sta="MAC_FMT"\n"
+				, FUNC_ADPT_ARG(adapter), MAC_ARG(psta->cmn.mac_addr));
+			#endif
+			ret = _FAIL;
+			goto exit;
+		}
 		if (recv_bcast_pn_decache(precv_frame) == _FAIL) {
 			#ifdef DBG_RX_DROP_FRAME
 			RTW_INFO("DBG_RX_DROP_FRAME "FUNC_ADPT_FMT" recv_bcast_pn_decache return _FAIL for sta="MAC_FMT"\n"
@@ -2360,6 +2391,7 @@ exit:
 
 
 /* remove the wlanhdr and add the eth_hdr */
+#if 1
 sint wlanhdr_to_ethhdr(union recv_frame *precvframe)
 {
 	sint	rmv_len;
@@ -2443,8 +2475,126 @@ exiting:
 
 }
 
+#else
+static u8 SNAP_ETH_TYPE_APPLETALK_DDP[2] = {0x80, 0x9b};
+/* Datagram Delivery Protocol */
+static u8 SNAP_HDR_APPLETALK_DDP[3] = {0x08, 0x00, 0x07};
+static u8 oui_8021h[] = {0x00, 0x00, 0xf8};
+static u8 oui_rfc1042[] = {0x00, 0x00, 0x00};
+
+sint wlanhdr_to_ethhdr(union recv_frame *precvframe)
+{
+	sint rmv_len;
+	u16 eth_type;
+	u8	bsnaphdr;
+	u8	*psnap_type;
+	struct ieee80211_snap_hdr	*psnap;
+
+	sint ret = _SUCCESS;
+	_adapter	*adapter = precvframe->u.hdr.adapter;
+	struct	mlme_priv	*pmlmepriv = &adapter->mlmepriv;
+
+	u8 *ptr = get_recvframe_data(precvframe) ; /* point to frame_ctrl field */
+	struct rx_pkt_attrib *pattrib = &precvframe->u.hdr.attrib;
+	struct _vlan *pvlan = NULL;
+
+
+	psnap = (struct ieee80211_snap_hdr *)(ptr + pattrib->hdrlen + pattrib->iv_len);
+	psnap_type = ptr + pattrib->hdrlen + pattrib->iv_len + SNAP_SIZE;
+	if (psnap->dsap == 0xaa && psnap->ssap == 0xaa && psnap->ctrl == 0x03) {
+		if (_rtw_memcmp(psnap->oui, oui_rfc1042, WLAN_IEEE_OUI_LEN))
+			bsnaphdr = _TRUE; /* wlan_pkt_format = WLAN_PKT_FORMAT_SNAP_RFC1042;	 */
+		else if (_rtw_memcmp(psnap->oui, SNAP_HDR_APPLETALK_DDP, WLAN_IEEE_OUI_LEN) &&
+			_rtw_memcmp(psnap_type, SNAP_ETH_TYPE_APPLETALK_DDP, 2))
+			bsnaphdr = _TRUE;	/* wlan_pkt_format = WLAN_PKT_FORMAT_APPLETALK; */
+		else if (_rtw_memcmp(psnap->oui, oui_8021h, WLAN_IEEE_OUI_LEN))
+			bsnaphdr = _TRUE;	/* wlan_pkt_format = WLAN_PKT_FORMAT_SNAP_TUNNEL; */
+		else {
+			ret = _FAIL;
+			goto exit;
+		}
+
+	} else
+		bsnaphdr = _FALSE; /* wlan_pkt_format = WLAN_PKT_FORMAT_OTHERS; */
+
+	rmv_len = pattrib->hdrlen + pattrib->iv_len + (bsnaphdr ? SNAP_SIZE : 0);
+
+	if (check_fwstate(pmlmepriv, WIFI_MP_STATE) == _TRUE) {
+		ptr += rmv_len ;
+		*ptr = 0x87;
+		*(ptr + 1) = 0x12;
+
+		/* back to original pointer */
+		ptr -= rmv_len;
+	}
+
+	ptr += rmv_len ;
+
+	_rtw_memcpy(&eth_type, ptr, 2);
+	eth_type = ntohs((unsigned short)eth_type); /* pattrib->ether_type */
+	ptr += 2;
+
+	if (pattrib->encrypt)
+		recvframe_pull_tail(precvframe, pattrib->icv_len);
+
+	if (eth_type == 0x8100) { /* vlan */
+		pvlan = (struct _vlan *) ptr;
+
+		/* eth_type = get_vlan_encap_proto(pvlan); */
+		/* eth_type = pvlan->h_vlan_encapsulated_proto; */ /* ? */
+		rmv_len += 4;
+		ptr += 4;
+	}
+
+	if (eth_type == 0x0800) { /* ip */
+		/* struct iphdr*  piphdr = (struct iphdr*) ptr; */
+		/* __u8 tos = (unsigned char)(pattrib->priority & 0xff); */
+
+		/* piphdr->tos = tos; */
+
+	} else if (eth_type == 0x8712) { /* append rx status for mp test packets */
+		/* ptr -= 16; */
+		/* _rtw_memcpy(ptr, get_rxmem(precvframe), 16); */
+	} else {
+#ifdef PLATFORM_OS_XP
+		NDIS_PACKET_8021Q_INFO VlanPriInfo;
+		UINT32 UserPriority = precvframe->u.hdr.attrib.priority;
+		UINT32 VlanID = (pvlan != NULL ? get_vlan_id(pvlan) : 0);
+
+		VlanPriInfo.Value =          /* Get current value. */
+			NDIS_PER_PACKET_INFO_FROM_PACKET(precvframe->u.hdr.pkt, Ieee8021QInfo);
+
+		VlanPriInfo.TagHeader.UserPriority = UserPriority;
+		VlanPriInfo.TagHeader.VlanId =  VlanID ;
+
+		VlanPriInfo.TagHeader.CanonicalFormatId = 0; /* Should be zero. */
+		VlanPriInfo.TagHeader.Reserved = 0; /* Should be zero. */
+		NDIS_PER_PACKET_INFO_FROM_PACKET(precvframe->u.hdr.pkt, Ieee8021QInfo) = VlanPriInfo.Value;
+#endif
+	}
+
+	if (eth_type == 0x8712) { /* append rx status for mp test packets */
+		ptr = recvframe_pull(precvframe, (rmv_len - sizeof(struct ethhdr) + 2) - 24);
+		_rtw_memcpy(ptr, get_rxmem(precvframe), 24);
+		ptr += 24;
+	} else
+		ptr = recvframe_pull(precvframe, (rmv_len - sizeof(struct ethhdr) + 2));
+
+	_rtw_memcpy(ptr, pattrib->dst, ETH_ALEN);
+	_rtw_memcpy(ptr + ETH_ALEN, pattrib->src, ETH_ALEN);
+
+	eth_type = htons((unsigned short)eth_type) ;
+	_rtw_memcpy(ptr + 12, &eth_type, 2);
+
+exit:
+
+
+	return ret;
+}
+#endif
+
+
 #if defined(CONFIG_SDIO_HCI) || defined(CONFIG_GSPI_HCI)
-#ifndef CONFIG_SDIO_RX_COPY
 #ifdef PLATFORM_LINUX
 static void recvframe_expand_pkt(
 	PADAPTER padapter,
@@ -2498,10 +2648,9 @@ static void recvframe_expand_pkt(
 	pfhdr->rx_tail = skb_tail_pointer(ppkt);
 	pfhdr->rx_end = skb_end_pointer(ppkt);
 }
-#else /*!= PLATFORM_LINUX*/
+#else
 #warning "recvframe_expand_pkt not implement, defrag may crash system"
 #endif
-#endif /*#ifndef CONFIG_SDIO_RX_COPY*/
 #endif
 
 /* perform defrag */
@@ -2705,13 +2854,6 @@ static int rtw_recv_indicatepkt_check(union recv_frame *rframe, u8 *ehdr_pos, u3
 	_adapter *adapter = rframe->u.hdr.adapter;
 	struct recv_priv *recvpriv = &adapter->recvpriv;
 	struct ethhdr *ehdr = (struct ethhdr *)ehdr_pos;
-#ifdef DBG_IP_R_MONITOR
-	int i;
-	struct rx_pkt_attrib *pattrib = &rframe->u.hdr.attrib;
-	struct mlme_ext_priv *pmlmeext = &adapter->mlmeextpriv;
-	struct mlme_priv	*pmlmepriv = &adapter->mlmepriv;
-	struct wlan_network *cur_network = &(pmlmepriv->cur_network);
-#endif/*DBG_IP_R_MONITOR*/
 	int ret = _FAIL;
 
 #ifdef CONFIG_WAPI_SUPPORT
@@ -2728,11 +2870,7 @@ static int rtw_recv_indicatepkt_check(union recv_frame *rframe, u8 *ehdr_pos, u3
 		rtw_st_ctl_rx(rframe->u.hdr.psta, ehdr_pos);
 
 	if (ntohs(ehdr->h_proto) == 0x888e)
-		parsing_eapol_packet(adapter, ehdr_pos + ETH_HLEN, rframe->u.hdr.psta, 0);
-#ifdef DBG_ARP_DUMP
-	else if (ntohs(ehdr->h_proto) == ETH_P_ARP)
-		dump_arp_pkt(RTW_DBGDUMP, ehdr->h_dest, ehdr->h_source, ehdr_pos + ETH_HLEN, 0);
-#endif
+		RTW_PRINT("recv eapol packet\n");
 
 	if (recvpriv->sink_udpport > 0)
 		rtw_sink_rtp_seq_dbg(adapter, ehdr_pos);
@@ -2752,23 +2890,6 @@ static int rtw_recv_indicatepkt_check(union recv_frame *rframe, u8 *ehdr_pos, u3
 		}
 	}
 #endif
-
-#ifdef DBG_IP_R_MONITOR
-	#define LEN_ARP_OP_HDR 7 /*ARP OERATION */
-	if (ntohs(ehdr->h_proto) == ETH_P_ARP) {
-
-		if(check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _TRUE){
-			if(ehdr_pos[ETHERNET_HEADER_SIZE+LEN_ARP_OP_HDR] == 2) {
-
-				RTW_INFO("%s,[DBG_ARP] Rx ARP RSP Packet;SeqNum = %d !\n",
-					__FUNCTION__, pattrib->seq_num);
-
-				dump_arp_pkt(RTW_DBGDUMP, ehdr->h_dest, ehdr->h_source, ehdr_pos + ETH_HLEN, 0);
-
-			}
-		}
-	}
-#endif/*DBG_IP_R_MONITOR*/
 
 #ifdef CONFIG_AUTO_AP_MODE
 	if (ntohs(ehdr->h_proto) == 0x8899)
@@ -3509,50 +3630,27 @@ int validate_mp_recv_frame(_adapter *adapter, union recv_frame *precv_frame)
 	struct mp_priv *pmppriv = &adapter->mppriv;
 	struct mp_tx		*pmptx;
 	unsigned char	*sa , *da, *bs;
-	struct rx_pkt_attrib *pattrib = &precv_frame->u.hdr.attrib;
-	u32 i = 0;
-	u8 rtk_prefix[]={0x52, 0x65, 0x61, 0x6C, 0x4C, 0x6F, 0x76, 0x65, 0x54, 0x65, 0x6B};
-	u8 *prx_data;
+
 	pmptx = &pmppriv->tx;
 
-
-	if (pmppriv->mplink_brx == _FALSE) {
-
-		u8 bDumpRxPkt = 0;
+#if 0
+	if (1) {
+		u8 bDumpRxPkt;
 		type =  GetFrameType(ptr);
 		subtype = get_frame_sub_type(ptr); /* bit(7)~bit(2)	 */
 
-		RTW_INFO("hdr len = %d iv_len=%d \n", pattrib->hdrlen , pattrib->iv_len);
-		prx_data = ptr + pattrib->hdrlen + pattrib->iv_len;
-
-		for (i = 0; i < precv_frame->u.hdr.len; i++) {
-			if (precv_frame->u.hdr.len < (11 + i))
-				break;
-
-			if (_rtw_memcmp(prx_data + i, (void *)&rtk_prefix, 11) == _FALSE) {
-				bDumpRxPkt = 0;
-				RTW_DBG("prx_data = %02X != rtk_prefix[%d] = %02X \n", *(prx_data + i), i , rtk_prefix[i]);
-				} else {
-				bDumpRxPkt = 1;
-				RTW_DBG("prx_data = %02X = rtk_prefix[%d] = %02X \n", *(prx_data + i), i , rtk_prefix[i]);
-				break;
-				}
-		}
-
+		rtw_hal_get_def_var(adapter, HAL_DEF_DBG_DUMP_RXPKT, &(bDumpRxPkt));
 		if (bDumpRxPkt == 1) { /* dump all rx packets */
 			int i;
 			RTW_INFO("############ type:0x%02x subtype:0x%02x #################\n", type, subtype);
 
-			for (i = 0; i < precv_frame->u.hdr.len; i = i + 8)
+			for (i = 0; i < 64; i = i + 8)
 				RTW_INFO("%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:\n", *(ptr + i),
 					*(ptr + i + 1), *(ptr + i + 2) , *(ptr + i + 3) , *(ptr + i + 4), *(ptr + i + 5), *(ptr + i + 6), *(ptr + i + 7));
-				RTW_INFO("#############################\n");
-				_rtw_memset(pmppriv->mplink_buf, '\0' , sizeof(pmppriv->mplink_buf));
-				_rtw_memcpy(pmppriv->mplink_buf, ptr, precv_frame->u.hdr.len);
-				pmppriv->mplink_rx_len = precv_frame->u.hdr.len;
-				pmppriv->mplink_brx =_TRUE;
+			RTW_INFO("#############################\n");
 		}
 	}
+#endif
 	if (pmppriv->bloopback) {
 		if (_rtw_memcmp(ptr + 24, pmptx->buf + 24, precv_frame->u.hdr.len - 24) == _FALSE) {
 			RTW_INFO("Compare payload content Fail !!!\n");
@@ -3895,8 +3993,17 @@ static sint fill_radiotap_hdr(_adapter *padapter, union recv_frame *precvframe, 
 		hdr_buf[rt_len] |= IEEE80211_RADIOTAP_F_FRAG;
 
 	/* always append FCS */
-	hdr_buf[rt_len] |= IEEE80211_RADIOTAP_F_FCS;
+	//hdr_buf[rt_len] |= IEEE80211_RADIOTAP_F_FCS;
 
+#ifdef CONFIG_RX_PACKET_APPEND_FCS
+        // Start by always indicating FCS is there:
+        hdr_buf[rt_len] |= IEEE80211_RADIOTAP_F_FCS;
+
+        // Next, test for prior conditions that will remove FCS, and update flag accordingly:
+        if(check_fwstate(&padapter->mlmepriv,WIFI_MONITOR_STATE) == _FALSE)
+                if((pattrib->pkt_rpt_type == NORMAL_RX) && (pHalData->ReceiveConfig & RCR_APPFCS))
+                        hdr_buf[rt_len] &= ~IEEE80211_RADIOTAP_F_FCS;
+#endif
 
 	if (0)
 		hdr_buf[rt_len] |= IEEE80211_RADIOTAP_F_DATAPAD;
@@ -3911,9 +4018,9 @@ static sint fill_radiotap_hdr(_adapter *padapter, union recv_frame *precvframe, 
 	rt_len += 1;
 
 	/* rate */
-	if (pattrib->data_rate <= DESC_RATE54M) {
+	if (pattrib->data_rate < 12) {
 		rtap_hdr->it_present |= (1 << IEEE80211_RADIOTAP_RATE);
-		if (pattrib->data_rate <= DESC_RATE11M) {
+		if (pattrib->data_rate < 4) {
 			/* CCK */
 			hdr_buf[rt_len] = data_rate[pattrib->data_rate];
 		} else {
@@ -3933,13 +4040,13 @@ static sint fill_radiotap_hdr(_adapter *padapter, union recv_frame *precvframe, 
 
 	/* channel flags */
 	tmp_16bit = 0;
-	if (pHalData->current_band_type == BAND_ON_2_4G)
+	if (pHalData->current_band_type == 0)
 		tmp_16bit |= cpu_to_le16(IEEE80211_CHAN_2GHZ);
-	else /*BAND_ON_5G*/
+	else
 		tmp_16bit |= cpu_to_le16(IEEE80211_CHAN_5GHZ);
 
-	if (pattrib->data_rate <= DESC_RATE54M) {
-		if (pattrib->data_rate <= DESC_RATE11M) {
+	if (pattrib->data_rate < 12) {
+		if (pattrib->data_rate < 4) {
 			/* CCK */
 			tmp_16bit |= cpu_to_le16(IEEE80211_CHAN_CCK);
 		} else {
@@ -3982,7 +4089,7 @@ static sint fill_radiotap_hdr(_adapter *padapter, union recv_frame *precvframe, 
 	rt_len += 2;
 
 	/* MCS information */
-	if (pattrib->data_rate >= DESC_RATEMCS0 && pattrib->data_rate <= DESC_RATEMCS31) {
+	if (pattrib->data_rate >= 12 && pattrib->data_rate < 44) {
 		rtap_hdr->it_present |= (1 << IEEE80211_RADIOTAP_MCS);
 		/* known, flag */
 		hdr_buf[rt_len] |= BIT1; /* MCS index known */
@@ -4007,7 +4114,7 @@ static sint fill_radiotap_hdr(_adapter *padapter, union recv_frame *precvframe, 
 	}
 
 	/* VHT */
-	if (pattrib->data_rate >= DESC_RATEVHTSS1MCS0 && pattrib->data_rate <= DESC_RATEVHTSS4MCS9) {
+	if (pattrib->data_rate >= 44 && pattrib->data_rate < 84) {
 		rtap_hdr->it_present |= (1 << IEEE80211_RADIOTAP_VHT);
 
 		/* known 16 bit, flag 8 bit */
@@ -4049,16 +4156,16 @@ static sint fill_radiotap_hdr(_adapter *padapter, union recv_frame *precvframe, 
 		rt_len += 1;
 
 		/* mcs_nss */
-		if (pattrib->data_rate >= DESC_RATEVHTSS1MCS0 && pattrib->data_rate <= DESC_RATEVHTSS1MCS9) {
+		if (pattrib->data_rate >= 44 && pattrib->data_rate < 54) {
 			hdr_buf[rt_len] |= 1;
 			hdr_buf[rt_len] |= data_rate[pattrib->data_rate] << 4;
-		} else if (pattrib->data_rate >= DESC_RATEVHTSS2MCS0 && pattrib->data_rate <= DESC_RATEVHTSS2MCS9) {
+		} else if (pattrib->data_rate >= 54 && pattrib->data_rate < 64) {
 			hdr_buf[rt_len + 1] |= 2;
 			hdr_buf[rt_len + 1] |= data_rate[pattrib->data_rate] << 4;
-		} else if (pattrib->data_rate >= DESC_RATEVHTSS3MCS0 && pattrib->data_rate <= DESC_RATEVHTSS3MCS9) {
+		} else if (pattrib->data_rate >= 64 && pattrib->data_rate < 74) {
 			hdr_buf[rt_len + 2] |= 3;
 			hdr_buf[rt_len + 2] |= data_rate[pattrib->data_rate] << 4;
-		} else if (pattrib->data_rate >= DESC_RATEVHTSS4MCS0 && pattrib->data_rate <= DESC_RATEVHTSS4MCS9) {
+		} else if (pattrib->data_rate >= 74 && pattrib->data_rate < 84) {
 			hdr_buf[rt_len + 3] |= 4;
 			hdr_buf[rt_len + 3] |= data_rate[pattrib->data_rate] << 4;
 		}
@@ -4089,7 +4196,6 @@ static sint fill_radiotap_hdr(_adapter *padapter, union recv_frame *precvframe, 
 	ptr = skb_push(pskb, rt_len);
 	if (ptr) {
 		rtap_hdr->it_len = cpu_to_le16(rt_len);
-		rtap_hdr->it_present = cpu_to_le32(rtap_hdr->it_present);
 		memcpy(ptr, rtap_hdr, rt_len);
 	} else
 		ret = _FAIL;
@@ -4101,8 +4207,6 @@ static sint fill_radiotap_hdr(_adapter *padapter, union recv_frame *precvframe, 
 int recv_frame_monitor(_adapter *padapter, union recv_frame *rframe)
 {
 	int ret = _SUCCESS;
-	//struct rx_pkt_attrib *pattrib = &rframe->u.hdr.attrib;
-	//struct recv_priv *precvpriv = &padapter->recvpriv;
 	_queue *pfree_recv_queue = &padapter->recvpriv.free_recv_queue;
 	_pkt *pskb = NULL;
 
@@ -4112,14 +4216,13 @@ int recv_frame_monitor(_adapter *padapter, union recv_frame *rframe)
 	pskb->data = rframe->u.hdr.rx_data;
 	skb_set_tail_pointer(pskb, rframe->u.hdr.len);
 
-#ifndef CONFIG_CUSTOMER_ALIBABA_GENERAL
 	/* fill radiotap header */
 	if (fill_radiotap_hdr(padapter, rframe, (u8 *)pskb) == _FAIL) {
 		ret = _FAIL;
 		rtw_free_recvframe(rframe, pfree_recv_queue); /* free this recv_frame */
 		goto exit;
 	}
-#endif
+
 	/* write skb information to recv frame */
 	skb_reset_mac_header(pskb);
 	rframe->u.hdr.len = pskb->len;
@@ -4298,10 +4401,7 @@ int recv_func(_adapter *padapter, union recv_frame *rframe)
 	struct recv_priv *recvpriv = &padapter->recvpriv;
 	struct security_priv *psecuritypriv = &padapter->securitypriv;
 	struct mlme_priv *mlmepriv = &padapter->mlmepriv;
-#ifdef CONFIG_CUSTOMER_ALIBABA_GENERAL
-	u8 type;
-	u8 *ptr = rframe->u.hdr.rx_data;
-#endif
+
 	if (check_fwstate(mlmepriv, WIFI_MONITOR_STATE)) {
 		/* monitor mode */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24))
@@ -4310,18 +4410,7 @@ int recv_func(_adapter *padapter, union recv_frame *rframe)
 		ret = _SUCCESS;
 		goto exit;
 	} else
-		{}
-#ifdef CONFIG_CUSTOMER_ALIBABA_GENERAL
-	type = GetFrameType(ptr);
-	if ((type == WIFI_DATA_TYPE)&& check_fwstate(mlmepriv, WIFI_STATION_STATE)) {
-		struct wlan_network *cur_network = &(mlmepriv->cur_network);
-		if ( _rtw_memcmp(get_addr2_ptr(ptr), cur_network->network.MacAddress, ETH_ALEN)==0) {
-			recv_frame_monitor(padapter, rframe);
-			ret = _SUCCESS;
-			goto exit;
-		}
-	}
-#endif
+
 		/* check if need to handle uc_swdec_pending_queue*/
 		if (check_fwstate(mlmepriv, WIFI_STATION_STATE) && psecuritypriv->busetkipkey) {
 			union recv_frame *pending_frame;
@@ -4730,7 +4819,6 @@ void rx_query_phy_status(
 				rx_process_phy_info(padapter, precvframe);
 			}
 		} else {
-#ifdef CONFIG_MP_INCLUDED
 			if (padapter->mppriv.brx_filter_beacon == _TRUE) {
 				if (pkt_info.is_packet_beacon) {
 					RTW_INFO("in MP Rx is_packet_beacon\n");
@@ -4738,9 +4826,7 @@ void rx_query_phy_status(
 						precvframe->u.hdr.psta = psta;
 					rx_process_phy_info(padapter, precvframe);
 				}
-			} else 
-#endif
-			{
+			} else {
 					if (psta)
 						precvframe->u.hdr.psta = psta;
 					rx_process_phy_info(padapter, precvframe);
@@ -4843,13 +4929,11 @@ thread_return rtw_recv_thread(thread_context context)
 	_adapter *adapter = (_adapter *)context;
 	struct recv_priv *recvpriv = &adapter->recvpriv;
 	s32 err = _SUCCESS;
-#ifdef RTW_RECV_THREAD_HIGH_PRIORITY
 #ifdef PLATFORM_LINUX
 	struct sched_param param = { .sched_priority = 1 };
 
 	sched_setscheduler(current, SCHED_FIFO, &param);
 #endif /* PLATFORM_LINUX */
-#endif /*RTW_RECV_THREAD_HIGH_PRIORITY*/
 	thread_enter("RTW_RECV_THREAD");
 
 	RTW_INFO(FUNC_ADPT_FMT" enter\n", FUNC_ADPT_ARG(adapter));

@@ -38,7 +38,7 @@ int usbctrl_vendorreq(struct intf_hdl *pintfhdl, u8 request, u16 value, u16 inde
 	u8 *pIo_buf;
 	int vendorreq_times = 0;
 
-#if (defined(CONFIG_RTL8822B) || defined(CONFIG_RTL8821C)) || defined(CONFIG_RTL8822C)
+#if (defined(CONFIG_RTL8822B) || defined(CONFIG_RTL8821C))
 #define REG_ON_SEC 0x00
 #define REG_OFF_SEC 0x01
 #define REG_LOCAL_SEC 0x02
@@ -151,7 +151,7 @@ int usbctrl_vendorreq(struct intf_hdl *pintfhdl, u8 request, u16 value, u16 inde
 
 	}
 
-#if (defined(CONFIG_RTL8822B) || defined(CONFIG_RTL8821C)) || defined(CONFIG_RTL8822C)
+#if (defined(CONFIG_RTL8822B) || defined(CONFIG_RTL8821C))
 	if (value < 0xFE00) {
 		if (0x00 <= value && value <= 0xff)
 			current_reg_sec = REG_ON_SEC;
@@ -276,19 +276,15 @@ unsigned int ffaddr2pipehdl(struct dvobj_priv *pdvobj, u32 addr)
 	else if (addr == RECV_INT_IN_ADDR)
 		pipe = usb_rcvintpipe(pusbd, pdvobj->RtInPipe[1]);
 
+	else if (addr < HW_QUEUE_ENTRY) {
 #ifdef RTW_HALMAC
-         /* halmac already translate queue id to bulk out id (addr 0~3) */
-        else if (addr < 4) {
-                ep_num = pdvobj->RtOutPipe[addr];
-                pipe = usb_sndbulkpipe(pusbd, ep_num);
-        }
+		/* halmac already translate queue id to bulk out id */
+		ep_num = pdvobj->RtOutPipe[addr];
 #else
-        else if (addr < HW_QUEUE_ENTRY) {
-                ep_num = pdvobj->Queue2Pipe[addr];
-                pipe = usb_sndbulkpipe(pusbd, ep_num);
-        }
+		ep_num = pdvobj->Queue2Pipe[addr];
 #endif
-
+		pipe = usb_sndbulkpipe(pusbd, ep_num);
+	}
 
 	return pipe;
 }
@@ -299,7 +295,7 @@ struct zero_bulkout_context {
 	void *pirp;
 	void *padapter;
 };
-#if 0
+
 static void usb_bulkout_zero_complete(struct urb *purb, struct pt_regs *regs)
 {
 	struct zero_bulkout_context *pcontext = (struct zero_bulkout_context *)purb->context;
@@ -375,7 +371,7 @@ static u32 usb_bulkout_zero(struct intf_hdl *pintfhdl, u32 addr)
 	return _SUCCESS;
 
 }
-#endif
+
 void usb_read_mem(struct intf_hdl *pintfhdl, u32 addr, u32 cnt, u8 *rmem)
 {
 

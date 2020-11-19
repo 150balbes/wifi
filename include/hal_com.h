@@ -349,19 +349,18 @@ bool hal_chk_proto_cap(_adapter *adapter, u8 cap);
 bool hal_is_band_support(_adapter *adapter, u8 band);
 bool hal_is_bw_support(_adapter *adapter, u8 bw);
 bool hal_is_wireless_mode_support(_adapter *adapter, u8 mode);
-bool hal_is_mimo_support(_adapter *adapter);
 u8 hal_largest_bw(_adapter *adapter, u8 in_bw);
 
 bool hal_chk_wl_func(_adapter *adapter, u8 func);
 
 void hal_com_config_channel_plan(
-		PADAPTER padapter,
-		char *hw_alpha2,
-		u8 hw_chplan,
-		char *sw_alpha2,
-		u8 sw_chplan,
-		u8 def_chplan,
-		BOOLEAN AutoLoadFail
+	IN	PADAPTER padapter,
+	IN	char *hw_alpha2,
+	IN	u8 hw_chplan,
+	IN	char *sw_alpha2,
+	IN	u8 sw_chplan,
+	IN	u8 def_chplan,
+	IN	BOOLEAN AutoLoadFail
 );
 
 int hal_config_macaddr(_adapter *adapter, bool autoload_fail);
@@ -372,8 +371,8 @@ void rtw_hal_hw_port_disable(_adapter *adapter);
 
 BOOLEAN
 HAL_IsLegalChannel(
-		PADAPTER	Adapter,
-		u32			Channel
+	IN	PADAPTER	Adapter,
+	IN	u32			Channel
 );
 
 u8	MRateToHwRate(u8 rate);
@@ -381,14 +380,14 @@ u8	MRateToHwRate(u8 rate);
 u8	hw_rate_to_m_rate(u8 rate);
 
 void	HalSetBrateCfg(
-		PADAPTER		Adapter,
-		u8			*mBratesOS,
-		u16			*pBrateCfg);
+	IN PADAPTER		Adapter,
+	IN u8			*mBratesOS,
+	OUT u16			*pBrateCfg);
 
 BOOLEAN
 Hal_MappingOutPipe(
-		PADAPTER	pAdapter,
-		u8		NumOutPipe
+	IN	PADAPTER	pAdapter,
+	IN	u8		NumOutPipe
 );
 
 void rtw_dump_fw_info(void *sel, _adapter *adapter);
@@ -434,30 +433,8 @@ void rtw_iface_disable_tsf_update(_adapter *adapter);
 void rtw_hal_periodic_tsf_update_chk(_adapter *adapter);
 void rtw_hal_periodic_tsf_update_end_timer_hdl(void *ctx);
 
-#if CONFIG_TX_AC_LIFETIME
-#define TX_ACLT_CONF_DEFAULT	0
-#define TX_ACLT_CONF_AP_M2U		1
-#define TX_ACLT_CONF_MESH		2
-#define TX_ACLT_CONF_NUM		3
-
-extern const char *const _tx_aclt_conf_str[];
-#define tx_aclt_conf_str(conf) (((conf) >= TX_ACLT_CONF_NUM) ? _tx_aclt_conf_str[TX_ACLT_CONF_NUM] : _tx_aclt_conf_str[(conf)])
-
-struct tx_aclt_conf_t {
-	u8 en;
-	u32 vo_vi;
-	u32 be_bk;
-};
-
-void dump_tx_aclt_force_val(void *sel, struct dvobj_priv *dvobj);
-void rtw_hal_set_tx_aclt_force_val(_adapter *adapter, struct tx_aclt_conf_t *input, u8 arg_num);
-void dump_tx_aclt_confs(void *sel, struct dvobj_priv *dvobj);
-void rtw_hal_set_tx_aclt_conf(_adapter *adapter, u8 conf_idx, struct tx_aclt_conf_t *input, u8 arg_num);
-void rtw_hal_update_tx_aclt(_adapter *adapter);
-#endif
-
 void hw_var_port_switch(_adapter *adapter);
-void rtw_var_set_basic_rate(PADAPTER padapter, u8 *val);
+
 u8 SetHwReg(PADAPTER padapter, u8 variable, u8 *val);
 void GetHwReg(PADAPTER padapter, u8 variable, u8 *val);
 void rtw_hal_check_rxfifo_full(_adapter *adapter);
@@ -475,42 +452,42 @@ eqNByte(
 
 u32
 MapCharToHexDigit(
-		char	chTmp
+	IN	char	chTmp
 );
 
 BOOLEAN
 GetHexValueFromString(
-			char		*szStr,
-			u32			*pu4bVal,
-			u32			*pu4bMove
+	IN		char			*szStr,
+	IN OUT	u32			*pu4bVal,
+	IN OUT	u32			*pu4bMove
 );
 
 BOOLEAN
 GetFractionValueFromString(
-			char	*szStr,
-			u8		*pInteger,
-			u8		*pFraction,
-			u32		*pu4bMove
+	IN		char		*szStr,
+	IN OUT	u8			*pInteger,
+	IN OUT	u8			*pFraction,
+	IN OUT	u32		*pu4bMove
 );
 
 BOOLEAN
 IsCommentString(
-			char		*szStr
+	IN		char		*szStr
 );
 
 BOOLEAN
 ParseQualifiedString(
-		char *In,
-		u32 *Start,
-		char *Out,
-		char LeftQualifier,
-		char RightQualifier
+	IN	char *In,
+	IN OUT  u32 *Start,
+	OUT	char *Out,
+	IN	char  LeftQualifier,
+	IN	char  RightQualifier
 );
 
 BOOLEAN
 GetU1ByteIntegerFromStringInDecimal(
-			char *Str,
-			u8 *pInt
+	IN		char *Str,
+	IN OUT	u8 *pInt
 );
 
 BOOLEAN
@@ -549,9 +526,7 @@ u8 rtw_hal_busagg_qsel_check(_adapter *padapter, u8 pre_qsel, u8 next_qsel);
 
 u8 rtw_get_current_tx_rate(_adapter *padapter, struct sta_info *psta);
 u8 rtw_get_current_tx_sgi(_adapter *padapter, struct sta_info *psta);
-#ifdef CONFIG_CUSTOMER01_SMART_ANTENNA
-void rtw_hal_set_pathb_phase(_adapter *adapter, u8 phase_idx);
-#endif
+
 void rtw_hal_set_fw_rsvd_page(_adapter *adapter, bool finished);
 u8 rtw_hal_get_rsvd_page_num(struct _ADAPTER *adapter);
 
@@ -594,9 +569,8 @@ void rtw_hal_ch_sw_iqk_info_restore(_adapter *padapter, u8 ch_sw_use_case);
 #endif
 
 void update_IOT_info(_adapter *padapter);
-#ifdef CONFIG_RTS_FULL_BW
-void rtw_set_rts_bw(_adapter *padapter);
-#endif/*CONFIG_RTS_FULL_BW*/
+
+void hal_set_crystal_cap(_adapter *adapter, u8 crystal_cap);
 
 void ResumeTxBeacon(_adapter *padapter);
 void StopTxBeacon(_adapter *padapter);
@@ -629,11 +603,10 @@ void StopTxBeacon(_adapter *padapter);
 enum lps_pg_hdl_id {
 	LPS_PG_INFO_CFG = 0,
 	LPS_PG_REDLEMEM,
-	LPS_PG_PHYDM_DIS,
-	LPS_PG_PHYDM_EN,
+	LPS_PG_RESEND_H2C,
 };
 
-u8 rtw_hal_set_lps_pg_info(_adapter *adapter);
+	u8 rtw_hal_set_lps_pg_info(_adapter *adapter);
 #endif
 
 int rtw_hal_get_rsvd_page(_adapter *adapter, u32 page_offset, u32 page_num, u8 *buffer, u32 buffer_size);
@@ -727,15 +700,4 @@ void rtw_hal_get_rf_path(struct dvobj_priv *d, enum rf_type *type,
 void rtw_hal_beamforming_config_csirate(PADAPTER adapter);
 #endif
 #endif
-#if defined(CONFIG_RTL8814A) || defined(CONFIG_RTL8812A) ||\
-	defined(CONFIG_RTL8192F) || defined(CONFIG_RTL8192E) ||\
-	defined(CONFIG_RTL8822B) || defined(CONFIG_RTL8821A) || \
-	defined(CONFIG_RTL8822C)
-u8 phy_get_current_tx_num(PADAPTER pAdapter, u8 Rate);
-#endif
-
-#ifdef CONFIG_RTL8812A
-u8 * rtw_hal_set_8812a_vendor_ie(_adapter *padapter , u8 *pframe ,uint *frlen );
-#endif
-
 #endif /* __HAL_COMMON_H__ */
