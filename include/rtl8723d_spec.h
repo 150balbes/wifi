@@ -1,6 +1,21 @@
-/* SPDX-License-Identifier: GPL-2.0 */
-/* Copyright(c) 2007 - 2017 Realtek Corporation */
-
+/******************************************************************************
+ *
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
+ *******************************************************************************/
 #ifndef __RTL8723D_SPEC_H__
 #define __RTL8723D_SPEC_H__
 
@@ -68,7 +83,6 @@
 #define REG_PMC_DBG_CTRL2_8723D			0x00CC
 #define	REG_EFUSE_BURN_GNT_8723D		0x00CF
 #define REG_HPON_FSM_8723D				0x00EC
-#define REG_SYS_CFG1_8723D				0x00F0
 #define REG_SYS_CFG_8723D				0x00FC
 #define REG_ROM_VERSION					0x00FD
 
@@ -226,6 +240,10 @@
 #define REG_FAST_EDCA_CTRL_8723D		0x0460
 #define REG_RD_RESP_PKT_TH_8723D		0x0463
 #define REG_DATA_SC_8723D				0x0483
+#ifdef CONFIG_WOWLAN
+	#define REG_TXPKTBUF_IV_LOW             0x0484
+	#define REG_TXPKTBUF_IV_HIGH            0x0488
+#endif
 #define REG_TXRPT_START_OFFSET		0x04AC
 #define REG_POWER_STAGE1_8723D		0x04B4
 #define REG_POWER_STAGE2_8723D		0x04B8
@@ -362,16 +380,23 @@
 #define REG_BFMEE_SEL_8723D				0x0714
 #define REG_SND_PTCL_CTRL_8723D		0x0718
 
-/* LTR */
-#define REG_LTR_CTRL_BASIC_8723D		0x07A4
-#define REG_LTR_IDLE_LATENCY_V1_8723D		0x0798
-#define REG_LTR_ACTIVE_LATENCY_V1_8723D		0x079C
-
 /* LTE_COEX */
 #define REG_LTECOEX_CTRL			0x07C0
 #define REG_LTECOEX_WRITE_DATA		0x07C4
 #define REG_LTECOEX_READ_DATA		0x07C8
 #define REG_LTECOEX_PATH_CONTROL	0x70
+
+/* ************************************************************
+ * SDIO Bus Specification
+ * ************************************************************ */
+
+/* -----------------------------------------------------
+ * SDIO CMD Address Mapping
+ * ----------------------------------------------------- */
+
+/* -----------------------------------------------------
+ * I/O bus domain (Host)
+ * ----------------------------------------------------- */
 
 /* -----------------------------------------------------
  * SDIO register
@@ -386,6 +411,12 @@
 #define BIT_USB_RXDMA_AGG_EN	BIT(31)
 #define RXDMA_AGG_MODE_EN		BIT(1)
 
+#ifdef CONFIG_WOWLAN
+	#define RXPKT_RELEASE_POLL		BIT(16)
+	#define RXDMA_IDLE				BIT(17)
+	#define RW_RELEASE_EN			BIT(18)
+#endif
+
 /* 2 HSISR
  * interrupt mask which needs to clear */
 #define MASK_HSISR_CLEAR		(HSISR_GPIO12_0_INT |\
@@ -394,8 +425,33 @@
 		HSISR_PDNINT |\
 		HSISR_GPIO9_INT)
 
-#define EEPROM_RF_GAIN_OFFSET			0xC1
+#ifdef CONFIG_RF_POWER_TRIM
+	#ifdef CONFIG_RTL8723D
+		#define EEPROM_RF_GAIN_OFFSET			0xC1
+	#endif
 
-#define EEPROM_RF_GAIN_VAL				0x1F6
+	#define EEPROM_RF_GAIN_VAL				0x1F6
+#endif /*CONFIG_RF_POWER_TRIM*/
+
+#ifdef CONFIG_PCI_HCI
+	/* #define IMR_RX_MASK		(IMR_ROK_8723D|IMR_RDU_8723D|IMR_RXFOVW_8723D) */
+	#define IMR_TX_MASK			(IMR_VODOK_8723D | IMR_VIDOK_8723D | IMR_BEDOK_8723D | IMR_BKDOK_8723D | IMR_MGNTDOK_8723D | IMR_HIGHDOK_8723D)
+
+	#define RT_BCN_INT_MASKS	(IMR_BCNDMAINT0_8723D | IMR_TXBCN0OK_8723D | IMR_TXBCN0ERR_8723D | IMR_BCNDERR0_8723D)
+
+	#define RT_AC_INT_MASKS	(IMR_VIDOK_8723D | IMR_VODOK_8723D | IMR_BEDOK_8723D | IMR_BKDOK_8723D)
+#endif
+
+/* ********************************************************
+ * General definitions
+ * ******************************************************** */
+
+#define MACID_NUM_8723D 16
+#define SEC_CAM_ENT_NUM_8723D 32
+#define HW_PORT_NUM_8723D 3	/*port0, port1, port2*/
+#define NSS_NUM_8723D 1
+#define BAND_CAP_8723D (BAND_CAP_2G)
+#define BW_CAP_8723D (BW_CAP_20M | BW_CAP_40M)
+#define PROTO_CAP_8723D (PROTO_CAP_11B | PROTO_CAP_11G | PROTO_CAP_11N)
 
 #endif /* __RTL8723D_SPEC_H__ */

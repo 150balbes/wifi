@@ -1,5 +1,22 @@
-// SPDX-License-Identifier: GPL-2.0
-/* Copyright(c) 2007 - 2017 Realtek Corporation */
+/******************************************************************************
+ *
+ * Copyright(c) 2007 - 2012 Realtek Corporation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
+ *
+ ******************************************************************************/
 
 #define _HAL_INTF_C_
 
@@ -22,57 +39,46 @@ const u32 _chip_type_to_odm_ic_type[] = {
 	0,
 };
 
-void rtw_hal_chip_configure(struct adapter *adapt)
+void rtw_hal_chip_configure(_adapter *padapter)
 {
-	adapt->hal_func.intf_chip_configure(adapt);
+	padapter->HalFunc.intf_chip_configure(padapter);
 }
 
-/*
- * Description:
- *	Read chip internal ROM data
- *
- * Return:
- *	_SUCCESS success
- *	_FAIL	 fail
- */
-u8 rtw_hal_read_chip_info(struct adapter *adapt)
+void rtw_hal_read_chip_info(_adapter *padapter)
 {
-	u8 rtn = _SUCCESS;
-	u8 hci_type = rtw_get_intf_type(adapt);
-	unsigned long start = rtw_get_current_time();
+	u8 hci_type = rtw_get_intf_type(padapter);
+	u32 start = rtw_get_current_time();
 
 	/*  before access eFuse, make sure card enable has been called */
 	if ((hci_type == RTW_SDIO || hci_type == RTW_GSPI)
-	    && !rtw_is_hw_init_completed(adapt))
-		rtw_hal_power_on(adapt);
+	    && !rtw_is_hw_init_completed(padapter))
+		rtw_hal_power_on(padapter);
 
-	rtn = adapt->hal_func.read_adapter_info(adapt);
+	padapter->HalFunc.read_adapter_info(padapter);
 
 	if ((hci_type == RTW_SDIO || hci_type == RTW_GSPI)
-	    && !rtw_is_hw_init_completed(adapt))
-		rtw_hal_power_off(adapt);
+	    && !rtw_is_hw_init_completed(padapter))
+		rtw_hal_power_off(padapter);
 
 	RTW_INFO("%s in %d ms\n", __func__, rtw_get_passing_time_ms(start));
-
-	return rtn;
 }
 
-void rtw_hal_read_chip_version(struct adapter *adapt)
+void rtw_hal_read_chip_version(_adapter *padapter)
 {
-	adapt->hal_func.read_chip_version(adapt);
-	rtw_odm_init_ic_type(adapt);
+	padapter->HalFunc.read_chip_version(padapter);
+	rtw_odm_init_ic_type(padapter);
 }
 
-void rtw_hal_def_value_init(struct adapter *adapt)
+void rtw_hal_def_value_init(_adapter *padapter)
 {
-	if (is_primary_adapter(adapt)) {
-		adapt->hal_func.init_default_value(adapt);
+	if (is_primary_adapter(padapter)) {
+		padapter->HalFunc.init_default_value(padapter);
 
-		rtw_init_hal_com_default_value(adapt);
+		rtw_init_hal_com_default_value(padapter);
 
 		{
-			struct dvobj_priv *dvobj = adapter_to_dvobj(adapt);
-			struct hal_spec_t *hal_spec = GET_HAL_SPEC(adapt);
+			struct dvobj_priv *dvobj = adapter_to_dvobj(padapter);
+			struct hal_spec_t *hal_spec = GET_HAL_SPEC(padapter);
 
 			/* hal_spec is ready here */
 			dvobj->macid_ctl.num = rtw_min(hal_spec->macid_num, MACID_NUM_SW_LIMIT);
@@ -83,12 +89,12 @@ void rtw_hal_def_value_init(struct adapter *adapt)
 	}
 }
 
-u8 rtw_hal_data_init(struct adapter *adapt)
+u8 rtw_hal_data_init(_adapter *padapter)
 {
-	if (is_primary_adapter(adapt)) {
-		adapt->hal_data_sz = sizeof(struct hal_com_data);
-		adapt->HalData = vzalloc(adapt->hal_data_sz);
-		if (!adapt->HalData) {
+	if (is_primary_adapter(padapter)) {
+		padapter->hal_data_sz = sizeof(HAL_DATA_TYPE);
+		padapter->HalData = rtw_zvmalloc(padapter->hal_data_sz);
+		if (padapter->HalData == NULL) {
 			RTW_INFO("cant not alloc memory for HAL DATA\n");
 			return _FAIL;
 		}
@@ -96,83 +102,78 @@ u8 rtw_hal_data_init(struct adapter *adapt)
 	return _SUCCESS;
 }
 
-void rtw_hal_data_deinit(struct adapter *adapt)
+void rtw_hal_data_deinit(_adapter *padapter)
 {
-	if (is_primary_adapter(adapt)) {
-		if (adapt->HalData) {
+	if (is_primary_adapter(padapter)) {
+		if (padapter->HalData) {
 #ifdef CONFIG_LOAD_PHY_PARA_FROM_FILE
-			phy_free_filebuf(adapt);
+			phy_free_filebuf(padapter);
 #endif
-			vfree(adapt->HalData);
-			adapt->HalData = NULL;
-			adapt->hal_data_sz = 0;
+			rtw_vmfree(padapter->HalData, padapter->hal_data_sz);
+			padapter->HalData = NULL;
+			padapter->hal_data_sz = 0;
 		}
 	}
 }
 
-void	rtw_hal_free_data(struct adapter *adapt)
+void	rtw_hal_free_data(_adapter *padapter)
 {
 	/* free HAL Data	 */
-	rtw_hal_data_deinit(adapt);
+	rtw_hal_data_deinit(padapter);
 }
-void rtw_hal_dm_init(struct adapter *adapt)
+void rtw_hal_dm_init(_adapter *padapter)
 {
-	if (is_primary_adapter(adapt)) {
-		struct hal_com_data *	pHalData = GET_HAL_DATA(adapt);
+	if (is_primary_adapter(padapter)) {
+		PHAL_DATA_TYPE	pHalData = GET_HAL_DATA(padapter);
 
-		adapt->hal_func.dm_init(adapt);
+		padapter->HalFunc.dm_init(padapter);
 
-		spin_lock_init(&pHalData->IQKSpinLock);
+		_rtw_spinlock_init(&pHalData->IQKSpinLock);
 
-		phy_load_tx_power_ext_info(adapt, 1);
+		phy_load_tx_power_ext_info(padapter, 1);
 	}
 }
-void rtw_hal_dm_deinit(struct adapter *adapt)
+void rtw_hal_dm_deinit(_adapter *padapter)
 {
-	if (is_primary_adapter(adapt))
-		adapt->hal_func.dm_deinit(adapt);
+	if (is_primary_adapter(padapter)) {
+		PHAL_DATA_TYPE	pHalData = GET_HAL_DATA(padapter);
+
+		padapter->HalFunc.dm_deinit(padapter);
+
+		_rtw_spinlock_free(&pHalData->IQKSpinLock);
+	}
+}
+void	rtw_hal_sw_led_init(_adapter *padapter)
+{
+	if (padapter->HalFunc.InitSwLeds)
+		padapter->HalFunc.InitSwLeds(padapter);
 }
 
-void	rtw_hal_sw_led_init(struct adapter *adapt)
+void rtw_hal_sw_led_deinit(_adapter *padapter)
 {
-	if (adapt->hal_func.InitSwLeds)
-		adapt->hal_func.InitSwLeds(adapt);
+	if (padapter->HalFunc.DeInitSwLeds)
+		padapter->HalFunc.DeInitSwLeds(padapter);
 }
 
-void rtw_hal_sw_led_deinit(struct adapter *adapt)
+u32 rtw_hal_power_on(_adapter *padapter)
 {
-	if (adapt->hal_func.DeInitSwLeds)
-		adapt->hal_func.DeInitSwLeds(adapt);
+	return padapter->HalFunc.hal_power_on(padapter);
+}
+void rtw_hal_power_off(_adapter *padapter)
+{
+	struct macid_ctl_t *macid_ctl = &padapter->dvobj->macid_ctl;
+
+	_rtw_memset(macid_ctl->h2c_msr, 0, MACID_NUM_SW_LIMIT);
+
+	padapter->HalFunc.hal_power_off(padapter);
 }
 
-u32 rtw_hal_power_on(struct adapter *adapt)
+
+void rtw_hal_init_opmode(_adapter *padapter)
 {
-	u32 ret = 0;
-	struct hal_com_data * pHalData = GET_HAL_DATA(adapt);
-
-	ret = adapt->hal_func.hal_power_on(adapt);
-
-	if ((ret == _SUCCESS) && (pHalData->EEPROMBluetoothCoexist))
-		rtw_btcoex_PowerOnSetting(adapt);
-	return ret;
-}
-
-void rtw_hal_power_off(struct adapter *adapt)
-{
-	struct macid_ctl_t *macid_ctl = &adapt->dvobj->macid_ctl;
-
-	memset(macid_ctl->h2c_msr, 0, MACID_NUM_SW_LIMIT);
-
-	rtw_btcoex_PowerOffSetting(adapt);
-
-	adapt->hal_func.hal_power_off(adapt);
-}
-
-static void rtw_hal_init_opmode(struct adapter *adapt)
-{
-	enum ndis_802_11_network_infrastructure networkType = Ndis802_11InfrastructureMax;
-	struct  mlme_priv *pmlmepriv = &(adapt->mlmepriv);
-	int fw_state;
+	NDIS_802_11_NETWORK_INFRASTRUCTURE networkType = Ndis802_11InfrastructureMax;
+	struct  mlme_priv *pmlmepriv = &(padapter->mlmepriv);
+	sint fw_state;
 
 	fw_state = get_fwstate(pmlmepriv);
 
@@ -185,51 +186,60 @@ static void rtw_hal_init_opmode(struct adapter *adapt)
 	else
 		return;
 
-	rtw_setopmode_cmd(adapt, networkType, RTW_CMDF_DIRECTLY);
+	rtw_setopmode_cmd(padapter, networkType, _FALSE);
 }
 
-uint	 rtw_hal_init(struct adapter *adapt)
+uint	 rtw_hal_init(_adapter *padapter)
 {
 	uint	status = _SUCCESS;
-	struct dvobj_priv *dvobj = adapter_to_dvobj(adapt);
-	struct hal_com_data *	pHalData = GET_HAL_DATA(adapt);
+	struct dvobj_priv *dvobj = adapter_to_dvobj(padapter);
+	PHAL_DATA_TYPE	pHalData = GET_HAL_DATA(padapter);
 	int i;
 
-	status = adapt->hal_func.hal_init(adapt);
+	status = padapter->HalFunc.hal_init(padapter);
 
 	if (status == _SUCCESS) {
-		pHalData->hw_init_completed = true;
-		rtw_restore_mac_addr(adapt);
-		if (adapt->registrypriv.notch_filter == 1)
-			rtw_hal_notch_filter(adapt, 1);
+		pHalData->hw_init_completed = _TRUE;
+		rtw_restore_mac_addr(padapter);
+
+		if (padapter->registrypriv.notch_filter == 1)
+			rtw_hal_notch_filter(padapter, 1);
 
 		for (i = 0; i < dvobj->iface_nums; i++)
-			rtw_sec_restore_wep_key(dvobj->adapters[i]);
+			rtw_sec_restore_wep_key(dvobj->padapters[i]);
 
-		rtw_led_control(adapt, LED_CTL_POWER_ON);
+		rtw_led_control(padapter, LED_CTL_POWER_ON);
 
-		init_hw_mlme_ext(adapt);
+		init_hw_mlme_ext(padapter);
 
-		rtw_hal_init_opmode(adapt);
+		rtw_hal_init_opmode(padapter);
 
-		rtw_bb_rf_gain_offset(adapt);
+#ifdef CONFIG_RF_POWER_TRIM
+		rtw_bb_rf_gain_offset(padapter);
+#endif /*CONFIG_RF_POWER_TRIM*/
+
 	} else {
-		pHalData->hw_init_completed = false;
-		RTW_INFO("rtw_hal_init: hal_init fail\n");
+		pHalData->hw_init_completed = _FALSE;
+		RTW_INFO("rtw_hal_init: hal__init fail\n");
 	}
+
+
 	return status;
+
 }
 
-uint rtw_hal_deinit(struct adapter *adapt)
+uint rtw_hal_deinit(_adapter *padapter)
 {
 	uint	status = _SUCCESS;
-	struct hal_com_data *	pHalData = GET_HAL_DATA(adapt);
+	struct dvobj_priv *dvobj = adapter_to_dvobj(padapter);
+	PHAL_DATA_TYPE	pHalData = GET_HAL_DATA(padapter);
+	int i;
 
-	status = adapt->hal_func.hal_deinit(adapt);
+	status = padapter->HalFunc.hal_deinit(padapter);
 
 	if (status == _SUCCESS) {
-		rtw_led_control(adapt, LED_CTL_POWER_OFF);
-		pHalData->hw_init_completed = false;
+		rtw_led_control(padapter, LED_CTL_POWER_OFF);
+		pHalData->hw_init_completed = _FALSE;
 	} else
 		RTW_INFO("\n rtw_hal_deinit: hal_init fail\n");
 
@@ -237,195 +247,242 @@ uint rtw_hal_deinit(struct adapter *adapt)
 	return status;
 }
 
-u8 rtw_hal_set_hwreg(struct adapter *adapt, u8 variable, u8 *val)
+void rtw_hal_set_hwreg(_adapter *padapter, u8 variable, u8 *val)
 {
-	return adapt->hal_func.set_hw_reg_handler(adapt, variable, val);
+	padapter->HalFunc.SetHwRegHandler(padapter, variable, val);
 }
 
-void rtw_hal_get_hwreg(struct adapter *adapt, u8 variable, u8 *val)
+void rtw_hal_get_hwreg(_adapter *padapter, u8 variable, u8 *val)
 {
-	adapt->hal_func.GetHwRegHandler(adapt, variable, val);
+	padapter->HalFunc.GetHwRegHandler(padapter, variable, val);
 }
 
-u8 rtw_hal_set_def_var(struct adapter *adapt, enum hal_def_variable eVariable, void * pValue)
+u8 rtw_hal_set_def_var(_adapter *padapter, HAL_DEF_VARIABLE eVariable, PVOID pValue)
 {
-	return adapt->hal_func.SetHalDefVarHandler(adapt, eVariable, pValue);
+	return padapter->HalFunc.SetHalDefVarHandler(padapter, eVariable, pValue);
 }
-u8 rtw_hal_get_def_var(struct adapter *adapt, enum hal_def_variable eVariable, void * pValue)
+u8 rtw_hal_get_def_var(_adapter *padapter, HAL_DEF_VARIABLE eVariable, PVOID pValue)
 {
-	return adapt->hal_func.get_hal_def_var_handler(adapt, eVariable, pValue);
-}
-
-void rtw_hal_set_odm_var(struct adapter *adapt, enum hal_odm_variable eVariable, void * pValue1, bool bSet)
-{
-	adapt->hal_func.SetHalODMVarHandler(adapt, eVariable, pValue1, bSet);
-}
-void	rtw_hal_get_odm_var(struct adapter *adapt, enum hal_odm_variable eVariable, void * pValue1, void * pValue2)
-{
-	adapt->hal_func.GetHalODMVarHandler(adapt, eVariable, pValue1, pValue2);
+	return padapter->HalFunc.GetHalDefVarHandler(padapter, eVariable, pValue);
 }
 
-/* FOR SDIO & PCIE */
-void rtw_hal_enable_interrupt(struct adapter *adapt)
+void rtw_hal_set_odm_var(_adapter *padapter, HAL_ODM_VARIABLE eVariable, PVOID pValue1, BOOLEAN bSet)
 {
+	padapter->HalFunc.SetHalODMVarHandler(padapter, eVariable, pValue1, bSet);
+}
+void	rtw_hal_get_odm_var(_adapter *padapter, HAL_ODM_VARIABLE eVariable, PVOID pValue1, PVOID pValue2)
+{
+	padapter->HalFunc.GetHalODMVarHandler(padapter, eVariable, pValue1, pValue2);
 }
 
 /* FOR SDIO & PCIE */
-void rtw_hal_disable_interrupt(struct adapter *adapt)
+void rtw_hal_enable_interrupt(_adapter *padapter)
 {
+#if defined(CONFIG_PCI_HCI) || defined(CONFIG_SDIO_HCI) || defined (CONFIG_GSPI_HCI)
+	padapter->HalFunc.enable_interrupt(padapter);
+#endif /* #if defined(CONFIG_PCI_HCI) || defined (CONFIG_SDIO_HCI) || defined (CONFIG_GSPI_HCI) */
 }
 
-u8 rtw_hal_check_ips_status(struct adapter *adapt)
+/* FOR SDIO & PCIE */
+void rtw_hal_disable_interrupt(_adapter *padapter)
 {
-	u8 val = false;
-	if (adapt->hal_func.check_ips_status)
-		val = adapt->hal_func.check_ips_status(adapt);
+#if defined(CONFIG_PCI_HCI) || defined(CONFIG_SDIO_HCI) || defined (CONFIG_GSPI_HCI)
+	padapter->HalFunc.disable_interrupt(padapter);
+#endif /* #if defined(CONFIG_PCI_HCI) || defined (CONFIG_SDIO_HCI) || defined (CONFIG_GSPI_HCI) */
+}
+
+
+u8 rtw_hal_check_ips_status(_adapter *padapter)
+{
+	u8 val = _FALSE;
+	if (padapter->HalFunc.check_ips_status)
+		val = padapter->HalFunc.check_ips_status(padapter);
 	else
-		RTW_INFO("%s: hal_func.check_ips_status is NULL!\n", __func__);
+		RTW_INFO("%s: HalFunc.check_ips_status is NULL!\n", __FUNCTION__);
 
 	return val;
 }
 
-int rtw_hal_fw_dl(struct adapter *adapt, bool wowlan)
+s32 rtw_hal_fw_dl(_adapter *padapter, u8 wowlan)
 {
-	return adapt->hal_func.fw_dl(adapt, wowlan);
+	return padapter->HalFunc.fw_dl(padapter, wowlan);
 }
 
-u32	rtw_hal_inirp_init(struct adapter *adapt)
+#if defined(CONFIG_WOWLAN) || defined(CONFIG_AP_WOWLAN)
+void rtw_hal_clear_interrupt(_adapter *padapter)
 {
-	if (is_primary_adapter(adapt))
-		return adapt->hal_func.inirp_init(adapt);
+#if defined(CONFIG_SDIO_HCI) || defined(CONFIG_GSPI_HCI)
+	padapter->HalFunc.clear_interrupt(padapter);
+#endif
+}
+#endif
+
+#if defined(CONFIG_USB_HCI) || defined(CONFIG_PCI_HCI)
+u32	rtw_hal_inirp_init(_adapter *padapter)
+{
+	if (is_primary_adapter(padapter))
+		return padapter->HalFunc.inirp_init(padapter);
 	return _SUCCESS;
 }
-u32	rtw_hal_inirp_deinit(struct adapter *adapt)
+u32	rtw_hal_inirp_deinit(_adapter *padapter)
 {
 
-	if (is_primary_adapter(adapt))
-		return adapt->hal_func.inirp_deinit(adapt);
+	if (is_primary_adapter(padapter))
+		return padapter->HalFunc.inirp_deinit(padapter);
 
 	return _SUCCESS;
 }
+#endif /* #if defined(CONFIG_USB_HCI) || defined (CONFIG_PCI_HCI) */
+
+#if defined(CONFIG_PCI_HCI)
+void	rtw_hal_irp_reset(_adapter *padapter)
+{
+	padapter->HalFunc.irp_reset(GET_PRIMARY_ADAPTER(padapter));
+}
+#endif /* #if defined(CONFIG_PCI_HCI) */
 
 /* for USB Auto-suspend */
-u8	rtw_hal_intf_ps_func(struct adapter *adapt, enum hal_intf_ps_func efunc_id, u8 *val)
+u8	rtw_hal_intf_ps_func(_adapter *padapter, HAL_INTF_PS_FUNC efunc_id, u8 *val)
 {
-	if (adapt->hal_func.interface_ps_func)
-		return adapt->hal_func.interface_ps_func(adapt, efunc_id, val);
+	if (padapter->HalFunc.interface_ps_func)
+		return padapter->HalFunc.interface_ps_func(padapter, efunc_id, val);
 	return _FAIL;
 }
 
-int	rtw_hal_xmitframe_enqueue(struct adapter *adapt, struct xmit_frame *pxmitframe)
+s32	rtw_hal_xmitframe_enqueue(_adapter *padapter, struct xmit_frame *pxmitframe)
 {
-	return adapt->hal_func.hal_xmitframe_enqueue(adapt, pxmitframe);
+	return padapter->HalFunc.hal_xmitframe_enqueue(padapter, pxmitframe);
 }
 
-int	rtw_hal_xmit(struct adapter *adapt, struct xmit_frame *pxmitframe)
+s32	rtw_hal_xmit(_adapter *padapter, struct xmit_frame *pxmitframe)
 {
-	return adapt->hal_func.hal_xmit(adapt, pxmitframe);
+	return padapter->HalFunc.hal_xmit(padapter, pxmitframe);
 }
 
 /*
  * [IMPORTANT] This function would be run in interrupt context.
  */
-int	rtw_hal_mgnt_xmit(struct adapter *adapt, struct xmit_frame *pmgntframe)
+s32	rtw_hal_mgnt_xmit(_adapter *padapter, struct xmit_frame *pmgntframe)
 {
-	update_mgntframe_attrib_addr(adapt, pmgntframe);
+	s32 ret = _FAIL;
+	u8	*pframe, subtype;
+	struct rtw_ieee80211_hdr	*pwlanhdr;
+	struct sta_info	*psta;
+	struct sta_priv		*pstapriv = &padapter->stapriv;
 
-#if defined(CONFIG_IEEE80211W) || defined(CONFIG_RTW_MESH)
-	if ((!MLME_IS_MESH(adapt) && SEC_IS_BIP_KEY_INSTALLED(&adapt->securitypriv))
-		#ifdef CONFIG_RTW_MESH
-		|| (MLME_IS_MESH(adapt) && adapt->mesh_info.mesh_auth_id)
-		#endif
-	)
-		rtw_mgmt_xmitframe_coalesce(adapt, pmgntframe->pkt, pmgntframe);
-#endif
+	update_mgntframe_attrib_addr(padapter, pmgntframe);
+	pframe = (u8 *)(pmgntframe->buf_addr) + TXDESC_OFFSET;
+	subtype = GetFrameSubType(pframe); /* bit(7)~bit(2) */
 
-	return adapt->hal_func.mgnt_xmit(adapt, pmgntframe);
-}
+	/* pwlanhdr = (struct rtw_ieee80211_hdr *)pframe; */
+	/* _rtw_memcpy(pmgntframe->attrib.ra, pwlanhdr->addr1, ETH_ALEN); */
 
-int	rtw_hal_init_xmit_priv(struct adapter *adapt)
-{
-	return adapt->hal_func.init_xmit_priv(adapt);
-}
-void	rtw_hal_free_xmit_priv(struct adapter *adapt)
-{
-	adapt->hal_func.free_xmit_priv(adapt);
-}
-
-int	rtw_hal_init_recv_priv(struct adapter *adapt)
-{
-	return adapt->hal_func.init_recv_priv(adapt);
-}
-void	rtw_hal_free_recv_priv(struct adapter *adapt)
-{
-	adapt->hal_func.free_recv_priv(adapt);
-}
-
-static void rtw_sta_ra_registed(struct adapter *adapt, struct sta_info *psta)
-{
-	struct hal_com_data *hal_data = GET_HAL_DATA(adapt);
-
-	if (!psta) {
-		RTW_ERR(FUNC_ADPT_FMT" sta is NULL\n", FUNC_ADPT_ARG(adapt));
-		rtw_warn_on(1);
-		return;
-	}
-
-	if (MLME_IS_AP(adapt) || MLME_IS_MESH(adapt)) {
-		if (psta->cmn.aid > adapt->stapriv.max_aid) {
-			RTW_ERR("station aid %d exceed the max number\n", psta->cmn.aid);
-			rtw_warn_on(1);
-			return;
+#ifdef CONFIG_IEEE80211W
+	if (padapter->securitypriv.binstallBIPkey == _TRUE && (subtype == WIFI_DEAUTH || subtype == WIFI_DISASSOC ||
+			subtype == WIFI_ACTION)) {
+		if (IS_MCAST(pmgntframe->attrib.ra) && pmgntframe->attrib.key_type != IEEE80211W_NO_KEY) {
+			pmgntframe->attrib.encrypt = _BIP_;
+			/* pmgntframe->attrib.bswenc = _TRUE; */
+		} else if (pmgntframe->attrib.key_type != IEEE80211W_NO_KEY) {
+			psta = rtw_get_stainfo(pstapriv, pmgntframe->attrib.ra);
+			if (psta && psta->bpairwise_key_installed == _TRUE) {
+				pmgntframe->attrib.encrypt = _AES_;
+				pmgntframe->attrib.bswenc = _TRUE;
+			} else {
+				RTW_INFO("%s, %d, bpairwise_key_installed is FALSE\n", __func__, __LINE__);
+				goto no_mgmt_coalesce;
+			}
 		}
-		rtw_ap_update_sta_ra_info(adapt, psta);
+		RTW_INFO("encrypt=%d, bswenc=%d\n", pmgntframe->attrib.encrypt, pmgntframe->attrib.bswenc);
+		rtw_mgmt_xmitframe_coalesce(padapter, pmgntframe->pkt, pmgntframe);
 	}
-
-	psta->cmn.ra_info.ra_bw_mode = rtw_get_tx_bw_mode(adapt, psta);
-	/*set correct initial date rate for each mac_id */
-	hal_data->INIDATA_RATE[psta->cmn.mac_id] = psta->init_rate;
-
-	rtw_phydm_ra_registed(adapt, psta);
+#endif /* CONFIG_IEEE80211W */
+no_mgmt_coalesce:
+	ret = padapter->HalFunc.mgnt_xmit(padapter, pmgntframe);
+	return ret;
 }
 
-void rtw_hal_update_ra_mask(struct sta_info *psta)
+s32	rtw_hal_init_xmit_priv(_adapter *padapter)
 {
-	struct adapter *adapt;
+	return padapter->HalFunc.init_xmit_priv(padapter);
+}
+void	rtw_hal_free_xmit_priv(_adapter *padapter)
+{
+	padapter->HalFunc.free_xmit_priv(padapter);
+}
+
+s32	rtw_hal_init_recv_priv(_adapter *padapter)
+{
+	return padapter->HalFunc.init_recv_priv(padapter);
+}
+void	rtw_hal_free_recv_priv(_adapter *padapter)
+{
+	padapter->HalFunc.free_recv_priv(padapter);
+}
+void rtw_update_ramask(_adapter *padapter, struct sta_info *psta, u32 mac_id, u8 rssi_level)
+{
+	padapter->HalFunc.UpdateRAMaskHandler(padapter, psta, psta->mac_id, rssi_level);
+}
+void rtw_hal_update_ra_mask(struct sta_info *psta, u8 rssi_level)
+{
+	_adapter *padapter;
+	struct mlme_priv *pmlmepriv;
 
 	if (!psta)
 		return;
 
-	adapt = psta->adapt;
-	rtw_sta_ra_registed(adapt, psta);
+	padapter = psta->padapter;
+
+	pmlmepriv = &(padapter->mlmepriv);
+
+	if (check_fwstate(pmlmepriv, WIFI_AP_STATE) == _TRUE)
+		add_RATid(padapter, psta, rssi_level);
+	else {
+		psta->raid = rtw_hal_networktype_to_raid(padapter, psta);
+		rtw_update_ramask(padapter, psta, psta->mac_id, rssi_level);
+	}
 }
 
 /*	Start specifical interface thread		*/
-void	rtw_hal_start_thread(struct adapter *adapt)
+void	rtw_hal_start_thread(_adapter *padapter)
 {
+#if defined(CONFIG_SDIO_HCI) || defined(CONFIG_GSPI_HCI)
+#ifndef CONFIG_SDIO_TX_TASKLET
+	padapter->HalFunc.run_thread(padapter);
+#endif
+#endif
 }
 /*	Start specifical interface thread		*/
-void	rtw_hal_stop_thread(struct adapter *adapt)
+void	rtw_hal_stop_thread(_adapter *padapter)
 {
+#if defined(CONFIG_SDIO_HCI) || defined(CONFIG_GSPI_HCI)
+#ifndef CONFIG_SDIO_TX_TASKLET
+
+	padapter->HalFunc.cancel_thread(padapter);
+
+#endif
+#endif
 }
 
-u32	rtw_hal_read_bbreg(struct adapter *adapt, u32 RegAddr, u32 BitMask)
+u32	rtw_hal_read_bbreg(_adapter *padapter, u32 RegAddr, u32 BitMask)
 {
 	u32 data = 0;
-	if (adapt->hal_func.read_bbreg)
-		data = adapt->hal_func.read_bbreg(adapt, RegAddr, BitMask);
+	if (padapter->HalFunc.read_bbreg)
+		data = padapter->HalFunc.read_bbreg(padapter, RegAddr, BitMask);
 	return data;
 }
-void	rtw_hal_write_bbreg(struct adapter *adapt, u32 RegAddr, u32 BitMask, u32 Data)
+void	rtw_hal_write_bbreg(_adapter *padapter, u32 RegAddr, u32 BitMask, u32 Data)
 {
-	if (adapt->hal_func.write_bbreg)
-		adapt->hal_func.write_bbreg(adapt, RegAddr, BitMask, Data);
+	if (padapter->HalFunc.write_bbreg)
+		padapter->HalFunc.write_bbreg(padapter, RegAddr, BitMask, Data);
 }
 
-u32 rtw_hal_read_rfreg(struct adapter *adapt, enum rf_path eRFPath, u32 RegAddr, u32 BitMask)
+u32 rtw_hal_read_rfreg(_adapter *padapter, u32 eRFPath, u32 RegAddr, u32 BitMask)
 {
 	u32 data = 0;
 
-	if (adapt->hal_func.read_rfreg) {
-		data = adapt->hal_func.read_rfreg(adapt, eRFPath, RegAddr, BitMask);
+	if (padapter->HalFunc.read_rfreg) {
+		data = padapter->HalFunc.read_rfreg(padapter, eRFPath, RegAddr, BitMask);
 
 		if (match_rf_read_sniff_ranges(eRFPath, RegAddr, BitMask)) {
 			RTW_INFO("DBG_IO rtw_hal_read_rfreg(%u, 0x%04x, 0x%08x) read:0x%08x(0x%08x)\n"
@@ -436,78 +493,193 @@ u32 rtw_hal_read_rfreg(struct adapter *adapt, enum rf_path eRFPath, u32 RegAddr,
 	return data;
 }
 
-void rtw_hal_write_rfreg(struct adapter *adapt, enum rf_path eRFPath, u32 RegAddr, u32 BitMask, u32 Data)
+void rtw_hal_write_rfreg(_adapter *padapter, u32 eRFPath, u32 RegAddr, u32 BitMask, u32 Data)
 {
-	if (adapt->hal_func.write_rfreg) {
+	if (padapter->HalFunc.write_rfreg) {
 
 		if (match_rf_write_sniff_ranges(eRFPath, RegAddr, BitMask)) {
 			RTW_INFO("DBG_IO rtw_hal_write_rfreg(%u, 0x%04x, 0x%08x) write:0x%08x(0x%08x)\n"
 				, eRFPath, RegAddr, BitMask, (Data << PHY_CalculateBitShift(BitMask)), Data);
 		}
 
-		adapt->hal_func.write_rfreg(adapt, eRFPath, RegAddr, BitMask, Data);
+		padapter->HalFunc.write_rfreg(padapter, eRFPath, RegAddr, BitMask, Data);
+
+#ifdef CONFIG_PCI_HCI
+		if (!IS_HARDWARE_TYPE_JAGUAR_AND_JAGUAR2(padapter)) /*For N-Series IC, suggest by Jenyu*/
+			rtw_udelay_os(2);
+#endif
 	}
 }
 
-void	rtw_hal_set_chnl_bw(struct adapter *adapt, u8 channel, enum channel_width Bandwidth, u8 Offset40, u8 Offset80)
+#if defined(CONFIG_PCI_HCI)
+s32	rtw_hal_interrupt_handler(_adapter *padapter)
 {
-	struct hal_com_data *	pHalData = GET_HAL_DATA(adapt);
+	s32 ret = _FAIL;
+	ret = padapter->HalFunc.interrupt_handler(padapter);
+	return ret;
+}
+#endif
+#if defined(CONFIG_USB_HCI) && defined(CONFIG_SUPPORT_USB_INT)
+void	rtw_hal_interrupt_handler(_adapter *padapter, u16 pkt_len, u8 *pbuf)
+{
+	padapter->HalFunc.interrupt_handler(padapter, pkt_len, pbuf);
+}
+#endif
+
+void	rtw_hal_set_chnl_bw(_adapter *padapter, u8 channel, CHANNEL_WIDTH Bandwidth, u8 Offset40, u8 Offset80)
+{
+	PHAL_DATA_TYPE	pHalData = GET_HAL_DATA(padapter);
+	PDM_ODM_T		pDM_Odm = &(pHalData->odmpriv);
+	u8 cch_160 = Bandwidth == CHANNEL_WIDTH_160 ? channel : 0;
 	u8 cch_80 = Bandwidth == CHANNEL_WIDTH_80 ? channel : 0;
 	u8 cch_40 = Bandwidth == CHANNEL_WIDTH_40 ? channel : 0;
 	u8 cch_20 = Bandwidth == CHANNEL_WIDTH_20 ? channel : 0;
 
-	if (rtw_phydm_is_iqk_in_progress(adapt))
+	ODM_AcquireSpinLock(pDM_Odm, RT_IQK_SPINLOCK);
+	if (pDM_Odm->RFCalibrateInfo.bIQKInProgress == _TRUE)
 		RTW_ERR("%s, %d, IQK may race condition\n", __func__, __LINE__);
-	if (cch_80 != 0)
-		cch_40 = rtw_get_scch_by_cch_offset(cch_80, CHANNEL_WIDTH_80, Offset80);
-	if (cch_40 != 0)
-		cch_20 = rtw_get_scch_by_cch_offset(cch_40, CHANNEL_WIDTH_40, Offset40);
+	ODM_ReleaseSpinLock(pDM_Odm, RT_IQK_SPINLOCK);
+
+	/* MP mode channel don't use secondary channel */
+	if (rtw_mi_mp_mode_check(padapter) == _FALSE) {
+		#if 0
+		if (cch_160 != 0)
+			cch_80 = rtw_get_scch_by_cch_offset(cch_160, CHANNEL_WIDTH_160, Offset80);
+		#endif
+		if (cch_80 != 0)
+			cch_40 = rtw_get_scch_by_cch_offset(cch_80, CHANNEL_WIDTH_80, Offset80);
+		if (cch_40 != 0)
+			cch_20 = rtw_get_scch_by_cch_offset(cch_40, CHANNEL_WIDTH_40, Offset40);
+	}
+
 	pHalData->cch_80 = cch_80;
 	pHalData->cch_40 = cch_40;
 	pHalData->cch_20 = cch_20;
 
-	adapt->hal_func.set_chnl_bw_handler(adapt, channel, Bandwidth, Offset40, Offset80);
+	if (0)
+		RTW_INFO("%s cch:%u, %s, offset40:%u, offset80:%u (%u, %u, %u)\n", __func__
+			, channel, ch_width_str(Bandwidth), Offset40, Offset80
+			, pHalData->cch_80, pHalData->cch_40, pHalData->cch_20);
+
+	padapter->HalFunc.set_chnl_bw_handler(padapter, channel, Bandwidth, Offset40, Offset80);
 }
 
-void	rtw_hal_set_tx_power_level(struct adapter *adapt, u8 channel)
+void	rtw_hal_set_tx_power_level(_adapter *padapter, u8 channel)
 {
-	if (adapt->hal_func.set_tx_power_level_handler)
-		adapt->hal_func.set_tx_power_level_handler(adapt, channel);
+	if (padapter->HalFunc.set_tx_power_level_handler)
+		padapter->HalFunc.set_tx_power_level_handler(padapter, channel);
 }
 
-void	rtw_hal_get_tx_power_level(struct adapter *adapt, int *powerlevel)
+void	rtw_hal_get_tx_power_level(_adapter *padapter, s32 *powerlevel)
 {
-	if (adapt->hal_func.get_tx_power_level_handler)
-		adapt->hal_func.get_tx_power_level_handler(adapt, powerlevel);
+	if (padapter->HalFunc.get_tx_power_level_handler)
+		padapter->HalFunc.get_tx_power_level_handler(padapter, powerlevel);
 }
 
-void	rtw_hal_dm_watchdog(struct adapter *adapt)
+void	rtw_hal_dm_watchdog(_adapter *padapter)
 {
+#ifdef CONFIG_MCC_MODE
+	if (MCC_EN(padapter)) {
+		if (rtw_hal_check_mcc_status(padapter, MCC_STATUS_DOING_MCC))
+			return;
+	}
+#endif /* CONFIG_MCC_MODE */
 
-	rtw_hal_turbo_edca(adapt);
-	adapt->hal_func.hal_dm_watchdog(adapt);
+	padapter->HalFunc.hal_dm_watchdog(padapter);
 
-#ifdef CONFIG_PCI_DYNAMIC_ASPM
-	rtw_pci_aspm_config_dynamic_l1_ilde_time(adapt);
+}
+
+#ifdef CONFIG_LPS_LCLK_WD_TIMER
+void	rtw_hal_dm_watchdog_in_lps(_adapter *padapter)
+{
+#if defined(CONFIG_CONCURRENT_MODE)
+	if (padapter->hw_port != HW_PORT0)
+		return;
 #endif
+
+	if (adapter_to_pwrctl(padapter)->bFwCurrentInPSMode == _TRUE) {
+		padapter->HalFunc.hal_dm_watchdog_in_lps(padapter);/* this fuction caller is in interrupt context					 */
+	}
+}
+#endif
+
+void rtw_hal_bcn_related_reg_setting(_adapter *padapter)
+{
+	padapter->HalFunc.SetBeaconRelatedRegistersHandler(padapter);
 }
 
-void rtw_hal_bcn_related_reg_setting(struct adapter *adapt)
+#ifdef CONFIG_HOSTAPD_MLME
+s32	rtw_hal_hostap_mgnt_xmit_entry(_adapter *padapter, _pkt *pkt)
 {
-	adapt->hal_func.SetBeaconRelatedRegistersHandler(adapt);
+	if (padapter->HalFunc.hostap_mgnt_xmit_entry)
+		return padapter->HalFunc.hostap_mgnt_xmit_entry(padapter, pkt);
+	return _FAIL;
+}
+#endif /* CONFIG_HOSTAPD_MLME */
+
+#ifdef DBG_CONFIG_ERROR_DETECT
+void	rtw_hal_sreset_init(_adapter *padapter)
+{
+	padapter->HalFunc.sreset_init_value(padapter);
+}
+void rtw_hal_sreset_reset(_adapter *padapter)
+{
+	padapter = GET_PRIMARY_ADAPTER(padapter);
+	padapter->HalFunc.silentreset(padapter);
 }
 
-void rtw_hal_notch_filter(struct adapter *adapter, bool enable)
+void rtw_hal_sreset_reset_value(_adapter *padapter)
 {
-	if (adapter->hal_func.hal_notch_filter)
-		adapter->hal_func.hal_notch_filter(adapter, enable);
+	padapter->HalFunc.sreset_reset_value(padapter);
+}
+
+void rtw_hal_sreset_xmit_status_check(_adapter *padapter)
+{
+	padapter->HalFunc.sreset_xmit_status_check(padapter);
+}
+void rtw_hal_sreset_linked_status_check(_adapter *padapter)
+{
+	padapter->HalFunc.sreset_linked_status_check(padapter);
+}
+u8   rtw_hal_sreset_get_wifi_status(_adapter *padapter)
+{
+	return padapter->HalFunc.sreset_get_wifi_status(padapter);
+}
+
+bool rtw_hal_sreset_inprogress(_adapter *padapter)
+{
+	padapter = GET_PRIMARY_ADAPTER(padapter);
+	return padapter->HalFunc.sreset_inprogress(padapter);
+}
+#endif /* DBG_CONFIG_ERROR_DETECT */
+
+#ifdef CONFIG_IOL
+int rtw_hal_iol_cmd(ADAPTER *adapter, struct xmit_frame *xmit_frame, u32 max_wating_ms, u32 bndy_cnt)
+{
+	if (adapter->HalFunc.IOL_exec_cmds_sync)
+		return adapter->HalFunc.IOL_exec_cmds_sync(adapter, xmit_frame, max_wating_ms, bndy_cnt);
+	return _FAIL;
+}
+#endif
+
+#ifdef CONFIG_XMIT_THREAD_MODE
+s32 rtw_hal_xmit_thread_handler(_adapter *padapter)
+{
+	return padapter->HalFunc.xmit_thread_handler(padapter);
+}
+#endif
+
+void rtw_hal_notch_filter(_adapter *adapter, bool enable)
+{
+	if (adapter->HalFunc.hal_notch_filter)
+		adapter->HalFunc.hal_notch_filter(adapter, enable);
 }
 
 #ifdef CONFIG_FW_C2H_REG
-inline bool rtw_hal_c2h_valid(struct adapter *adapter, u8 *buf)
+inline bool rtw_hal_c2h_valid(_adapter *adapter, u8 *buf)
 {
-	struct hal_com_data *HalData = GET_HAL_DATA(adapter);
-	struct hal_version *hal_ver = &HalData->version_id;
+	HAL_DATA_TYPE *HalData = GET_HAL_DATA(adapter);
+	HAL_VERSION *hal_ver = &HalData->VersionID;
 	bool ret = _FAIL;
 
 	ret = C2H_ID_88XX(buf) || C2H_PLEN_88XX(buf);
@@ -515,21 +687,21 @@ inline bool rtw_hal_c2h_valid(struct adapter *adapter, u8 *buf)
 	return ret;
 }
 
-inline int rtw_hal_c2h_evt_read(struct adapter *adapter, u8 *buf)
+inline s32 rtw_hal_c2h_evt_read(_adapter *adapter, u8 *buf)
 {
-	struct hal_com_data *HalData = GET_HAL_DATA(adapter);
-	struct hal_version *hal_ver = &HalData->version_id;
-	int ret = _FAIL;
+	HAL_DATA_TYPE *HalData = GET_HAL_DATA(adapter);
+	HAL_VERSION *hal_ver = &HalData->VersionID;
+	s32 ret = _FAIL;
 
 	ret = c2h_evt_read_88xx(adapter, buf);
 
 	return ret;
 }
 
-bool rtw_hal_c2h_reg_hdr_parse(struct adapter *adapter, u8 *buf, u8 *id, u8 *seq, u8 *plen, u8 **payload)
+bool rtw_hal_c2h_reg_hdr_parse(_adapter *adapter, u8 *buf, u8 *id, u8 *seq, u8 *plen, u8 **payload)
 {
-	struct hal_com_data *HalData = GET_HAL_DATA(adapter);
-	struct hal_version *hal_ver = &HalData->version_id;
+	HAL_DATA_TYPE *HalData = GET_HAL_DATA(adapter);
+	HAL_VERSION *hal_ver = &HalData->VersionID;
 	bool ret = _FAIL;
 
 	*id = C2H_ID_88XX(buf);
@@ -542,12 +714,16 @@ bool rtw_hal_c2h_reg_hdr_parse(struct adapter *adapter, u8 *buf, u8 *id, u8 *seq
 }
 #endif /* CONFIG_FW_C2H_REG */
 
-bool rtw_hal_c2h_pkt_hdr_parse(struct adapter *adapter, u8 *buf, u16 len, u8 *id, u8 *seq, u8 *plen, u8 **payload)
+#ifdef CONFIG_FW_C2H_PKT
+bool rtw_hal_c2h_pkt_hdr_parse(_adapter *adapter, u8 *buf, u16 len, u8 *id, u8 *seq, u8 *plen, u8 **payload)
 {
+	HAL_DATA_TYPE *HalData = GET_HAL_DATA(adapter);
+	HAL_VERSION *hal_ver = &HalData->VersionID;
 	bool ret = _FAIL;
 
 	if (!buf || len > 256 || len < 3)
 		goto exit;
+
 	*id = C2H_ID_88XX(buf);
 	*seq = C2H_SEQ_88XX(buf);
 	*plen = len - 2;
@@ -557,75 +733,117 @@ bool rtw_hal_c2h_pkt_hdr_parse(struct adapter *adapter, u8 *buf, u16 len, u8 *id
 exit:
 	return ret;
 }
+#endif /* CONFIG_FW_C2H_PKT */
 
-int c2h_handler(struct adapter *adapter, u8 id, u8 seq, u8 plen, u8 *payload)
+#if defined(CONFIG_MP_INCLUDED) && defined(CONFIG_RTL8723B)
+#include <rtw_bt_mp.h> /* for MPTBT_FwC2hBtMpCtrl */
+#endif
+s32 c2h_handler(_adapter *adapter, u8 id, u8 seq, u8 plen, u8 *payload)
 {
+	HAL_DATA_TYPE *hal_data = GET_HAL_DATA(adapter);
+	DM_ODM_T *odm = &hal_data->odmpriv;
 	u8 sub_id = 0;
-	int ret = _SUCCESS;
+	s32 ret = _SUCCESS;
 
 	switch (id) {
+	case C2H_DBG:
+		RTW_INFO_DUMP("C2H_DBG: ", payload, plen);
+		break;
 	case C2H_FW_SCAN_COMPLETE:
 		RTW_INFO("[C2H], FW Scan Complete\n");
 		break;
+
+#ifdef CONFIG_BT_COEXIST
 	case C2H_BT_INFO:
 		rtw_btcoex_BtInfoNotify(adapter, plen, payload);
 		break;
 	case C2H_BT_MP_INFO:
+		#if defined(CONFIG_MP_INCLUDED) && defined(CONFIG_RTL8723B)
+		MPTBT_FwC2hBtMpCtrl(adapter, payload, plen);
+		#endif
 		rtw_btcoex_BtMpRptNotify(adapter, plen, payload);
 		break;
 	case C2H_MAILBOX_STATUS:
-		RTW_DBG_DUMP("C2H_MAILBOX_STATUS: ", payload, plen);
+		RTW_INFO_DUMP("C2H_MAILBOX_STATUS: ", payload, plen);
 		break;
-	case C2H_WLAN_INFO:
-		rtw_btcoex_WlFwDbgInfoNotify(adapter, payload, plen);
-		break;
+#endif /* CONFIG_BT_COEXIST */
+
 	case C2H_IQK_FINISH:
 		c2h_iqk_offload(adapter, payload, plen);
 		break;
+
+#if defined(CONFIG_TDLS) && defined(CONFIG_TDLS_CH_SW)
+	case C2H_FW_CHNL_SWITCH_COMPLETE:
+		rtw_tdls_chsw_oper_done(adapter);
+		break;
+	case C2H_BCN_EARLY_RPT:
+		rtw_tdls_ch_sw_back_to_base_chnl(adapter);
+		break;
+#endif
+
+#ifdef CONFIG_MCC_MODE
+	case C2H_MCC:
+		rtw_hal_mcc_c2h_handler(adapter, plen, payload);
+		break;
+#endif
+
+#ifdef CONFIG_RTW_MAC_HIDDEN_RPT
 	case C2H_MAC_HIDDEN_RPT:
 		c2h_mac_hidden_rpt_hdl(adapter, payload, plen);
 		break;
 	case C2H_MAC_HIDDEN_RPT_2:
 		c2h_mac_hidden_rpt_2_hdl(adapter, payload, plen);
 		break;
+#endif
+
 	case C2H_DEFEATURE_DBG:
 		c2h_defeature_dbg_hdl(adapter, payload, plen);
 		break;
+
+#ifdef CONFIG_RTW_CUSTOMER_STR
 	case C2H_CUSTOMER_STR_RPT:
 		c2h_customer_str_rpt_hdl(adapter, payload, plen);
 		break;
 	case C2H_CUSTOMER_STR_RPT_2:
 		c2h_customer_str_rpt_2_hdl(adapter, payload, plen);
 		break;
+#endif
+
 	case C2H_EXTEND:
 		sub_id = payload[0];
 		__attribute__((__fallthrough__));
+		/* no handle, goto default */
+
 	default:
-		if (!phydm_c2H_content_parsing(adapter_to_phydm(adapter), id, plen, payload))
+		if (phydm_c2H_content_parsing(odm, id, plen, payload) != TRUE)
 			ret = _FAIL;
 		break;
 	}
+
+exit:
 	if (ret != _SUCCESS) {
 		if (id == C2H_EXTEND)
 			RTW_WARN("%s: unknown C2H(0x%02x, 0x%02x)\n", __func__, id, sub_id);
 		else
 			RTW_WARN("%s: unknown C2H(0x%02x)\n", __func__, id);
 	}
+
 	return ret;
 }
 
-int rtw_hal_c2h_handler(struct adapter *adapter, u8 id, u8 seq, u8 plen, u8 *payload)
+#ifndef RTW_HALMAC
+s32 rtw_hal_c2h_handler(_adapter *adapter, u8 id, u8 seq, u8 plen, u8 *payload)
 {
-	int ret = _FAIL;
+	s32 ret = _FAIL;
 
-	ret = adapter->hal_func.c2h_handler(adapter, id, seq, plen, payload);
+	ret = adapter->HalFunc.c2h_handler(adapter, id, seq, plen, payload);
 	if (ret != _SUCCESS)
 		ret = c2h_handler(adapter, id, seq, plen, payload);
 
 	return ret;
 }
 
-int rtw_hal_c2h_id_handle_directly(struct adapter *adapter, u8 id, u8 seq, u8 plen, u8 *payload)
+s32 rtw_hal_c2h_id_handle_directly(_adapter *adapter, u8 id, u8 seq, u8 plen, u8 *payload)
 {
 	switch (id) {
 	case C2H_CCX_TX_RPT:
@@ -634,376 +852,446 @@ int rtw_hal_c2h_id_handle_directly(struct adapter *adapter, u8 id, u8 seq, u8 pl
 	case C2H_IQK_FINISH:
 	case C2H_MCC:
 	case C2H_BCN_EARLY_RPT:
-	case C2H_AP_REQ_TXRPT:
-	case C2H_SPC_STAT:
-		return true;
+		return _TRUE;
 	default:
-		return false;
+		return _FALSE;
 	}
 }
+#endif /* !RTW_HALMAC */
 
-int rtw_hal_is_disable_sw_channel_plan(struct adapter * adapt)
+s32 rtw_hal_is_disable_sw_channel_plan(PADAPTER padapter)
 {
-	return GET_HAL_DATA(adapt)->bDisableSWChannelPlan;
+	return GET_HAL_DATA(padapter)->bDisableSWChannelPlan;
 }
 
-static int _rtw_hal_macid_sleep(struct adapter *adapter, u8 macid, u8 sleep)
+s32 rtw_hal_macid_sleep(PADAPTER padapter, u8 macid)
 {
-	struct macid_ctl_t *macid_ctl = adapter_to_macidctl(adapter);
-	u16 reg_sleep;
-	u8 bit_shift;
-	u32 val32;
-	int ret = _FAIL;
+	struct dvobj_priv *dvobj = adapter_to_dvobj(padapter);
+	struct macid_ctl_t *macid_ctl = dvobj_to_macidctl(dvobj);
+	u8 support;
+
+	support = _FALSE;
+	rtw_hal_get_def_var(padapter, HAL_DEF_MACID_SLEEP, &support);
+	if (_FALSE == support)
+		return _FAIL;
 
 	if (macid >= macid_ctl->num) {
-		RTW_ERR(ADPT_FMT" %s invalid macid(%u)\n"
-			, ADPT_ARG(adapter), sleep ? "sleep" : "wakeup" , macid);
-		goto exit;
+		RTW_ERR(FUNC_ADPT_FMT": Invalid macid(%u)\n",
+			FUNC_ADPT_ARG(padapter), macid);
+		return _FAIL;
 	}
 
-	if (macid < 32) {
-		reg_sleep = macid_ctl->reg_sleep_m0;
-		bit_shift = macid;
-	#if (MACID_NUM_SW_LIMIT > 32)
-	} else if (macid < 64) {
-		reg_sleep = macid_ctl->reg_sleep_m1;
-		bit_shift = macid - 32;
-	#endif
-	#if (MACID_NUM_SW_LIMIT > 64)
-	} else if (macid < 96) {
-		reg_sleep = macid_ctl->reg_sleep_m2;
-		bit_shift = macid - 64;
-	#endif
-	#if (MACID_NUM_SW_LIMIT > 96)
-	} else if (macid < 128) {
-		reg_sleep = macid_ctl->reg_sleep_m3;
-		bit_shift = macid - 96;
-	#endif
-	} else {
-		rtw_warn_on(1);
-		goto exit;
-	}
-
-	if (!reg_sleep) {
-		rtw_warn_on(1);
-		goto exit;
-	}
-
-	val32 = rtw_read32(adapter, reg_sleep);
-	RTW_INFO(ADPT_FMT" %s macid=%d, ori reg_0x%03x=0x%08x\n"
-		, ADPT_ARG(adapter), sleep ? "sleep" : "wakeup"
-		, macid, reg_sleep, val32);
-
-	ret = _SUCCESS;
-
-	if (sleep) {
-		if (val32 & BIT(bit_shift))
-			goto exit;
-		val32 |= BIT(bit_shift);
-	} else {
-		if (!(val32 & BIT(bit_shift)))
-			goto exit;
-		val32 &= ~BIT(bit_shift);
-	}
-
-	rtw_write32(adapter, reg_sleep, val32);
-
-exit:
-	return ret;
-}
-
-inline int rtw_hal_macid_sleep(struct adapter *adapter, u8 macid)
-{
-	return _rtw_hal_macid_sleep(adapter, macid, 1);
-}
-
-inline int rtw_hal_macid_wakeup(struct adapter *adapter, u8 macid)
-{
-	return _rtw_hal_macid_sleep(adapter, macid, 0);
-}
-
-static int _rtw_hal_macid_bmp_sleep(struct adapter *adapter, struct macid_bmp *bmp, u8 sleep)
-{
-	struct macid_ctl_t *macid_ctl = adapter_to_macidctl(adapter);
-	u16 reg_sleep;
-	u32 *m = &bmp->m0;
-	u8 mid = 0;
-	u32 val32;
-
-	do {
-		if (*m == 0)
-			goto move_next;
-
-		if (mid == 0)
-			reg_sleep = macid_ctl->reg_sleep_m0;
-		#if (MACID_NUM_SW_LIMIT > 32)
-		else if (mid == 1)
-			reg_sleep = macid_ctl->reg_sleep_m1;
-		#endif
-		#if (MACID_NUM_SW_LIMIT > 64)
-		else if (mid == 2)
-			reg_sleep = macid_ctl->reg_sleep_m2;
-		#endif
-		#if (MACID_NUM_SW_LIMIT > 96)
-		else if (mid == 3)
-			reg_sleep = macid_ctl->reg_sleep_m3;
-		#endif
-		else {
-			rtw_warn_on(1);
-			break;
-		}
-
-		if (!reg_sleep) {
-			rtw_warn_on(1);
-			break;
-		}
-
-		val32 = rtw_read32(adapter, reg_sleep);
-		RTW_INFO(ADPT_FMT" %s m%u=0x%08x, ori reg_0x%03x=0x%08x\n"
-			, ADPT_ARG(adapter), sleep ? "sleep" : "wakeup"
-			, mid, *m, reg_sleep, val32);
-
-		if (sleep) {
-			if ((val32 & *m) == *m)
-				goto move_next;
-			val32 |= *m;
-		} else {
-			if ((val32 & *m) == 0)
-				goto move_next;
-			val32 &= ~(*m);
-		}
-
-		rtw_write32(adapter, reg_sleep, val32);
-
-move_next:
-		m++;
-		mid++;
-	} while (mid * 32 < MACID_NUM_SW_LIMIT);
+	rtw_hal_set_hwreg(padapter, HW_VAR_MACID_SLEEP, &macid);
 
 	return _SUCCESS;
 }
 
-inline int rtw_hal_macid_sleep_all_used(struct adapter *adapter)
+s32 rtw_hal_macid_wakeup(PADAPTER padapter, u8 macid)
 {
-	struct macid_ctl_t *macid_ctl = adapter_to_macidctl(adapter);
+	struct dvobj_priv *dvobj = adapter_to_dvobj(padapter);
+	struct macid_ctl_t *macid_ctl = dvobj_to_macidctl(dvobj);
+	u8 support;
 
-	return _rtw_hal_macid_bmp_sleep(adapter, &macid_ctl->used, 1);
+	support = _FALSE;
+	rtw_hal_get_def_var(padapter, HAL_DEF_MACID_SLEEP, &support);
+	if (_FALSE == support)
+		return _FAIL;
+
+	if (macid >= macid_ctl->num) {
+		RTW_ERR(FUNC_ADPT_FMT": Invalid macid(%u)\n",
+			FUNC_ADPT_ARG(padapter), macid);
+		return _FAIL;
+	}
+
+	rtw_hal_set_hwreg(padapter, HW_VAR_MACID_WAKEUP, &macid);
+
+	return _SUCCESS;
 }
 
-inline int rtw_hal_macid_wakeup_all_used(struct adapter *adapter)
+s32 rtw_hal_fill_h2c_cmd(PADAPTER padapter, u8 ElementID, u32 CmdLen, u8 *pCmdBuffer)
 {
-	struct macid_ctl_t *macid_ctl = adapter_to_macidctl(adapter);
+	_adapter *pri_adapter = GET_PRIMARY_ADAPTER(padapter);
 
-	return _rtw_hal_macid_bmp_sleep(adapter, &macid_ctl->used, 0);
-}
-
-int rtw_hal_fill_h2c_cmd(struct adapter * adapt, u8 ElementID, u32 CmdLen, u8 *pCmdBuffer)
-{
-	struct adapter *pri_adapter = GET_PRIMARY_ADAPTER(adapt);
-
-	if (GET_HAL_DATA(pri_adapter)->bFWReady)
-		return adapt->hal_func.fill_h2c_cmd(adapt, ElementID, CmdLen, pCmdBuffer);
-	else if (adapt->registrypriv.mp_mode == 0)
+	if (pri_adapter->bFWReady == _TRUE)
+		return padapter->HalFunc.fill_h2c_cmd(padapter, ElementID, CmdLen, pCmdBuffer);
+	else if (padapter->registrypriv.mp_mode == 0)
 		RTW_PRINT(FUNC_ADPT_FMT" FW doesn't exit when no MP mode, by pass H2C id:0x%02x\n"
-			  , FUNC_ADPT_ARG(adapt), ElementID);
+			  , FUNC_ADPT_ARG(padapter), ElementID);
 	return _FAIL;
 }
 
-void rtw_hal_fill_fake_txdesc(struct adapter *adapt, u8 *pDesc, u32 BufferLen,
+void rtw_hal_fill_fake_txdesc(_adapter *padapter, u8 *pDesc, u32 BufferLen,
 			      u8 IsPsPoll, u8 IsBTQosNull, u8 bDataFrame)
 {
-	adapt->hal_func.fill_fake_txdesc(adapt, pDesc, BufferLen, IsPsPoll, IsBTQosNull, bDataFrame);
+	padapter->HalFunc.fill_fake_txdesc(padapter, pDesc, BufferLen, IsPsPoll, IsBTQosNull, bDataFrame);
 
 }
-
-u8 rtw_hal_get_txbuff_rsvd_page_num(struct adapter *adapter, bool wowlan)
+u8 rtw_hal_get_txbuff_rsvd_page_num(_adapter *adapter, bool wowlan)
 {
-	u8 num = 0;
-
-
-	if (adapter->hal_func.hal_get_tx_buff_rsvd_page_num) {
-		num = adapter->hal_func.hal_get_tx_buff_rsvd_page_num(adapter, wowlan);
-	}
-
-	return num;
+	return adapter->HalFunc.hal_get_tx_buff_rsvd_page_num(adapter, wowlan);
 }
 
-void rtw_hal_fw_correct_bcn(struct adapter *adapt)
+#ifdef CONFIG_GPIO_API
+void rtw_hal_update_hisr_hsisr_ind(_adapter *padapter, u32 flag)
 {
-	if (adapt->hal_func.fw_correct_bcn)
-		adapt->hal_func.fw_correct_bcn(adapt);
+	if (padapter->HalFunc.update_hisr_hsisr_ind)
+		padapter->HalFunc.update_hisr_hsisr_ind(padapter, flag);
 }
 
-void rtw_hal_set_tx_power_index(struct adapter * adapt, u32 powerindex, enum rf_path rfpath, u8 rate)
+int rtw_hal_gpio_func_check(_adapter *padapter, u8 gpio_num)
 {
-	return adapt->hal_func.set_tx_power_index_handler(adapt, powerindex, rfpath, rate);
+	int ret = _SUCCESS;
+
+	if (padapter->HalFunc.hal_gpio_func_check)
+		ret = padapter->HalFunc.hal_gpio_func_check(padapter, gpio_num);
+
+	return ret;
 }
 
-u8 rtw_hal_get_tx_power_index(struct adapter * adapt, enum rf_path rfpath, u8 rate, u8 bandwidth, u8 channel, struct txpwr_idx_comp *tic)
+void rtw_hal_gpio_multi_func_reset(_adapter *padapter, u8 gpio_num)
 {
-	return adapt->hal_func.get_tx_power_index_handler(adapt, rfpath, rate, bandwidth, channel, tic);
+	if (padapter->HalFunc.hal_gpio_multi_func_reset)
+		padapter->HalFunc.hal_gpio_multi_func_reset(padapter, gpio_num);
 }
+#endif
+
+void rtw_hal_fw_correct_bcn(_adapter *padapter)
+{
+	if (padapter->HalFunc.fw_correct_bcn)
+		padapter->HalFunc.fw_correct_bcn(padapter);
+}
+
+void rtw_hal_set_tx_power_index(PADAPTER padapter, u32 powerindex, u8 rfpath, u8 rate)
+{
+	return padapter->HalFunc.set_tx_power_index_handler(padapter, powerindex, rfpath, rate);
+}
+
+u8 rtw_hal_get_tx_power_index(PADAPTER padapter, u8 rfpath, u8 rate, u8 bandwidth, u8 channel, struct txpwr_idx_comp *tic)
+{
+	return padapter->HalFunc.get_tx_power_index_handler(padapter, rfpath, rate, bandwidth, channel, tic);
+}
+
+#ifdef RTW_HALMAC
+/*
+ * Description:
+ *	Initialize MAC registers
+ *
+ * Return:
+ *	_TRUE	success
+ *	_FALSE	fail
+ */
+u8 rtw_hal_init_mac_register(PADAPTER adapter)
+{
+	return adapter->HalFunc.init_mac_register(adapter);
+}
+
+/*
+ * Description:
+ *	Initialize PHY(BB/RF) related functions
+ *
+ * Return:
+ *	_TRUE	success
+ *	_FALSE	fail
+ */
+u8 rtw_hal_init_phy(PADAPTER adapter)
+{
+	return adapter->HalFunc.init_phy(adapter);
+}
+#endif /* RTW_HALMAC */
 
 #define rtw_hal_error_msg(ops_fun)		\
-	RTW_PRINT("### %s - Error : Please hook hal_func.%s ###\n", __func__, ops_fun)
+	RTW_PRINT("### %s - Error : Please hook HalFunc.%s ###\n", __FUNCTION__, ops_fun)
 
-u8 rtw_hal_ops_check(struct adapter *adapt)
+u8 rtw_hal_ops_check(_adapter *padapter)
 {
 	u8 ret = _SUCCESS;
+#if 1
 	/*** initialize section ***/
-	if (!adapt->hal_func.read_chip_version) {
+	if (NULL == padapter->HalFunc.read_chip_version) {
 		rtw_hal_error_msg("read_chip_version");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.init_default_value) {
+	if (NULL == padapter->HalFunc.init_default_value) {
 		rtw_hal_error_msg("init_default_value");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.intf_chip_configure) {
+	if (NULL == padapter->HalFunc.intf_chip_configure) {
 		rtw_hal_error_msg("intf_chip_configure");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.read_adapter_info) {
+	if (NULL == padapter->HalFunc.read_adapter_info) {
 		rtw_hal_error_msg("read_adapter_info");
 		ret = _FAIL;
 	}
 
-	if (!adapt->hal_func.hal_power_on) {
+	if (NULL == padapter->HalFunc.hal_power_on) {
 		rtw_hal_error_msg("hal_power_on");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.hal_power_off) {
+	if (NULL == padapter->HalFunc.hal_power_off) {
 		rtw_hal_error_msg("hal_power_off");
 		ret = _FAIL;
 	}
 
-	if (!adapt->hal_func.hal_init) {
+	if (NULL == padapter->HalFunc.hal_init) {
 		rtw_hal_error_msg("hal_init");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.hal_deinit) {
+	if (NULL == padapter->HalFunc.hal_deinit) {
 		rtw_hal_error_msg("hal_deinit");
 		ret = _FAIL;
 	}
 
 	/*** xmit section ***/
-	if (!adapt->hal_func.init_xmit_priv) {
+	if (NULL == padapter->HalFunc.init_xmit_priv) {
 		rtw_hal_error_msg("init_xmit_priv");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.free_xmit_priv) {
+	if (NULL == padapter->HalFunc.free_xmit_priv) {
 		rtw_hal_error_msg("free_xmit_priv");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.hal_xmit) {
+	if (NULL == padapter->HalFunc.hal_xmit) {
 		rtw_hal_error_msg("hal_xmit");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.mgnt_xmit) {
+	if (NULL == padapter->HalFunc.mgnt_xmit) {
 		rtw_hal_error_msg("mgnt_xmit");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.hal_xmitframe_enqueue) {
+#ifdef CONFIG_XMIT_THREAD_MODE
+	if (NULL == padapter->HalFunc.xmit_thread_handler) {
+		rtw_hal_error_msg("xmit_thread_handler");
+		ret = _FAIL;
+	}
+#endif
+	if (NULL == padapter->HalFunc.hal_xmitframe_enqueue) {
 		rtw_hal_error_msg("hal_xmitframe_enqueue");
 		ret = _FAIL;
 	}
+#if defined(CONFIG_SDIO_HCI) || defined(CONFIG_GSPI_HCI)
+#ifndef CONFIG_SDIO_TX_TASKLET
+	if (NULL == padapter->HalFunc.run_thread) {
+		rtw_hal_error_msg("run_thread");
+		ret = _FAIL;
+	}
+	if (NULL == padapter->HalFunc.cancel_thread) {
+		rtw_hal_error_msg("cancel_thread");
+		ret = _FAIL;
+	}
+#endif
+#endif
+
 	/*** recv section ***/
-	if (!adapt->hal_func.init_recv_priv) {
+	if (NULL == padapter->HalFunc.init_recv_priv) {
 		rtw_hal_error_msg("init_recv_priv");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.free_recv_priv) {
+	if (NULL == padapter->HalFunc.free_recv_priv) {
 		rtw_hal_error_msg("free_recv_priv");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.inirp_init) {
+#if defined(CONFIG_USB_HCI) || defined(CONFIG_PCI_HCI)
+	if (NULL == padapter->HalFunc.inirp_init) {
 		rtw_hal_error_msg("inirp_init");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.inirp_deinit) {
+	if (NULL == padapter->HalFunc.inirp_deinit) {
 		rtw_hal_error_msg("inirp_deinit");
 		ret = _FAIL;
 	}
+#endif /* #if defined(CONFIG_USB_HCI) || defined (CONFIG_PCI_HCI) */
+
+
+	/*** interrupt hdl section ***/
+#if defined(CONFIG_PCI_HCI)
+	if (NULL == padapter->HalFunc.irp_reset) {
+		rtw_hal_error_msg("irp_reset");
+		ret = _FAIL;
+	}
+#endif/*#if defined(CONFIG_PCI_HCI)*/
+#if (defined(CONFIG_PCI_HCI)) || (defined(CONFIG_USB_HCI) && defined(CONFIG_SUPPORT_USB_INT))
+	if (NULL == padapter->HalFunc.interrupt_handler) {
+		rtw_hal_error_msg("interrupt_handler");
+		ret = _FAIL;
+	}
+#endif /*#if (defined(CONFIG_PCI_HCI)) || (defined(CONFIG_USB_HCI) && defined(CONFIG_SUPPORT_USB_INT))*/
+
+#if defined(CONFIG_PCI_HCI) || defined(CONFIG_SDIO_HCI) || defined (CONFIG_GSPI_HCI)
+	if (NULL == padapter->HalFunc.enable_interrupt) {
+		rtw_hal_error_msg("enable_interrupt");
+		ret = _FAIL;
+	}
+	if (NULL == padapter->HalFunc.disable_interrupt) {
+		rtw_hal_error_msg("disable_interrupt");
+		ret = _FAIL;
+	}
+#endif /* defined(CONFIG_PCI_HCI) || defined (CONFIG_SDIO_HCI) || defined (CONFIG_GSPI_HCI) */
+
 
 	/*** DM section ***/
-	if (!adapt->hal_func.dm_init) {
+	if (NULL == padapter->HalFunc.dm_init) {
 		rtw_hal_error_msg("dm_init");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.dm_deinit) {
+	if (NULL == padapter->HalFunc.dm_deinit) {
 		rtw_hal_error_msg("dm_deinit");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.hal_dm_watchdog) {
+	if (NULL == padapter->HalFunc.hal_dm_watchdog) {
 		rtw_hal_error_msg("hal_dm_watchdog");
 		ret = _FAIL;
 	}
+#ifdef CONFIG_LPS_LCLK_WD_TIMER
+	if (NULL == padapter->HalFunc.hal_dm_watchdog_in_lps) {
+		rtw_hal_error_msg("hal_dm_watchdog_in_lps");
+		ret = _FAIL;
+	}
+#endif
 
 	/*** xxx section ***/
-	if (!adapt->hal_func.set_chnl_bw_handler) {
+	if (NULL == padapter->HalFunc.set_chnl_bw_handler) {
 		rtw_hal_error_msg("set_chnl_bw_handler");
 		ret = _FAIL;
 	}
 
-	if (!adapt->hal_func.set_hw_reg_handler) {
-		rtw_hal_error_msg("set_hw_reg_handler");
+	if (NULL == padapter->HalFunc.SetHwRegHandler) {
+		rtw_hal_error_msg("SetHwRegHandler");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.GetHwRegHandler) {
+	if (NULL == padapter->HalFunc.GetHwRegHandler) {
 		rtw_hal_error_msg("GetHwRegHandler");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.get_hal_def_var_handler) {
-		rtw_hal_error_msg("get_hal_def_var_handler");
+	if (NULL == padapter->HalFunc.GetHalDefVarHandler) {
+		rtw_hal_error_msg("GetHalDefVarHandler");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.SetHalDefVarHandler) {
+	if (NULL == padapter->HalFunc.SetHalDefVarHandler) {
 		rtw_hal_error_msg("SetHalDefVarHandler");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.GetHalODMVarHandler) {
+	if (NULL == padapter->HalFunc.GetHalODMVarHandler) {
 		rtw_hal_error_msg("GetHalODMVarHandler");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.SetHalODMVarHandler) {
+	if (NULL == padapter->HalFunc.SetHalODMVarHandler) {
 		rtw_hal_error_msg("SetHalODMVarHandler");
 		ret = _FAIL;
 	}
+	if (NULL == padapter->HalFunc.UpdateRAMaskHandler) {
+		rtw_hal_error_msg("UpdateRAMaskHandler");
+		ret = _FAIL;
+	}
 
-	if (!adapt->hal_func.SetBeaconRelatedRegistersHandler) {
+	if (NULL == padapter->HalFunc.SetBeaconRelatedRegistersHandler) {
 		rtw_hal_error_msg("SetBeaconRelatedRegistersHandler");
 		ret = _FAIL;
 	}
 
-	if (!adapt->hal_func.fill_h2c_cmd) {
+	if (NULL == padapter->HalFunc.fill_h2c_cmd) {
 		rtw_hal_error_msg("fill_h2c_cmd");
 		ret = _FAIL;
 	}
 
-	if (!adapt->hal_func.c2h_handler) {
+#ifdef RTW_HALMAC
+	if (NULL == padapter->HalFunc.hal_mac_c2h_handler) {
+		rtw_hal_error_msg("hal_mac_c2h_handler");
+		ret = _FAIL;
+	}
+#elif !defined(CONFIG_RTL8188E)
+	if (NULL == padapter->HalFunc.c2h_handler) {
 		rtw_hal_error_msg("c2h_handler");
 		ret = _FAIL;
 	}
-	if (!adapt->hal_func.fill_fake_txdesc) {
+#endif
+
+#if defined(CONFIG_LPS) || defined(CONFIG_WOWLAN) || defined(CONFIG_AP_WOWLAN)
+	if (NULL == padapter->HalFunc.fill_fake_txdesc) {
 		rtw_hal_error_msg("fill_fake_txdesc");
 		ret = _FAIL;
 	}
-
-	if (!adapt->hal_func.hal_get_tx_buff_rsvd_page_num) {
+#endif
+	if (NULL == padapter->HalFunc.hal_get_tx_buff_rsvd_page_num) {
 		rtw_hal_error_msg("hal_get_tx_buff_rsvd_page_num");
 		ret = _FAIL;
 	}
 
-	if (!adapt->hal_func.fw_dl) {
+#if defined(CONFIG_WOWLAN) || defined(CONFIG_AP_WOWLAN)
+#if defined(CONFIG_SDIO_HCI) || defined(CONFIG_GSPI_HCI)
+	if (NULL == padapter->HalFunc.clear_interrupt) {
+		rtw_hal_error_msg("clear_interrupt");
+		ret = _FAIL;
+	}
+#endif
+#endif /* CONFIG_WOWLAN */
+
+	if (NULL == padapter->HalFunc.fw_dl) {
 		rtw_hal_error_msg("fw_dl");
 		ret = _FAIL;
 	}
 
-	if (!adapt->hal_func.get_tx_power_index_handler) {
+	if ((IS_HARDWARE_TYPE_8814A(padapter)
+	     || IS_HARDWARE_TYPE_8822BU(padapter) || IS_HARDWARE_TYPE_8822BS(padapter))
+	    && NULL == padapter->HalFunc.fw_correct_bcn) {
+		rtw_hal_error_msg("fw_correct_bcn");
+		ret = _FAIL;
+	}
+
+	if (IS_HARDWARE_TYPE_8822B(padapter) || IS_HARDWARE_TYPE_8821C(padapter)) {
+		if (!padapter->HalFunc.set_tx_power_index_handler) {
+			rtw_hal_error_msg("set_tx_power_index_handler");
+			ret = _FAIL;
+		}
+	}
+
+	if (!padapter->HalFunc.get_tx_power_index_handler) {
 		rtw_hal_error_msg("get_tx_power_index_handler");
 		ret = _FAIL;
 	}
 
 	/*** SReset section ***/
+#ifdef DBG_CONFIG_ERROR_DETECT
+	if (NULL == padapter->HalFunc.sreset_init_value) {
+		rtw_hal_error_msg("sreset_init_value");
+		ret = _FAIL;
+	}
+	if (NULL == padapter->HalFunc.sreset_reset_value) {
+		rtw_hal_error_msg("sreset_reset_value");
+		ret = _FAIL;
+	}
+	if (NULL == padapter->HalFunc.silentreset) {
+		rtw_hal_error_msg("silentreset");
+		ret = _FAIL;
+	}
+	if (NULL == padapter->HalFunc.sreset_xmit_status_check) {
+		rtw_hal_error_msg("sreset_xmit_status_check");
+		ret = _FAIL;
+	}
+	if (NULL == padapter->HalFunc.sreset_linked_status_check) {
+		rtw_hal_error_msg("sreset_linked_status_check");
+		ret = _FAIL;
+	}
+	if (NULL == padapter->HalFunc.sreset_get_wifi_status) {
+		rtw_hal_error_msg("sreset_get_wifi_status");
+		ret = _FAIL;
+	}
+	if (NULL == padapter->HalFunc.sreset_inprogress) {
+		rtw_hal_error_msg("sreset_inprogress");
+		ret = _FAIL;
+	}
+#endif  /* #ifdef DBG_CONFIG_ERROR_DETECT */
+
+#ifdef RTW_HALMAC
+	if (NULL == padapter->HalFunc.init_mac_register) {
+		rtw_hal_error_msg("init_mac_register");
+		ret = _FAIL;
+	}
+	if (NULL == padapter->HalFunc.init_phy) {
+		rtw_hal_error_msg("init_phy");
+		ret = _FAIL;
+	}
+#endif /* RTW_HALMAC */
+#endif
 	return  ret;
 }

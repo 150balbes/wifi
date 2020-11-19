@@ -1,6 +1,22 @@
-/* SPDX-License-Identifier: GPL-2.0 */
-/* Copyright(c) 2007 - 2017 Realtek Corporation */
-
+/******************************************************************************
+ *
+ * Copyright(c) 2007 - 2012 Realtek Corporation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
+ *
+ ******************************************************************************/
 #ifndef __GSPI_OPS_H__
 #define __GSPI_OPS_H__
 
@@ -130,15 +146,40 @@ struct spi_more_data {
 	unsigned long len;
 };
 
-extern void spi_set_chip_endian(struct adapter * adapt);
+#ifdef CONFIG_RTL8188E
+	void rtl8188es_set_hal_ops(PADAPTER padapter);
+	#define set_hal_ops rtl8188es_set_hal_ops
+#endif
+extern void spi_set_chip_endian(PADAPTER padapter);
 extern unsigned int spi_write8_endian(ADAPTER *Adapter, unsigned int addr, unsigned int buf, u32 big);
-extern void spi_set_intf_ops(struct adapter *adapt, struct _io_ops *pops);
-extern void spi_set_chip_endian(struct adapter * adapt);
-extern void InitInterrupt8723ASdio(struct adapter * adapt);
-extern void InitSysInterrupt8723ASdio(struct adapter * adapt);
-extern void EnableInterrupt8723ASdio(struct adapter * adapt);
-extern void DisableInterrupt8723ASdio(struct adapter * adapt);
-extern void spi_int_hdl(struct adapter * adapt);
-extern u8 HalQueryTxBufferStatus8723ASdio(struct adapter * adapt);
+extern void spi_set_intf_ops(_adapter *padapter, struct _io_ops *pops);
+extern void spi_set_chip_endian(PADAPTER padapter);
+extern void InitInterrupt8723ASdio(PADAPTER padapter);
+extern void InitSysInterrupt8723ASdio(PADAPTER padapter);
+extern void EnableInterrupt8723ASdio(PADAPTER padapter);
+extern void DisableInterrupt8723ASdio(PADAPTER padapter);
+extern void spi_int_hdl(PADAPTER padapter);
+extern u8 HalQueryTxBufferStatus8723ASdio(PADAPTER padapter);
+#ifdef CONFIG_RTL8723B
+	extern void InitInterrupt8723BSdio(PADAPTER padapter);
+	extern void InitSysInterrupt8723BSdio(PADAPTER padapter);
+	extern void EnableInterrupt8723BSdio(PADAPTER padapter);
+	extern void DisableInterrupt8723BSdio(PADAPTER padapter);
+	extern u8 HalQueryTxBufferStatus8723BSdio(PADAPTER padapter);
+#endif
+
+#ifdef CONFIG_RTL8188E
+	extern void InitInterrupt8188EGspi(PADAPTER padapter);
+	extern void EnableInterrupt8188EGspi(PADAPTER padapter);
+	extern void DisableInterrupt8188EGspi(PADAPTER padapter);
+	extern void UpdateInterruptMask8188EGspi(PADAPTER padapter, u32 AddMSR, u32 RemoveMSR);
+	extern u8 HalQueryTxBufferStatus8189EGspi(PADAPTER padapter);
+	extern u8 HalQueryTxOQTBufferStatus8189EGspi(PADAPTER padapter);
+	extern void ClearInterrupt8188EGspi(PADAPTER padapter);
+	extern u8 CheckIPSStatus(PADAPTER padapter);
+#endif /* CONFIG_RTL8188E */
+#if defined(CONFIG_WOWLAN) || defined(CONFIG_AP_WOWLAN)
+	extern u8 RecvOnePkt(PADAPTER padapter, u32 size);
+#endif /* CONFIG_WOWLAN */
 
 #endif /* __GSPI_OPS_H__ */

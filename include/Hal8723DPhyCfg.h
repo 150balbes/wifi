@@ -1,6 +1,22 @@
-/* SPDX-License-Identifier: GPL-2.0 */
-/* Copyright(c) 2007 - 2017 Realtek Corporation */
-
+/******************************************************************************
+ *
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
+ *
+ ******************************************************************************/
 #ifndef __INC_HAL8723DPHYCFG_H__
 #define __INC_HAL8723DPHYCFG_H__
 
@@ -22,41 +38,95 @@
 /*------------------------------Define structure End----------------------------*/
 
 /*--------------------------Exported Function prototype---------------------*/
-u32 PHY_QueryBBReg_8723D(struct adapter *Adapter, u32 RegAddr, u32 BitMask);
+u32
+PHY_QueryBBReg_8723D(
+	IN	PADAPTER	Adapter,
+	IN	u32		RegAddr,
+	IN	u32		BitMask
+);
 
-void PHY_SetBBReg_8723D(struct adapter *Adapter, u32 RegAddr, u32 BitMask,
-			u32 Data);
+VOID
+PHY_SetBBReg_8723D(
+	IN	PADAPTER	Adapter,
+	IN	u32		RegAddr,
+	IN	u32		BitMask,
+	IN	u32		Data
+);
 
-u32 PHY_QueryRFReg_8723D(struct adapter *Adapter, enum rf_path eRFPath,
-			 u32 RegAddr, u32 BitMask);
+u32
+PHY_QueryRFReg_8723D(
+	IN	PADAPTER			Adapter,
+	IN	u8				eRFPath,
+	IN	u32				RegAddr,
+	IN	u32				BitMask
+);
 
-void PHY_SetRFReg_8723D(struct adapter *Adapter, enum rf_path eRFPath,
-			u32 RegAddr, u32 BitMask, u32 Data);
+VOID
+PHY_SetRFReg_8723D(
+	IN	PADAPTER			Adapter,
+	IN	u8				eRFPath,
+	IN	u32				RegAddr,
+	IN	u32				BitMask,
+	IN	u32				Data
+);
 
 /* MAC/BB/RF HAL config */
-int PHY_BBConfig8723D(struct adapter *adapt);
+int PHY_BBConfig8723D(PADAPTER	Adapter);
 
-int PHY_RFConfig8723D(struct adapter *adapt);
+int PHY_RFConfig8723D(PADAPTER	Adapter);
 
-int PHY_MACConfig8723D(struct adapter *adapt);
+s32 PHY_MACConfig8723D(PADAPTER padapter);
 
-int PHY_ConfigRFWithParaFile_8723D(struct adapter *adapt, u8 *pFileName,
-				   enum rf_path eRFPath);
-void PHY_SetTxPowerIndex_8723D(struct adapter *Adapter, u32 PowerIndex,
-			       enum rf_path RFPath, u8	Rate);
-u8 PHY_GetTxPowerIndex_8723D(struct adapter *pAdapter, enum rf_path RFPath,
-			     u8 Rate, u8 BandWidth, u8 Channel,
-			     struct txpwr_idx_comp *tic);
+int
+PHY_ConfigRFWithParaFile_8723D(
+	IN	PADAPTER			Adapter,
+	IN	u8				*pFileName,
+	RF_PATH				eRFPath
+);
 
-void PHY_GetTxPowerLevel8723D(struct adapter *Adapter, int *powerlevel);
+VOID
+PHY_SetTxPowerIndex_8723D(
+	IN	PADAPTER			Adapter,
+	IN	u32					PowerIndex,
+	IN	u8					RFPath,
+	IN	u8					Rate
+);
 
-void PHY_SetTxPowerLevel8723D(struct adapter *Adapter, u8 channel);
+u8
+PHY_GetTxPowerIndex_8723D(
+	IN	PADAPTER			pAdapter,
+	IN	u8					RFPath,
+	IN	u8					Rate,
+	IN	u8					BandWidth,
+	IN	u8					Channel,
+	struct txpwr_idx_comp *tic
+);
 
-void PHY_SetSwChnlBWMode8723D(struct adapter *Adapter, u8 channel,
-			      enum channel_width Bandwidth, u8 Offset40,
-			      u8 Offset80);
+VOID
+PHY_GetTxPowerLevel8723D(
+	IN	PADAPTER		Adapter,
+	OUT s32				*powerlevel
+);
 
-void phy_set_rf_path_switch_8723d(struct adapter *pAdapter, bool bMain);
+VOID
+PHY_SetTxPowerLevel8723D(
+	IN	PADAPTER		Adapter,
+	IN	u8			channel
+);
+
+VOID
+PHY_SetSwChnlBWMode8723D(
+	IN	PADAPTER			Adapter,
+	IN	u8					channel,
+	IN	CHANNEL_WIDTH		Bandwidth,
+	IN	u8					Offset40,
+	IN	u8					Offset80
+);
+
+VOID PHY_SetRFPathSwitch_8723D(
+	IN	PADAPTER	pAdapter,
+	IN	BOOLEAN		bMain
+);
 /*--------------------------Exported Function prototype End---------------------*/
 
 #endif

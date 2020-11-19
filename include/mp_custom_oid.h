@@ -1,6 +1,22 @@
-/* SPDX-License-Identifier: GPL-2.0 */
-/* Copyright(c) 2007 - 2017 Realtek Corporation */
-
+/******************************************************************************
+ *
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
+ *
+ ******************************************************************************/
 #ifndef	__CUSTOM_OID_H
 #define __CUSTOM_OID_H
 
@@ -82,7 +98,7 @@
 
 
 /* by Owen for RTL8185 Phy Status Report Utility */
-#define OID_RT_UTILITYfalse_ALARM_COUNTERS				0xFF818580
+#define OID_RT_UTILITY_FALSE_ALARM_COUNTERS				0xFF818580
 #define OID_RT_UTILITY_SELECT_DEBUG_MODE				0xFF818581
 #define OID_RT_UTILITY_SELECT_SUBCARRIER_NUMBER				0xFF818582
 #define OID_RT_UTILITY_GET_RSSI_STATUS					0xFF818583

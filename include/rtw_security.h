@@ -1,6 +1,22 @@
-/* SPDX-License-Identifier: GPL-2.0 */
-/* Copyright(c) 2007 - 2017 Realtek Corporation */
-
+/******************************************************************************
+ *
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
+ *
+ ******************************************************************************/
 #ifndef __RTW_SECURITY_H_
 #define __RTW_SECURITY_H_
 
@@ -11,17 +27,15 @@
 #define _TKIP_WTMIC_		0x3
 #define _AES_				0x4
 #define _WEP104_			0x5
+#define _WEP_WPA_MIXED_	0x07  /* WEP + WPA */
 #define _SMS4_				0x06
-#define _WEP_WPA_MIXED_		0x07 /* WEP + WPA */
+#ifdef CONFIG_IEEE80211W
 #define _BIP_				0x8
-
+#endif /* CONFIG_IEEE80211W */
 /* 802.11W use wrong key */
 #define IEEE80211W_RIGHT_KEY	0x0
 #define IEEE80211W_WRONG_KEY	0x1
 #define IEEE80211W_NO_KEY		0x2
-
-#define CCMPH_2_PN(ch)	((ch) & 0x000000000000ffffL) \
-			| (((ch) & 0xffffffff00000000L) >> 16)
 
 #define is_wep_enc(alg) (((alg) == _WEP40_) || ((alg) == _WEP104_))
 
@@ -41,14 +55,14 @@ const char *security_type_str(u8 value);
 
 #define INVALID_SEC_MAC_CAM_ID	0xFF
 
-enum encryp_protocol {
+typedef enum {
 	ENCRYP_PROTOCOL_OPENSYS,   /* open system */
 	ENCRYP_PROTOCOL_WEP,       /* WEP */
 	ENCRYP_PROTOCOL_WPA,       /* WPA */
 	ENCRYP_PROTOCOL_WPA2,      /* WPA2 */
 	ENCRYP_PROTOCOL_WAPI,      /* WAPI: Not support in this version */
 	ENCRYP_PROTOCOL_MAX
-};
+} ENCRYP_PROTOCOL_E;
 
 
 #ifndef Ndis802_11AuthModeWPA2
@@ -63,7 +77,7 @@ union pn48	{
 
 	u64	val;
 
-#if __LITTLE_ENDIAN
+#ifdef CONFIG_LITTLE_ENDIAN
 
 struct {
 	u8 TSC0;
@@ -76,7 +90,7 @@ struct {
 	u8 TSC7;
 } _byte_;
 
-#else
+#elif defined(CONFIG_BIG_ENDIAN)
 
 struct {
 	u8 TSC7;
@@ -99,14 +113,15 @@ union Keytype {
 };
 
 
-struct rt_pkmid_list {
+typedef struct _RT_PMKID_LIST {
 	u8						bUsed;
 	u8						Bssid[6];
 	u8						PMKID[16];
 	u8						SsidBuf[33];
 	u8						*ssid_octet;
 	u16						ssid_length;
-};
+} RT_PMKID_LIST, *PRT_PMKID_LIST;
+
 
 struct security_priv {
 	u32	  dot11AuthAlgrthm;		/* 802.11 auth, could be open, shared, 8021x and authswitch */
@@ -114,25 +129,25 @@ struct security_priv {
 
 	/* WEP */
 	u32	  dot11PrivacyKeyIndex;	/* this is only valid for legendary wep, 0~3 for key id. (tx key index) */
-	union Keytype dot11DefKey[6];			/* this is only valid for def. key	 */
-	u32	dot11DefKeylen[6];
-	u8	dot11Def_camid[6];
+	union Keytype dot11DefKey[4];			/* this is only valid for def. key	 */
+	u32	dot11DefKeylen[4];
+	u8	dot11Def_camid[4];
 	u8 	key_mask; /* use to restore wep key after hal_init */
 
 	u32 dot118021XGrpPrivacy;	/* This specify the privacy algthm. used for Grp key */
 	u32	dot118021XGrpKeyid;		/* key id used for Grp Key ( tx key index) */
-	union Keytype	dot118021XGrpKey[6];	/* 802.1x Group Key, for inx0 and inx1	 */
-	union Keytype	dot118021XGrptxmickey[6];
-	union Keytype	dot118021XGrprxmickey[6];
+	union Keytype	dot118021XGrpKey[4];	/* 802.1x Group Key, for inx0 and inx1	 */
+	union Keytype	dot118021XGrptxmickey[4];
+	union Keytype	dot118021XGrprxmickey[4];
 	union pn48		dot11Grptxpn;			/* PN48 used for Grp Key xmit. */
 	union pn48		dot11Grprxpn;			/* PN48 used for Grp Key recv. */
-	u8				iv_seq[4][8];
 #ifdef CONFIG_IEEE80211W
 	u32	dot11wBIPKeyid;						/* key id used for BIP Key ( tx key index) */
 	union Keytype	dot11wBIPKey[6];		/* BIP Key, for index4 and index5 */
-	union pn48		dot11wBIPtxpn;			/* PN48 used for BIP xmit. */
-	union pn48		dot11wBIPrxpn;			/* PN48 used for BIP recv. */
+	union pn48		dot11wBIPtxpn;			/* PN48 used for Grp Key xmit. */
+	union pn48		dot11wBIPrxpn;			/* PN48 used for Grp Key recv. */
 #endif /* CONFIG_IEEE80211W */
+#ifdef CONFIG_AP_MODE
 	/* extend security capabilities for AP_MODE */
 	unsigned int dot8021xalg;/* 0:disable, 1:psk, 2:802.1x */
 	unsigned int wpa_psk;/* 0:disable, bit(0): WPA, bit(1):WPA2 */
@@ -140,7 +155,7 @@ struct security_priv {
 	unsigned int wpa2_group_cipher;
 	unsigned int wpa_pairwise_cipher;
 	unsigned int wpa2_pairwise_cipher;
-	u8 mfp_opt;
+#endif
 #ifdef CONFIG_CONCURRENT_MODE
 	u8	dot118021x_bmc_cam_id;
 #endif
@@ -159,22 +174,23 @@ struct security_priv {
 	u8	binstallBIPkey;
 #endif /* CONFIG_IEEE80211W */
 	u8	busetkipkey;
+	/* _timer tkip_timer; */
 	u8	bcheck_grpkey;
 	u8	bgrpkey_handshake;
 
 	/* u8	packet_cnt; */ /* unused, removed */
 
-	int	sw_encrypt;/* from registry_priv */
-	int	sw_decrypt;/* from registry_priv */
+	s32	sw_encrypt;/* from registry_priv */
+	s32	sw_decrypt;/* from registry_priv */
 
-	int 	hw_decrypted;/* if the rx packets is hw_decrypted==false, it means the hw has not been ready. */
+	s32 	hw_decrypted;/* if the rx packets is hw_decrypted==_FALSE, it means the hw has not been ready. */
 
 
 	/* keeps the auth_type & enc_status from upper layer ioctl(wpa_supplicant or wzc) */
-	u32 ndisauthtype;	/* enum ndis_802_11_authentication_mode */
-	u32 ndisencryptstatus;	/* enum ndis_802_11_wep_status */
+	u32 ndisauthtype;	/* NDIS_802_11_AUTHENTICATION_MODE */
+	u32 ndisencryptstatus;	/* NDIS_802_11_ENCRYPTION_STATUS */
 
-	struct ndis_802_11_wep ndiswep;
+	NDIS_802_11_WEP ndiswep;
 
 	u8 assoc_info[600];
 	u8 szofcapability[256]; /* for wpa2 usage */
@@ -184,23 +200,25 @@ struct security_priv {
 
 
 	/* for tkip countermeasure */
-	unsigned long last_mic_err_time;
+	u32 last_mic_err_time;
 	u8	btkip_countermeasure;
 	u8	btkip_wait_report;
-	unsigned long btkip_countermeasure_time;
+	u32 btkip_countermeasure_time;
 
 	/* --------------------------------------------------------------------------- */
 	/* For WPA2 Pre-Authentication. */
 	/* --------------------------------------------------------------------------- */
 	/* u8				RegEnablePreAuth;				 */ /* Default value: Pre-Authentication enabled or not, from registry "EnablePreAuth". Added by Annie, 2005-11-01. */
 	/* u8				EnablePreAuthentication;			 */ /* Current Value: Pre-Authentication enabled or not. */
-	struct rt_pkmid_list		PMKIDList[NUM_PMKID_CACHE];	/* Renamed from PreAuthKey[NUM_PRE_AUTH_KEY]. Annie, 2006-10-13. */
+	RT_PMKID_LIST		PMKIDList[NUM_PMKID_CACHE];	/* Renamed from PreAuthKey[NUM_PRE_AUTH_KEY]. Annie, 2006-10-13. */
 	u8				PMKIDIndex;
 	/* u32				PMKIDCount;						 */ /* Added by Annie, 2006-10-13. */
 	/* u8				szCapability[256];				 */ /* For WPA2-PSK using zero-config, by Annie, 2005-09-20. */
 
 	u8 bWepDefaultKeyIdxSet;
 
+#define DBG_SW_SEC_CNT
+#ifdef DBG_SW_SEC_CNT
 	u64 wep_sw_enc_cnt_bc;
 	u64 wep_sw_enc_cnt_mc;
 	u64 wep_sw_enc_cnt_uc;
@@ -221,15 +239,10 @@ struct security_priv {
 	u64 aes_sw_dec_cnt_bc;
 	u64 aes_sw_dec_cnt_mc;
 	u64 aes_sw_dec_cnt_uc;
+#endif /* DBG_SW_SEC_CNT */
 };
 
-#ifdef CONFIG_IEEE80211W
-#define SEC_IS_BIP_KEY_INSTALLED(sec) ((sec)->binstallBIPkey)
-#else
-#define SEC_IS_BIP_KEY_INSTALLED(sec) false
-#endif
-
-struct sha256_state_rtk {
+struct rtl_sha256_state {
 	u64 length;
 	u32 state[8], curlen;
 	u8 buf[64];
@@ -390,6 +403,11 @@ static inline u32 rotr(u32 val, int bits)
 		(a)[7] = (u8) (((u64) (val)) & 0xff);	\
 	} while (0)
 
+/* ===== start - public domain SHA256 implementation ===== */
+
+/* This is based on SHA256 implementation in LibTomCrypt that was released into
+ * public domain by Tom St Denis. */
+
 /* the K array */
 static const unsigned long K[64] = {
 	0x428a2f98UL, 0x71374491UL, 0xb5c0fbcfUL, 0xe9b5dba5UL, 0x3956c25bUL,
@@ -424,7 +442,7 @@ static const unsigned long K[64] = {
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #endif
 #ifdef CONFIG_IEEE80211W
-int omac1_aes_128(const u8 *key, const u8 *data, size_t data_len, u8 *mac);
+int omac1_aes_128(u8 *key, u8 *data, size_t data_len, u8 *mac);
 #endif /* CONFIG_IEEE80211W */
 void rtw_secmicsetkey(struct mic_data *pmicdata, u8 *key);
 void rtw_secmicappendbyte(struct mic_data *pmicdata, u8 b);
@@ -439,18 +457,34 @@ void rtw_seccalctkipmic(
 	u8 *Miccode,
 	u8   priority);
 
-u32 rtw_aes_encrypt(struct adapter *adapt, u8 *pxmitframe);
-u32 rtw_tkip_encrypt(struct adapter *adapt, u8 *pxmitframe);
-void rtw_wep_encrypt(struct adapter *adapt, u8  *pxmitframe);
+u32 rtw_aes_encrypt(_adapter *padapter, u8 *pxmitframe);
+u32 rtw_tkip_encrypt(_adapter *padapter, u8 *pxmitframe);
+void rtw_wep_encrypt(_adapter *padapter, u8  *pxmitframe);
 
-u32 rtw_aes_decrypt(struct adapter *adapt, u8  *precvframe);
-u32 rtw_tkip_decrypt(struct adapter *adapt, u8  *precvframe);
-void rtw_wep_decrypt(struct adapter *adapt, u8  *precvframe);
+u32 rtw_aes_decrypt(_adapter *padapter, u8  *precvframe);
+u32 rtw_tkip_decrypt(_adapter *padapter, u8  *precvframe);
+void rtw_wep_decrypt(_adapter *padapter, u8  *precvframe);
 #ifdef CONFIG_IEEE80211W
-u32	rtw_BIP_verify(struct adapter *adapt, u8 *whdr_pos, int flen
-	, const u8 *key, u16 id, u64* ipn);
-#endif
-void rtw_sec_restore_wep_key(struct adapter *adapter);
-u8 rtw_handle_tkip_countermeasure(struct adapter *adapter, const char *caller);
+u32	rtw_BIP_verify(_adapter *padapter, u8 *precvframe);
+#endif /* CONFIG_IEEE80211W */
+#ifdef CONFIG_TDLS
+void wpa_tdls_generate_tpk(_adapter *padapter, PVOID sta);
+int wpa_tdls_ftie_mic(u8 *kck, u8 trans_seq,
+			u8 *lnkid, u8 *rsnie, u8 *timeoutie, u8 *ftie,
+			u8 *mic);
+int wpa_tdls_teardown_ftie_mic(u8 *kck, u8 *lnkid, u16 reason,
+			u8 dialog_token, u8 trans_seq, u8 *ftie, u8 *mic);
+int tdls_verify_mic(u8 *kck, u8 trans_seq,
+			u8 *lnkid, u8 *rsnie, u8 *timeoutie, u8 *ftie);
+#endif /* CONFIG_TDLS */
+
+void rtw_use_tkipkey_handler(RTW_TIMER_HDL_ARGS);
+
+void rtw_sec_restore_wep_key(_adapter *adapter);
+u8 rtw_handle_tkip_countermeasure(_adapter *adapter, const char *caller);
+
+#ifdef CONFIG_WOWLAN
+u16 rtw_calc_crc(u8  *pdata, int length);
+#endif /*CONFIG_WOWLAN*/
 
 #endif /* __RTL871X_SECURITY_H_ */

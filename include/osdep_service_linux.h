@@ -1,6 +1,22 @@
-/* SPDX-License-Identifier: GPL-2.0 */
-/* Copyright(c) 2007 - 2017 Realtek Corporation */
-
+/******************************************************************************
+ *
+ * Copyright(c) 2007 - 2013 Realtek Corporation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
+ *
+ ******************************************************************************/
 #ifndef __OSDEP_LINUX_SERVICE_H_
 #define __OSDEP_LINUX_SERVICE_H_
 
@@ -17,7 +33,6 @@
 #endif
 /* #include <linux/smp_lock.h> */
 #include <linux/netdevice.h>
-#include <linux/inetdevice.h>
 #include <linux/skbuff.h>
 #include <linux/circ_buf.h>
 #include <asm/uaccess.h>
@@ -32,8 +47,8 @@
 #include <linux/sem.h>
 #include <linux/sched.h>
 #include <linux/etherdevice.h>
+#include <linux/wireless.h>
 #include <net/iw_handler.h>
-#include <net/addrconf.h>
 #include <linux/if_arp.h>
 #include <linux/rtnetlink.h>
 #include <linux/delay.h>
@@ -42,6 +57,8 @@
 #include <linux/kthread.h>
 #include <linux/list.h>
 #include <linux/vmalloc.h>
+#include <linux/signal.h>
+#include <linux/sched/signal.h>
 
 #if (LINUX_VERSION_CODE <= KERNEL_VERSION(2, 5, 41))
 	#include <linux/tqueue.h>
@@ -71,54 +88,93 @@
 	#include <linux/ieee80211.h>
 #endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25) && \
-	 LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 29))
-	#define CONFIG_IEEE80211_HT_ADDT_INFO
-#endif
-
-#include <net/cfg80211.h>
+#ifdef CONFIG_IOCTL_CFG80211
+	/*	#include <linux/ieee80211.h> */
+	#include <net/cfg80211.h>
+#endif /* CONFIG_IOCTL_CFG80211 */
 
 #ifdef CONFIG_TCP_CSUM_OFFLOAD_TX
 	#include <linux/in.h>
 	#include <linux/udp.h>
 #endif
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	#include <linux/earlysuspend.h>
+#endif /* CONFIG_HAS_EARLYSUSPEND */
+
 #ifdef CONFIG_EFUSE_CONFIG_FILE
 	#include <linux/fs.h>
 #endif
 
-#include <linux/usb.h>
-#include <linux/usb/ch9.h>
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 22))
-	#ifdef CONFIG_USB_SUSPEND
-		#define CONFIG_AUTOSUSPEND	1
+#ifdef CONFIG_USB_HCI
+	#include <linux/usb.h>
+	#if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 21))
+		#include <linux/usb_ch9.h>
+	#else
+		#include <linux/usb/ch9.h>
 	#endif
 #endif
 
-#if (KERNEL_VERSION(2, 6, 29) > LINUX_VERSION_CODE && defined(CONFIG_RTW_NAPI))
+#ifdef CONFIG_BT_COEXIST_SOCKET_TRX
+	#include <net/sock.h>
+	#include <net/tcp.h>
+	#include <linux/udp.h>
+	#include <linux/in.h>
+	#include <linux/netlink.h>
+#endif /* CONFIG_BT_COEXIST_SOCKET_TRX */
 
-	#undef CONFIG_RTW_NAPI
-	/*#warning "Linux Kernel version too old to support NAPI (should newer than 2.6.29)\n"*/
+#ifdef CONFIG_USB_HCI
+	typedef struct urb   *PURB;
+	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 22))
+		#ifdef CONFIG_USB_SUSPEND
+			#define CONFIG_AUTOSUSPEND	1
+		#endif
+	#endif
+#endif
+
+#if defined(CONFIG_RTW_GRO) && (!defined(CONFIG_RTW_NAPI))
+
+	#error "Enable NAPI before enable GRO\n"
+
+#elif (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,29) && defined(CONFIG_RTW_NAPI))
+
+	#error "Linux Kernel version too old (should newer than 2.6.29)\n"
 
 #endif
 
-#if (KERNEL_VERSION(2, 6, 33) > LINUX_VERSION_CODE)
 
-	#warning "Linux Kernel version too old to support GRO(should newer than 2.6.33)\n"
-
-#endif
-
+typedef struct	semaphore _sema;
+typedef	spinlock_t	_lock;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
 	typedef struct mutex		_mutex;
 #else
 	typedef struct semaphore	_mutex;
 #endif
+typedef struct timer_list _timer;
 
-struct __queue	{
+struct	__queue	{
 	struct	list_head	queue;
-	spinlock_t	lock;
+	_lock	lock;
 };
+
+typedef	struct sk_buff	_pkt;
+typedef unsigned char	_buffer;
+
+typedef struct	__queue	_queue;
+typedef struct	list_head	_list;
+typedef	int	_OS_STATUS;
+/* typedef u32	_irqL; */
+typedef unsigned long _irqL;
+typedef	struct	net_device *_nic_hdl;
+
+typedef void		*_thread_hdl_;
+typedef int		thread_return;
+typedef void	*thread_context;
+
+#define thread_exit() complete_and_exit(NULL, 0)
+
+typedef void timer_hdl_return;
+typedef void *timer_hdl_context;
 
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 5, 41))
 	typedef struct work_struct _workitem;
@@ -153,47 +209,52 @@ static inline unsigned char *skb_end_pointer(const struct sk_buff *skb)
 }
 #endif
 
-static inline struct list_head *get_next(struct list_head *list)
+__inline static _list *get_next(_list	*list)
 {
 	return list->next;
 }
 
-static inline struct list_head	*get_list_head(struct __queue	*queue)
+__inline static _list	*get_list_head(_queue	*queue)
 {
 	return &(queue->queue);
 }
 
-static inline void _enter_critical(spinlock_t *plock, unsigned long *pirqL)
+
+#define LIST_CONTAINOR(ptr, type, member) \
+	((type *)((char *)(ptr)-(SIZE_T)(&((type *)0)->member)))
+
+
+__inline static void _enter_critical(_lock *plock, _irqL *pirqL)
 {
 	spin_lock_irqsave(plock, *pirqL);
 }
 
-static inline void _exit_critical(spinlock_t *plock, unsigned long *pirqL)
+__inline static void _exit_critical(_lock *plock, _irqL *pirqL)
 {
 	spin_unlock_irqrestore(plock, *pirqL);
 }
 
-static inline void _enter_critical_ex(spinlock_t *plock, unsigned long *pirqL)
+__inline static void _enter_critical_ex(_lock *plock, _irqL *pirqL)
 {
 	spin_lock_irqsave(plock, *pirqL);
 }
 
-static inline void _exit_critical_ex(spinlock_t *plock, unsigned long *pirqL)
+__inline static void _exit_critical_ex(_lock *plock, _irqL *pirqL)
 {
 	spin_unlock_irqrestore(plock, *pirqL);
 }
 
-static inline void _enter_critical_bh(spinlock_t *plock, unsigned long *pirqL)
+__inline static void _enter_critical_bh(_lock *plock, _irqL *pirqL)
 {
 	spin_lock_bh(plock);
 }
 
-static inline void _exit_critical_bh(spinlock_t *plock, unsigned long *pirqL)
+__inline static void _exit_critical_bh(_lock *plock, _irqL *pirqL)
 {
 	spin_unlock_bh(plock);
 }
 
-static inline int _enter_critical_mutex(_mutex *pmutex, unsigned long *pirqL)
+__inline static int _enter_critical_mutex(_mutex *pmutex, _irqL *pirqL)
 {
 	int ret = 0;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
@@ -206,7 +267,7 @@ static inline int _enter_critical_mutex(_mutex *pmutex, unsigned long *pirqL)
 }
 
 
-static inline void _exit_critical_mutex(_mutex *pmutex, unsigned long *pirqL)
+__inline static void _exit_critical_mutex(_mutex *pmutex, _irqL *pirqL)
 {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
 	mutex_unlock(pmutex);
@@ -215,13 +276,15 @@ static inline void _exit_critical_mutex(_mutex *pmutex, unsigned long *pirqL)
 #endif
 }
 
-static inline void rtw_list_delete(struct list_head *plist)
+__inline static void rtw_list_delete(_list *plist)
 {
 	list_del_init(plist);
 }
 
+#define RTW_TIMER_HDL_ARGS void *FunctionContext
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
-static inline void _init_timer(struct timer_list *ptimer, struct  net_device * nic_hdl, void *pfunc, void *cntx)
+__inline static void _init_timer(_timer *ptimer, _nic_hdl nic_hdl, void *pfunc, void *cntx)
 {
 	/* setup_timer(ptimer, pfunc,(u32)cntx);	 */
 	ptimer->function = pfunc;
@@ -230,15 +293,17 @@ static inline void _init_timer(struct timer_list *ptimer, struct  net_device * n
 }
 #endif
 
-static inline void _set_timer(struct timer_list *ptimer, u32 delay_time)
+__inline static void _set_timer(_timer *ptimer, u32 delay_time)
 {
 	mod_timer(ptimer , (jiffies + (delay_time * HZ / 1000)));
 }
 
-static inline void _cancel_timer(struct timer_list *ptimer, u8 *bcancelled)
+__inline static void _cancel_timer(_timer *ptimer, u8 *bcancelled)
 {
-	*bcancelled = del_timer_sync(ptimer) == 1 ? 1 : 0;
+	del_timer_sync(ptimer);
+	*bcancelled = 1;
 }
+
 
 static inline void _init_workitem(_workitem *pwork, void *pfunc, void *cntx)
 {
@@ -251,7 +316,7 @@ static inline void _init_workitem(_workitem *pwork, void *pfunc, void *cntx)
 #endif
 }
 
-static inline void _set_workitem(_workitem *pwork)
+__inline static void _set_workitem(_workitem *pwork)
 {
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 5, 41))
 	schedule_work(pwork);
@@ -260,7 +325,7 @@ static inline void _set_workitem(_workitem *pwork)
 #endif
 }
 
-static inline void _cancel_workitem_sync(_workitem *pwork)
+__inline static void _cancel_workitem_sync(_workitem *pwork)
 {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 22))
 	cancel_work_sync(pwork);
@@ -325,23 +390,11 @@ static inline void rtw_netif_stop_queue(struct net_device *pnetdev)
 	netif_stop_queue(pnetdev);
 #endif
 }
-static inline void rtw_netif_device_attach(struct net_device *pnetdev)
-{
-	netif_device_attach(pnetdev);
-}
-static inline void rtw_netif_device_detach(struct net_device *pnetdev)
-{
-	netif_device_detach(pnetdev);
-}
 static inline void rtw_netif_carrier_on(struct net_device *pnetdev)
 {
+	netif_device_attach(pnetdev);
 	netif_carrier_on(pnetdev);
 }
-static inline void rtw_netif_carrier_off(struct net_device *pnetdev)
-{
-	netif_carrier_off(pnetdev);
-}
-
 static inline int rtw_merge_string(char *dst, int dst_len, const char *src1, const char *src2)
 {
 	int	len = 0;
@@ -361,6 +414,8 @@ static inline int rtw_merge_string(char *dst, int dst_len, const char *src1, con
 /* Suspend lock prevent system from going suspend */
 #ifdef CONFIG_WAKELOCK
 	#include <linux/wakelock.h>
+#elif defined(CONFIG_ANDROID_POWER)
+	#include <linux/android_power.h>
 #endif
 
 /* limitation of path length */

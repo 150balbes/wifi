@@ -1,6 +1,22 @@
-/* SPDX-License-Identifier: GPL-2.0 */
-/* Copyright(c) 2007 - 2017 Realtek Corporation */
-
+/******************************************************************************
+ *
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
+ *
+ ******************************************************************************/
 #ifndef __BASIC_TYPES_H__
 #define __BASIC_TYPES_H__
 
@@ -8,29 +24,59 @@
 #define SUCCESS	0
 #define FAIL	(-1)
 
+#ifndef TRUE
+	#define _TRUE	1
+#else
+	#define _TRUE	TRUE
+#endif
+
+#ifndef FALSE
+	#define _FALSE	0
+#else
+	#define _FALSE	FALSE
+#endif
+
 #include <linux/version.h>
 #include <linux/types.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/utsname.h>
+#define IN
+#define OUT
+#define VOID void
+#define NDIS_OID uint
+#define NDIS_STATUS uint
+
+typedef	signed int sint;
+
+#ifndef	PVOID
+	typedef void *PVOID;
+	/* #define PVOID	(void *) */
+#endif
+
+#define UCHAR u8
+#define USHORT u16
+#define UINT u32
+#define ULONG u32
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 19))
-enum {
-	false	= 0,
-	true	= 1
-};
+	typedef _Bool bool;
 #endif
 
 typedef void (*proc_t)(void *);
 
-#define FIELD_OFFSET(s, field)	((__kernel_ssize_t)&((s *)(0))->field)
+typedef	__kernel_size_t	SIZE_T;
+typedef	__kernel_ssize_t	SSIZE_T;
+#define FIELD_OFFSET(s, field)	((SSIZE_T)&((s *)(0))->field)
 
-#define MEM_ALIGNMENT_OFFSET	(sizeof (__kernel_size_t))
-#define MEM_ALIGNMENT_PADDING	(sizeof(__kernel_size_t) - 1)
 
-#define SIZE_PTR __kernel_size_t
-#define SSIZE_PTR __kernel_ssize_t
+
+#define MEM_ALIGNMENT_OFFSET	(sizeof (SIZE_T))
+#define MEM_ALIGNMENT_PADDING	(sizeof(SIZE_T) - 1)
+
+#define SIZE_PTR SIZE_T
+#define SSIZE_PTR SSIZE_T
 
 /*
 * Continuous bits starting from least significant bit
@@ -42,7 +88,7 @@ typedef void (*proc_t)(void *);
 */
 #define BIT_LEN_MASK_32(__BitLen) ((u32)(0xFFFFFFFF >> (32 - (__BitLen))))
 #define BIT_LEN_MASK_16(__BitLen) ((u16)(0xFFFF >> (16 - (__BitLen))))
-#define BIT_LEN_MASK_8(__BitLen) ((0x0FF >> (8 - (__BitLen))))
+#define BIT_LEN_MASK_8(__BitLen) ((u8)(0xFF >> (8 - (__BitLen))))
 
 /*
 * Continuous bits starting from least significant bit
@@ -90,7 +136,7 @@ typedef void (*proc_t)(void *);
 #define WriteBE1Byte(_ptr, _val)	((*((u8 *)(_ptr))) = ((u8)(_val)))
 
 /*
-* Return 4-byte value in host byte ordering from 4-byte pointer in little-endian system.
+* Return 4-byte value in host byte ordering from 4-byte pointer in litten-endian system.
 */
 #define LE_P4BYTE_TO_HOST_4BYTE(__pStart) (le32_to_cpu(*((__le32 *)(__pStart))))
 #define LE_P2BYTE_TO_HOST_2BYTE(__pStart) (le16_to_cpu(*((__le16 *)(__pStart))))
@@ -241,6 +287,8 @@ typedef void (*proc_t)(void *);
 
 /* Get the N-bytes aligment offset from the current length */
 #define N_BYTE_ALIGMENT(__Value, __Aligment) ((__Aligment == 1) ? (__Value) : (((__Value + __Aligment - 1) / __Aligment) * __Aligment))
+
+typedef unsigned char	BOOLEAN, *PBOOLEAN, boolean;
 
 #define TEST_FLAG(__Flag, __testFlag)		(((__Flag) & (__testFlag)) != 0)
 #define SET_FLAG(__Flag, __setFlag)			((__Flag) |= __setFlag)

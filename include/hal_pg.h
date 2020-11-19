@@ -1,6 +1,22 @@
-/* SPDX-License-Identifier: GPL-2.0 */
-/* Copyright(c) 2007 - 2017 Realtek Corporation */
-
+/******************************************************************************
+ *
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
+ *
+ ******************************************************************************/
 
 #ifndef __HAL_PG_H__
 #define __HAL_PG_H__
@@ -413,6 +429,12 @@
  *	EEPROM/Efuse PG Offset for 8822B
  * ====================================================
  */
+#define GET_PG_KFREE_ON_8822B(_pg_m)		LE_BITS_TO_1BYTE(((u8 *)(_pg_m)) + 0xC1, 4, 1)
+#define GET_PG_KFREE_THERMAL_K_ON_8822B(_pg_m)	LE_BITS_TO_1BYTE(((u8 *)(_pg_m)) + 0xC8, 5, 1)
+
+#define PPG_BB_GAIN_2G_TXA_OFFSET_8822B		0xEE
+#define PPG_THERMAL_OFFSET_8822B		0xEF
+
 #define	EEPROM_TX_PWR_INX_8822B			0x10
 
 #define	EEPROM_ChannelPlan_8822B		0xB8
@@ -457,9 +479,15 @@
  *	EEPROM/Efuse PG Offset for 8821C
  * ====================================================
  */
+#define GET_PG_KFREE_ON_8821C(_pg_m)		LE_BITS_TO_1BYTE(((u8 *)(_pg_m)) + 0xC1, 4, 1)
+#define GET_PG_KFREE_THERMAL_K_ON_8821C(_pg_m)	LE_BITS_TO_1BYTE(((u8 *)(_pg_m)) + 0xC8, 5, 1)
+
+#define PPG_BB_GAIN_2G_TXA_OFFSET_8821C		0xEE
+#define PPG_THERMAL_OFFSET_8821C		0xEF
+
 #define	EEPROM_TX_PWR_INX_8821C			0x10
 
-#define	EEPROM_CHANNEL_PLAN_8821C		0xB8
+#define	EEPROM_ChannelPlan_8821C		0xB8
 #define	EEPROM_XTAL_8821C			0xB9
 #define	EEPROM_THERMAL_METER_8821C		0xBA
 #define	EEPROM_IQK_LCK_8821C			0xBB
@@ -477,9 +505,8 @@
 #define	EEPROM_FEATURE_OPTION_8821C		0xC2
 #define	EEPROM_RF_BT_SETTING_8821C		0xC3
 #define	EEPROM_VERSION_8821C			0xC4
-#define	EEPROM_CUSTOMER_ID_8821C			0xC5
+#define	EEPROM_CustomID_8821C			0xC5
 #define	EEPROM_TX_BBSWING_2G_8821C		0xC6
-#define	EEPROM_TX_BBSWING_5G_8821C		0xC7
 #define	EEPROM_TX_PWR_CALIBRATE_RATE_8821C	0xC8
 #define	EEPROM_RF_ANTENNA_OPT_8821C		0xC9
 #define	EEPROM_RFE_OPTION_8821C			0xCA
@@ -534,11 +561,11 @@
 #define EEPROM_COUNTRY_CODE_8723D		0xCB
 
 /* RTL8723DE */
-#define EEPROM_MAC_ADDR_8723DE			0xD0
-#define EEPROM_VID_8723DE			0xD6
-#define EEPROM_DID_8723DE			0xD8
-#define EEPROM_SVID_8723Dw			0xDA
-#define EEPROM_SMID_8723DE			0xDC
+#define EEPROM_MAC_ADDR_8723DE              0xD0
+#define EEPROM_VID_8723DE                   0xD6
+#define EEPROM_DID_8723DE                   0xD8
+#define EEPROM_SVID_8723DE                  0xDA
+#define EEPROM_SMID_8723DE                  0xDC
 
 /* RTL8723DU */
 #define EEPROM_MAC_ADDR_8723DU                  0x107
@@ -553,104 +580,108 @@
 /* ****************************************************
  *			EEPROM/Efuse Value Type
  * **************************************************** */
-#define EETYPE_TX_PWR				0x0
+#define EETYPE_TX_PWR							0x0
 /* ****************************************************
  *			EEPROM/Efuse Default Value
  * **************************************************** */
-#define EEPROM_CID_DEFAULT			0x0
-#define EEPROM_CID_DEFAULT_EXT			0xFF /* Reserved for Realtek */
-#define EEPROM_CID_TOSHIBA			0x4
-#define EEPROM_CID_CCX				0x10
-#define EEPROM_CID_QMI				0x0D
-#define EEPROM_CID_WHQL				0xFE
+#define EEPROM_CID_DEFAULT					0x0
+#define EEPROM_CID_DEFAULT_EXT				0xFF /* Reserved for Realtek */
+#define EEPROM_CID_TOSHIBA						0x4
+#define EEPROM_CID_CCX							0x10
+#define EEPROM_CID_QMI							0x0D
+#define EEPROM_CID_WHQL						0xFE
 
-#define EEPROM_CHANNEL_PLAN_FCC			0x0
-#define EEPROM_CHANNEL_PLAN_IC			0x1
-#define EEPROM_CHANNEL_PLAN_ETSI		0x2
-#define EEPROM_CHANNEL_PLAN_SPAIN		0x3
-#define EEPROM_CHANNEL_PLAN_FRANCE		0x4
-#define EEPROM_CHANNEL_PLAN_MKK			0x5
-#define EEPROM_CHANNEL_PLAN_MKK1		0x6
-#define EEPROM_CHANNEL_PLAN_ISRAEL		0x7
-#define EEPROM_CHANNEL_PLAN_TELEC		0x8
+#define EEPROM_CHANNEL_PLAN_FCC				0x0
+#define EEPROM_CHANNEL_PLAN_IC				0x1
+#define EEPROM_CHANNEL_PLAN_ETSI				0x2
+#define EEPROM_CHANNEL_PLAN_SPAIN			0x3
+#define EEPROM_CHANNEL_PLAN_FRANCE			0x4
+#define EEPROM_CHANNEL_PLAN_MKK				0x5
+#define EEPROM_CHANNEL_PLAN_MKK1				0x6
+#define EEPROM_CHANNEL_PLAN_ISRAEL			0x7
+#define EEPROM_CHANNEL_PLAN_TELEC			0x8
 #define EEPROM_CHANNEL_PLAN_GLOBAL_DOMAIN	0x9
 #define EEPROM_CHANNEL_PLAN_WORLD_WIDE_13	0xA
 #define EEPROM_CHANNEL_PLAN_NCC_TAIWAN		0xB
-#define EEPROM_CHANNEL_PLAN_CHIAN		0XC
+#define EEPROM_CHANNEL_PLAN_CHIAN			0XC
 #define EEPROM_CHANNEL_PLAN_SINGAPORE_INDIA_MEXICO  0XD
-#define EEPROM_CHANNEL_PLAN_KOREA		0xE
-#define EEPROM_CHANNEL_PLAN_TURKEY		0xF
-#define EEPROM_CHANNEL_PLAN_JAPAN		0x10
+#define EEPROM_CHANNEL_PLAN_KOREA			0xE
+#define EEPROM_CHANNEL_PLAN_TURKEY	0xF
+#define EEPROM_CHANNEL_PLAN_JAPAN	0x10
 #define EEPROM_CHANNEL_PLAN_FCC_NO_DFS		0x11
 #define EEPROM_CHANNEL_PLAN_JAPAN_NO_DFS	0x12
 #define EEPROM_CHANNEL_PLAN_WORLD_WIDE_5G	0x13
 #define EEPROM_CHANNEL_PLAN_TAIWAN_NO_DFS	0x14
 
-#define EEPROM_USB_OPTIONAL1			0xE
+#define EEPROM_USB_OPTIONAL1					0xE
 #define EEPROM_CHANNEL_PLAN_BY_HW_MASK		0x80
 
-#define RTL_EEPROM_ID				0x8129
-#define EEPROM_Default_TSSI			0x0
-#define EEPROM_Default_BoardType		0x02
-#define EEPROM_Default_ThermalMeter		0x12
-#define EEPROM_Default_ThermalMeter_92SU	0x7
+#define RTL_EEPROM_ID							0x8129
+#define EEPROM_Default_TSSI						0x0
+#define EEPROM_Default_BoardType				0x02
+#define EEPROM_Default_ThermalMeter			0x12
+#define EEPROM_Default_ThermalMeter_92SU		0x7
 #define EEPROM_Default_ThermalMeter_88E		0x18
-#define EEPROM_Default_ThermalMeter_8812	0x18
-#define	EEPROM_Default_ThermalMeter_8192E	0x1A
-#define	EEPROM_Default_ThermalMeter_8723B	0x18
-#define	EEPROM_Default_ThermalMeter_8703B	0x18
-#define	EEPROM_Default_ThermalMeter_8723D	0x18
-#define	EEPROM_Default_ThermalMeter_8188F	0x18
-#define EEPROM_Default_ThermalMeter_8814A	0x18
+#define EEPROM_Default_ThermalMeter_8812		0x18
+#define	EEPROM_Default_ThermalMeter_8192E			0x1A
+#define	EEPROM_Default_ThermalMeter_8723B		0x18
+#define	EEPROM_Default_ThermalMeter_8703B		0x18
+#define	EEPROM_Default_ThermalMeter_8723D		0x18
+#define	EEPROM_Default_ThermalMeter_8188F		0x18
+#define EEPROM_Default_ThermalMeter_8814A		0x18
 
 
-#define EEPROM_Default_CrystalCap		0x0
+#define EEPROM_Default_CrystalCap				0x0
 #define EEPROM_Default_CrystalCap_8723A		0x20
-#define EEPROM_Default_CrystalCap_88E		0x20
-#define EEPROM_Default_CrystalCap_8812		0x20
-#define EEPROM_Default_CrystalCap_8814		0x20
-#define EEPROM_Default_CrystalCap_8192E		0x20
-#define EEPROM_Default_CrystalCap_8723B		0x20
-#define EEPROM_Default_CrystalCap_8703B		0x20
-#define EEPROM_Default_CrystalCap_8723D		0x20
-#define EEPROM_Default_CrystalCap_8188F		0x20
-#define EEPROM_Default_CrystalFreq		0x0
+#define EEPROM_Default_CrystalCap_88E			0x20
+#define EEPROM_Default_CrystalCap_8812			0x20
+#define EEPROM_Default_CrystalCap_8814			0x20
+#define EEPROM_Default_CrystalCap_8192E			0x20
+#define EEPROM_Default_CrystalCap_8723B			0x20
+#define EEPROM_Default_CrystalCap_8703B			0x20
+#define EEPROM_Default_CrystalCap_8723D			0x20
+#define EEPROM_Default_CrystalCap_8188F			0x20
+#define EEPROM_Default_CrystalFreq				0x0
 #define EEPROM_Default_TxPowerLevel_92C		0x22
-#define EEPROM_Default_TxPowerLevel_2G		0x2C
-#define EEPROM_Default_TxPowerLevel_5G		0x22
-#define EEPROM_Default_TxPowerLevel		0x22
-#define EEPROM_Default_HT40_2SDiff		0x0
-#define EEPROM_Default_HT20_Diff		2
-#define EEPROM_Default_LegacyHTTxPowerDiff	0x3
+#define EEPROM_Default_TxPowerLevel_2G			0x2C
+#define EEPROM_Default_TxPowerLevel_5G			0x22
+#define EEPROM_Default_TxPowerLevel			0x22
+#define EEPROM_Default_HT40_2SDiff				0x0
+#define EEPROM_Default_HT20_Diff				2
+#define EEPROM_Default_LegacyHTTxPowerDiff		0x3
 #define EEPROM_Default_LegacyHTTxPowerDiff_92C	0x3
 #define EEPROM_Default_LegacyHTTxPowerDiff_92D	0x4
-#define EEPROM_Default_HT40_PwrMaxOffset	0
-#define EEPROM_Default_HT20_PwrMaxOffset	0
+#define EEPROM_Default_HT40_PwrMaxOffset		0
+#define EEPROM_Default_HT20_PwrMaxOffset		0
 
-#define EEPROM_Default_PID			0x1234
-#define EEPROM_Default_VID			0x5678
-#define EEPROM_Default_CustomerID		0xAB
+#define EEPROM_Default_PID						0x1234
+#define EEPROM_Default_VID						0x5678
+#define EEPROM_Default_CustomerID				0xAB
 #define EEPROM_Default_CustomerID_8188E		0x00
-#define EEPROM_Default_SubCustomerID		0xCD
-#define EEPROM_Default_Version			0
+#define EEPROM_Default_SubCustomerID			0xCD
+#define EEPROM_Default_Version					0
 
 #define EEPROM_Default_externalPA_C9		0x00
 #define EEPROM_Default_externalPA_CC		0xFF
 #define EEPROM_Default_internalPA_SP3T_C9	0xAA
 #define EEPROM_Default_internalPA_SP3T_CC	0xAF
 #define EEPROM_Default_internalPA_SPDT_C9	0xAA
-#define EEPROM_Default_internalPA_SPDT_CC	0xFA
-#define EEPROM_Default_PAType			0
-#define EEPROM_Default_LNAType			0
+#ifdef CONFIG_PCI_HCI
+	#define EEPROM_Default_internalPA_SPDT_CC	0xA0
+#else
+	#define EEPROM_Default_internalPA_SPDT_CC	0xFA
+#endif
+#define EEPROM_Default_PAType						0
+#define EEPROM_Default_LNAType						0
 
 /* New EFUSE default value */
 #define EEPROM_DEFAULT_CHANNEL_PLAN		0x7F
 #define EEPROM_DEFAULT_BOARD_OPTION		0x00
-#define EEPROM_DEFAULT_RFE_OPTION_8192E		0xFF
-#define EEPROM_DEFAULT_RFE_OPTION_8188E		0xFF
+#define EEPROM_DEFAULT_RFE_OPTION_8192E 0xFF
+#define EEPROM_DEFAULT_RFE_OPTION_8188E 0xFF
 #define EEPROM_DEFAULT_RFE_OPTION		0x04
-#define EEPROM_DEFAULT_FEATURE_OPTION		0x00
-#define EEPROM_DEFAULT_BT_OPTION		0x10
+#define EEPROM_DEFAULT_FEATURE_OPTION	0x00
+#define EEPROM_DEFAULT_BT_OPTION			0x10
 
 
 #define EEPROM_DEFAULT_TX_CALIBRATE_RATE	0x00
@@ -715,7 +746,7 @@
 /* It must always set to 4, otherwise read efuse table sequence will be wrong. */
 #define	MAX_TX_COUNT				4
 
-struct TxPowerInfo24G {
+typedef struct _TxPowerInfo24G {
 	u8 IndexCCK_Base[MAX_RF_PATH][MAX_CHNL_GROUP_24G];
 	u8 IndexBW40_Base[MAX_RF_PATH][MAX_CHNL_GROUP_24G];
 	/* If only one tx, only BW20 and OFDM are used. */
@@ -723,9 +754,9 @@ struct TxPowerInfo24G {
 	s8 OFDM_Diff[MAX_RF_PATH][MAX_TX_COUNT];
 	s8 BW20_Diff[MAX_RF_PATH][MAX_TX_COUNT];
 	s8 BW40_Diff[MAX_RF_PATH][MAX_TX_COUNT];
-};
+} TxPowerInfo24G, *PTxPowerInfo24G;
 
-struct TxPowerInfo5G {
+typedef struct _TxPowerInfo5G {
 	u8 IndexBW40_Base[MAX_RF_PATH][MAX_CHNL_GROUP_5G];
 	/* If only one tx, only BW20, OFDM, BW80 and BW160 are used. */
 	s8 OFDM_Diff[MAX_RF_PATH][MAX_TX_COUNT];
@@ -733,15 +764,15 @@ struct TxPowerInfo5G {
 	s8 BW40_Diff[MAX_RF_PATH][MAX_TX_COUNT];
 	s8 BW80_Diff[MAX_RF_PATH][MAX_TX_COUNT];
 	s8 BW160_Diff[MAX_RF_PATH][MAX_TX_COUNT];
-};
+} TxPowerInfo5G, *PTxPowerInfo5G;
 
 
-enum BT_Ant_NUM {
+typedef	enum _BT_Ant_NUM {
 	Ant_x2	= 0,
 	Ant_x1	= 1
-};
+} BT_Ant_NUM, *PBT_Ant_NUM;
 
-enum BT_CoType {
+typedef	enum _BT_CoType {
 	BT_2WIRE		= 0,
 	BT_ISSC_3WIRE	= 1,
 	BT_ACCEL		= 2,
@@ -758,12 +789,12 @@ enum BT_CoType {
 	BT_RTL8822B		= 13,
 	BT_RTL8723D		= 14,
 	BT_RTL8821C		= 15
-};
+} BT_CoType, *PBT_CoType;
 
-enum BT_RadioShared {
+typedef	enum _BT_RadioShared {
 	BT_Radio_Shared	= 0,
 	BT_Radio_Individual	= 1,
-};
+} BT_RadioShared, *PBT_RadioShared;
 
 
 #endif
