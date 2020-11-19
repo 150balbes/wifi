@@ -386,7 +386,7 @@ struct pwrctrl_priv {
 	u8	power_mgnt;
 	u8	org_power_mgnt;
 	u8	bFwCurrentInPSMode;
-	systime	DelayLPSLastTimeStamp;
+	systime	lps_deny_time; /* will deny LPS when system time is smaller than this */
 	s32		pnp_current_pwr_state;
 	u8		pnp_bstop_trx;
 
@@ -589,6 +589,7 @@ int _rtw_pwr_wakeup(_adapter *padapter, u32 ips_deffer_ms, const char *caller);
 int rtw_pm_set_ips(_adapter *padapter, u8 mode);
 int rtw_pm_set_lps(_adapter *padapter, u8 mode);
 int rtw_pm_set_lps_level(_adapter *padapter, u8 level);
+void rtw_set_lps_deny(_adapter *adapter, u32 ms);
 
 void rtw_ps_deny(PADAPTER padapter, PS_DENY_REASON reason);
 void rtw_ps_deny_cancel(PADAPTER padapter, PS_DENY_REASON reason);

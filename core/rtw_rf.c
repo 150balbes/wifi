@@ -1238,7 +1238,7 @@ exit:
 
 void rtw_rf_set_tx_gain_offset(_adapter *adapter, u8 path, s8 offset)
 {
-#if defined(CONFIG_RTL8821A)
+#if !defined(CONFIG_RTL8814A) && !defined(CONFIG_RTL8822B) && !defined(CONFIG_RTL8821C)
 	u8 write_value;
 #endif
 	u8 target_path = 0;

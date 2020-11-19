@@ -18,6 +18,7 @@
 
 --------------------------------------------------------------------------------*/
 
+
 #ifndef __DRV_TYPES_H__
 #define __DRV_TYPES_H__
 
@@ -31,6 +32,14 @@
 #ifdef CONFIG_ARP_KEEP_ALIVE
 	#include <net/neighbour.h>
 	#include <net/arp.h>
+#endif
+
+#ifdef PLATFORM_OS_XP
+	#include <drv_types_xp.h>
+#endif
+
+#ifdef PLATFORM_OS_CE
+	#include <drv_types_ce.h>
 #endif
 
 #ifdef PLATFORM_LINUX
@@ -82,7 +91,7 @@ typedef struct _ADAPTER _adapter, ADAPTER, *PADAPTER;
 #include <rtw_sreset.h>
 #include <hal_intf.h>
 #include <hal_com.h>
-#include <hal_com_h2c.h>
+#include<hal_com_h2c.h>
 #include <hal_com_led.h>
 #include "../hal/hal_dm.h"
 #include <rtw_qos.h>
@@ -96,7 +105,7 @@ typedef struct _ADAPTER _adapter, ADAPTER, *PADAPTER;
 #include <rtw_ioctl_rtl.h>
 #include <osdep_intf.h>
 #include <rtw_eeprom.h>
-#include "sta_info.h"
+#include <sta_info.h>
 #include <rtw_event.h>
 #include <rtw_mlme_ext.h>
 #include <rtw_mi.h>
@@ -134,10 +143,10 @@ typedef struct _ADAPTER _adapter, ADAPTER, *PADAPTER;
 	#include <rtw_iol.h>
 #endif /* CONFIG_IOL */
 
-#include <linux/ip.h>
-#include <linux/if_ether.h>
+#include <ip.h>
+#include <if_ether.h>
 #include <ethernet.h>
-#include <linux/circ_buf.h>
+#include <circ_buf.h>
 
 #include <rtw_android.h>
 
@@ -210,9 +219,6 @@ struct registry_priv {
 	u8	software_decrypt;
 #ifdef CONFIG_TX_EARLY_MODE
 	u8   early_mode;
-#endif
-#ifdef CONFIG_RTW_SW_LED
-	u8   led_ctrl;
 #endif
 	u8	acm_method;
 	/* WMM */
@@ -452,15 +458,6 @@ struct registry_priv {
 #ifdef DBG_LA_MODE
 	u8 la_mode_en;
 #endif
-#ifdef CONFIG_TDMADIG
-	u8 tdmadig_en;
-	u8 tdmadig_mode;
-	u8 tdmadig_dynamic;
-#endif/*CONFIG_TDMADIG*/
-
-	u8 monitor_overwrite_seqnum;
-	u8 monitor_retransmit;
-	u8 monitor_disable_1m;
 };
 
 /* For registry parameters */

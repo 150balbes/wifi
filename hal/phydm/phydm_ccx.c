@@ -250,7 +250,7 @@ void phydm_fahm_set_th_by_igi(void *dm_void, u8 igi)
 		odm_set_bb_reg(dm, R_0x970, MASKDWORD, val);
 		val = BYTE_2_DWORD(f_th[7], f_th[6], f_th[5], f_th[4]);
 		odm_set_bb_reg(dm, R_0x974, MASKDWORD, val);
-		val = BYTE_2_DWORD(0, f_th[10], f_th[9], f_th[8]);
+		BYTE_2_DWORD(0, f_th[10], f_th[9], f_th[8]);
 		odm_set_bb_reg(dm, R_0x978, 0xffffff, val);
 	}
 }
@@ -1364,7 +1364,7 @@ u8 phydm_clm_mntr_set(void *dm_void, struct clm_para_info *clm_para)
 		return PHYDM_SET_FAIL;
 	}
 
-	if (phydm_clm_racing_ctrl(dm, (enum phydm_nhm_level)clm_para->clm_lv) == PHYDM_SET_FAIL)
+	if (phydm_clm_racing_ctrl(dm, clm_para->clm_lv) == PHYDM_SET_FAIL)
 		return PHYDM_SET_FAIL;
 
 	if (clm_para->mntr_time >= 262)

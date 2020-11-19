@@ -4,63 +4,62 @@ dist: bionic
 os: linux
 
 before_install:
-  - export KERNEL_URL_DETAILS=$(wget --quiet -O - ${KERNEL_URL}v${KVER}/ | grep -A8 'Build for amd64\|Test amd64')
+  #Cron builds only build mainline kernel. Stable and LTS kernels usually not have breaking changes.
+  - if [ "$TRAVIS_EVENT_TYPE" == "cron" ] && [ "$KVER_BUILD" != "$KERNEL_MAINLINE" ]; then exit 0; fi
+  - export KERNEL_URL_DETAILS=$(wget --quiet -O - ${KERNEL_URL}v${KVER_BUILD}/ | grep -A8 "Build for ${TRAVIS_CPU_ARCH}\|Test ${TRAVIS_CPU_ARCH}")
   - export ALL_DEB=$(echo "$KERNEL_URL_DETAILS" |  grep -m1 'all.deb' | cut -d '"' -f 2)
-  - export KVER_BUILD=$(echo $ALL_DEB | cut -d '_' -f 2 | rev | cut -c14- | rev)
-  - wget ${KERNEL_URL}v${KVER}/$(echo "$KERNEL_URL_DETAILS" | grep -m1 'amd64.deb' | cut -d '"' -f 2)
-  - wget ${KERNEL_URL}v${KVER}/$ALL_DEB
+  - export KVER=$(echo $ALL_DEB | cut -d '_' -f 2 | rev | cut -c14- | rev)-generic
+  - wget ${KERNEL_URL}v${KVER_BUILD}/$(echo "$KERNEL_URL_DETAILS" | grep -m1 "${TRAVIS_CPU_ARCH}.deb" | cut -d '"' -f 2)
+  - wget ${KERNEL_URL}v${KVER_BUILD}/$ALL_DEB
   - sudo dpkg -i *.deb
 
-script:
-  - make CC=$COMPILER KVER=$KVER_BUILD-generic
-env:
-  global:
-    - KERNEL_URL=https://kernel.ubuntu.com/~kernel-ppa/mainline/
+script: make CC=$CC KVER=$KVER
 
 addons:
   apt:
     packages:
       #Force update to GCC-7.5 in order to compile Kernels >= 5.4.
       - gcc-7
-
+env:
+  global:
+    - KERNEL_URL=https://kernel.ubuntu.com/~kernel-ppa/mainline/
+    - KERNEL_MAINLINE=$(curl -s https://www.kernel.org/releases.json | grep -B1 'mainline' | head -1 | cut -d'"' -f4)
+    - KERNEL_STABLE=$(curl -s https://www.kernel.org/releases.json | grep -A1 'latest_stable' | tail -1 | cut -d'"' -f4)
+  jobs:
+    - KVER_BUILD=$KERNEL_MAINLINE
+    - KVER_BUILD=$KERNEL_STABLE
+    - KVER_BUILD=5.8.17
+    - KVER_BUILD=5.4.73
+    - KVER_BUILD=4.19.154
+    - KVER_BUILD=4.14.203
+    - KVER_BUILD=4.9.241
+    - KVER_BUILD=4.4.241
 cache:
   - ccache: true
 
 jobs:
+#Mainline kernel is also compiled on GCC 8 & 9. Jobs are added to the build matrix expansion
   include:
     - addons:
         apt:
           sources:
             - sourceline: "ppa:ubuntu-toolchain-r/test"
           packages:
-	    - gcc-10
-      env: COMPILER=gcc-10 KVER=$(curl -s https://www.kernel.org/releases.json | grep 'mainline' -B1 | head -1 | cut -d'"' -f4)
-    - addons:
-        apt:
-          packages:
             - gcc-9
-      env: COMPILER=gcc-9 KVER=$(curl -s https://www.kernel.org/releases.json | grep 'mainline' -B1 | head -1 | cut -d'"' -f4)
+      env: CC=gcc-9 KVER_BUILD=$KERNEL_MAINLINE
     - addons:
         apt:
           packages:
             - gcc-8
-      env: COMPILER=gcc-8 KVER=$(curl -s https://www.kernel.org/releases.json | grep 'mainline' -B1 | head -1 | cut -d'"' -f4)
-
-    - env: COMPILER=gcc-7 KVER=$(curl -s https://www.kernel.org/releases.json | grep 'mainline' -B1 | head -1 | cut -d'"' -f4)
-    - env: COMPILER=gcc-7 KVER=$(curl -s https://www.kernel.org/releases.json | grep -A1 'latest_stable' | tail -1 | cut -d'"' -f4)
- #Kernels 5.4 with minor versions > 28 are failing on amd64. Not upgrade the minor version without check https://kernel.ubuntu.com/~kernel-ppa/mainline/
-    - env: COMPILER=gcc-7 KVER=5.4.28
-    - env: COMPILER=gcc-7 KVER=4.19.116
-    - env: COMPILER=gcc-7 KVER=4.14.176
-    - env: COMPILER=gcc-7 KVER=4.9.219
-    - env: COMPILER=gcc-7 KVER=4.4.219
-
-#Version 4.15.x requested to test Ubuntu 18.04 LTS version
-#TODO identify 4.15.x version dynamically instead of hardcode it.
-    - addons:
+      env: CC=gcc-8 KVER_BUILD=$KERNEL_MAINLINE
+    - if: type != cron
+      addons:
         apt:
           packages:
-            - linux-headers-4.15.0-20-generic
-#Use the kernel headers from apt instead of download it from an external source
+            - gcc-7
+            - bc
+            - linux-headers-$(uname -r)
+      arch: arm64
+      env: KVER_BUILD=$(uname -r)
       before_install: true
-      env: COMPILER=gcc-7 $KVER_BUILD=4.15.0-20
+      script: make CONFIG_PLATFORM_ARM_AARCH64=y CONFIG_PLATFORM_I386_PC=n CONFIG_MP_VHT_HW_TX_MODE=n

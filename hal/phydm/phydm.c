@@ -489,11 +489,9 @@ void phydm_hw_setting(struct dm_struct *dm)
 		odm_hw_setting_8821a(dm);
 #endif
 
-#if 0 /* TODO: implementation done but may not work and do nothing with current flags. Commenting the code to match previous version behavior*/
 #if (RTL8814A_SUPPORT == 1)
 	if (dm->support_ic_type & ODM_RTL8814A)
 		phydm_hwsetting_8814a(dm);
-#endif
 #endif
 
 #if (RTL8822B_SUPPORT == 1)
@@ -2084,6 +2082,10 @@ void odm_cmn_info_init(struct dm_struct *dm, enum odm_cmninfo cmn_info,
 		dm->support_interface = (u8)value;
 		break;
 
+	case ODM_CMNINFO_MP_TEST_CHIP:
+		dm->is_mp_chip = (u8)value;
+		break;
+
 	case ODM_CMNINFO_IC_TYPE:
 		dm->support_ic_type = (u32)value;
 		break;
@@ -2807,11 +2809,6 @@ void odm_cancel_all_timers(struct dm_struct *dm)
 #if (defined(CONFIG_PHYDM_ANTENNA_DIVERSITY))
 	odm_ant_div_timers(dm, CANCEL_ANTDIV_TIMMER);
 #endif
-#ifdef PHYDM_TDMA_DIG_SUPPORT
-#ifdef IS_USE_NEW_TDMA
-	phydm_tdma_dig_timers(dm, CANCEL_TDMA_DIG_TIMMER);
-#endif
-#endif
 #ifdef CONFIG_ADAPTIVE_SOML
 	phydm_adaptive_soml_timers(dm, CANCEL_SOML_TIMMER);
 #endif
@@ -2839,11 +2836,6 @@ void odm_release_all_timers(struct dm_struct *dm)
 {
 #if (defined(CONFIG_PHYDM_ANTENNA_DIVERSITY))
 	odm_ant_div_timers(dm, RELEASE_ANTDIV_TIMMER);
-#endif
-#ifdef PHYDM_TDMA_DIG_SUPPORT
-#ifdef IS_USE_NEW_TDMA
-	phydm_tdma_dig_timers(dm, RELEASE_TDMA_DIG_TIMMER);
-#endif
 #endif
 #ifdef CONFIG_ADAPTIVE_SOML
 	phydm_adaptive_soml_timers(dm, RELEASE_SOML_TIMMER);

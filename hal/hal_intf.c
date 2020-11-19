@@ -84,7 +84,7 @@ static void rtw_init_wireless_mode(_adapter *padapter)
 	struct hal_spec_t *hal_spec = GET_HAL_SPEC(padapter);
 	if(hal_spec->proto_cap & PROTO_CAP_11B)
 		proto_wireless_mode |= WIRELESS_11B;
-
+	
 	if(hal_spec->proto_cap & PROTO_CAP_11G)
 		proto_wireless_mode |= WIRELESS_11G;
 #ifdef CONFIG_80211AC_VHT
@@ -103,7 +103,7 @@ static void rtw_init_wireless_mode(_adapter *padapter)
 #endif
 
 #ifdef CONFIG_80211AC_VHT
-	if(hal_spec->proto_cap & PROTO_CAP_11AC)
+	if(hal_spec->proto_cap & PROTO_CAP_11AC) 
 		proto_wireless_mode |= WIRELESS_11AC;
 #endif
 	padapter->registrypriv.wireless_mode &= proto_wireless_mode;
@@ -119,7 +119,7 @@ void rtw_hal_def_value_init(_adapter *padapter)
 		padapter->hal_func.init_default_value(padapter);
 
 		rtw_init_hal_com_default_value(padapter);
-
+		
 		#ifdef CONFIG_FW_MULTI_PORT_SUPPORT
 		adapter_to_dvobj(padapter)->dft.port_id = 0xFF;
 		adapter_to_dvobj(padapter)->dft.mac_id = 0xFF;
@@ -327,9 +327,6 @@ uint rtw_hal_init(_adapter *padapter)
 		rtw_dyn_soml_config(padapter);
 		#endif
 		#endif
-		#ifdef CONFIG_TDMADIG
-		rtw_phydm_tdmadig(padapter, TDMADIG_INIT);
-		#endif/*CONFIG_TDMADIG*/
 #ifdef CONFIG_RTW_TX_2PATH_EN
 		rtw_phydm_tx_2path_en(padapter);
 #endif
@@ -379,9 +376,6 @@ uint	 rtw_hal_init(_adapter *padapter)
 		rtw_dyn_soml_config(padapter);
 #endif
 #endif
-		#ifdef CONFIG_TDMADIG
-		rtw_phydm_tdmadig(padapter, TDMADIG_INIT);
-		#endif/*CONFIG_TDMADIG*/
 
 #ifdef CONFIG_RTW_TX_2PATH_EN
 		rtw_phydm_tx_2path_en(padapter);
@@ -824,6 +818,7 @@ void	rtw_hal_set_chnl_bw(_adapter *padapter, u8 channel, enum channel_width Band
 			, pHalData->cch_80, pHalData->cch_40, pHalData->cch_20);
 
 	padapter->hal_func.set_chnl_bw_handler(padapter, channel, Bandwidth, Offset40, Offset80);
+	pHalData->current_band_type = channel > 14 ? BAND_ON_5G:BAND_ON_2_4G;
 }
 
 void	rtw_hal_set_tx_power_level(_adapter *padapter, u8 channel)
@@ -1082,6 +1077,8 @@ s32 c2h_handler(_adapter *adapter, u8 id, u8 seq, u8 plen, u8 *payload)
 	case C2H_EXTEND:
 		sub_id = payload[0];
 		/* no handle, goto default */
+  /* fallthrough */
+
 	default:
 		if (phydm_c2H_content_parsing(adapter_to_phydm(adapter), id, plen, payload) != TRUE)
 			ret = _FAIL;

@@ -1,4 +1,3 @@
-
 /******************************************************************************
  *
  * Copyright(c) 2007 - 2017 Realtek Corporation.
@@ -266,7 +265,6 @@ uint	rtw_is_cckratesonly_included(u8 *rate)
 }
 */
 
-#ifdef CONFIG_WIRELESS_EXT
 static int search_p2p_wfd_ie(_adapter *padapter,
 		struct iw_request_info *info, struct wlan_network *pnetwork,
 		char *start, char *stop)
@@ -340,7 +338,6 @@ static int search_p2p_wfd_ie(_adapter *padapter,
 #endif /* CONFIG_P2P */
 	return _TRUE;
 }
-#endif
 static inline char *iwe_stream_mac_addr_proess(_adapter *padapter,
 		struct iw_request_info *info, struct wlan_network *pnetwork,
 		char *start, char *stop, struct iw_event *iwe)
@@ -784,7 +781,6 @@ static inline char   *iwe_stream_net_rsv_process(_adapter *padapter,
 	return start;
 }
 
-#ifdef CONFIG_WIRELESS_EXT
 static char *translate_scan(_adapter *padapter,
 		struct iw_request_info *info, struct wlan_network *pnetwork,
 		char *start, char *stop)
@@ -1201,9 +1197,7 @@ exit:
 
 	return ret;
 }
-#endif
 
-#ifdef CONFIG_WIRELESS_EXT
 static int rtw_wx_get_name(struct net_device *dev,
 			   struct iw_request_info *info,
 			   union iwreq_data *wrqu, char *extra)
@@ -2459,19 +2453,25 @@ static int rtw_wx_get_essid(struct net_device *dev,
 	struct	mlme_priv	*pmlmepriv = &(padapter->mlmepriv);
 	WLAN_BSSID_EX  *pcur_bss = &pmlmepriv->cur_network.network;
 
+
+
 	if ((check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE) ||
 	    (check_fwstate(pmlmepriv, WIFI_ADHOC_MASTER_STATE) == _TRUE)) {
 		len = pcur_bss->Ssid.SsidLength;
+
+		wrqu->essid.length = len;
+
+		_rtw_memcpy(extra, pcur_bss->Ssid.Ssid, len);
+
+		wrqu->essid.flags = 1;
 	} else {
-		len = 0;
+		ret = -1;
+		goto exit;
 	}
-	wrqu->essid.length = len;
-
-	memcpy(extra, pcur_bss->Ssid.Ssid, len);
-
-	wrqu->essid.flags = 1;
 
 exit:
+
+
 	return ret;
 
 }
@@ -6861,17 +6861,21 @@ static int wpa_supplicant_ioctl(struct net_device *dev, struct iw_point *p)
 
 	/* down(&ieee->wx_sem);	 */
 
-	if (!p->pointer || p->length != sizeof(struct ieee_param))
-		return -EINVAL;
+	if (p->length < sizeof(struct ieee_param) || !p->pointer) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	param = (struct ieee_param *)rtw_malloc(p->length);
-
-	if (param == NULL)
-		return -ENOMEM;
+	if (param == NULL) {
+		ret = -ENOMEM;
+		goto out;
+	}
 
 	if (copy_from_user(param, p->pointer, p->length)) {
 		rtw_mfree((u8 *)param, p->length);
-		return -EFAULT;
+		ret = -EFAULT;
+		goto out;
 	}
 
 	switch (param->cmd) {
@@ -6905,7 +6909,12 @@ static int wpa_supplicant_ioctl(struct net_device *dev, struct iw_point *p)
 
 	rtw_mfree((u8 *)param, p->length);
 
+out:
+
+	/* up(&ieee->wx_sem); */
+
 	return ret;
+
 }
 
 #ifdef CONFIG_AP_MODE
@@ -7712,20 +7721,31 @@ static int rtw_hostapd_ioctl(struct net_device *dev, struct iw_point *p)
 	* so, we just check hw_init_completed
 	*/
 
-	if (!rtw_is_hw_init_completed(padapter))
-		return -EPERM;
+	if (!rtw_is_hw_init_completed(padapter)) {
+		ret = -EPERM;
+		goto out;
+	}
 
-	if (!p->pointer || p->length != (sizeof(struct ieee_param) + 100))
-		return -EINVAL;
+
+	/* if (p->length < sizeof(struct ieee_param) || !p->pointer){ */
+	if (!p->pointer) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	param = (struct ieee_param *)rtw_malloc(p->length);
-	if (param == NULL)
-		return -ENOMEM;
+	if (param == NULL) {
+		ret = -ENOMEM;
+		goto out;
+	}
 
 	if (copy_from_user(param, p->pointer, p->length)) {
 		rtw_mfree((u8 *)param, p->length);
-		return -EFAULT;
+		ret = -EFAULT;
+		goto out;
 	}
+
+	/* RTW_INFO("%s, cmd=%d\n", __FUNCTION__, param->cmd); */
 
 	switch (param->cmd) {
 	case RTL871X_HOSTAPD_FLUSH:
@@ -7819,7 +7839,10 @@ static int rtw_hostapd_ioctl(struct net_device *dev, struct iw_point *p)
 
 	rtw_mfree((u8 *)param, p->length);
 
+out:
+
 	return ret;
+
 }
 #endif
 
@@ -11999,7 +12022,6 @@ free_buf:
 	return 0;
 }
 
-#ifdef CONFIG_WIRELESS_EXT
 static iw_handler rtw_handlers[] = {
 	NULL,					/* SIOCSIWCOMMIT */
 	rtw_wx_get_name,		/* SIOCGIWNAME */
@@ -12157,6 +12179,8 @@ static const struct iw_priv_args rtw_private_args[] = {
 		SIOCIWFIRSTPRIV + 0x17,
 		IW_PRIV_TYPE_CHAR | 1024, IW_PRIV_TYPE_CHAR | 1024 , "rrm"
 	},
+#else
+	{SIOCIWFIRSTPRIV + 0x17, IW_PRIV_TYPE_CHAR | 1024 , 0 , "NULL"},
 #endif
 	{SIOCIWFIRSTPRIV + 0x18, IW_PRIV_TYPE_CHAR | IFNAMSIZ , 0 , "rereg_nd_name"},
 #ifdef CONFIG_MP_INCLUDED
@@ -12323,9 +12347,7 @@ static iw_handler rtw_private_handler[] = {
 	rtw_widi_set_probe_request,		/* 0x1F */
 #endif /* CONFIG_INTEL_WIDI */
 };
-#endif
 
-#ifdef CONFIG_WIRELESS_EXT
 #if WIRELESS_EXT >= 17
 static struct iw_statistics *rtw_get_wireless_stats(struct net_device *dev)
 {
@@ -12335,16 +12357,12 @@ static struct iw_statistics *rtw_get_wireless_stats(struct net_device *dev)
 	int tmp_qual = 0;
 	int tmp_noise = 0;
 
-#ifndef CONFIG_ALLOW_UNLINKED_NOISE_MONITOR
 	if (check_fwstate(&padapter->mlmepriv, _FW_LINKED) != _TRUE) {
 		piwstats->qual.qual = 0;
 		piwstats->qual.level = 0;
 		piwstats->qual.noise = 0;
 		/* RTW_INFO("No link  level:%d, qual:%d, noise:%d\n", tmp_level, tmp_qual, tmp_noise); */
-	}
-	else
-#endif
-    {
+	} else {
 #ifdef CONFIG_SIGNAL_DISPLAY_DBM
 		tmp_level = translate_percentage_to_dbm(padapter->recvpriv.signal_strength);
 #else
@@ -12385,7 +12403,6 @@ static struct iw_statistics *rtw_get_wireless_stats(struct net_device *dev)
 	return &padapter->iwstats;
 }
 #endif
-#endif
 
 #ifdef CONFIG_WIRELESS_EXT
 struct iw_handler_def rtw_handlers_def = {
@@ -12401,6 +12418,7 @@ struct iw_handler_def rtw_handlers_def = {
 	.get_wireless_stats = rtw_get_wireless_stats,
 #endif
 };
+#endif
 
 /* copy from net/wireless/wext.c start
  * ----------------------------------------------------------------
@@ -12778,7 +12796,6 @@ exit:
 
 	return err;
 }
-#endif
 
 #ifdef CONFIG_COMPAT
 static int rtw_ioctl_compat_wext_private(struct net_device *dev, struct ifreq *rq)
@@ -12806,7 +12823,6 @@ static int rtw_ioctl_compat_wext_private(struct net_device *dev, struct ifreq *r
 }
 #endif /* CONFIG_COMPAT */
 
-#ifdef CONFIG_WIRELESS_EXT
 static int rtw_ioctl_standard_wext_private(struct net_device *dev, struct ifreq *rq)
 {
 	struct iw_point *iwp;
@@ -12838,8 +12854,6 @@ static int rtw_ioctl_wext_private(struct net_device *dev, struct ifreq *rq)
 #endif /* CONFIG_COMPAT */
 		return rtw_ioctl_standard_wext_private(dev, rq);
 }
-#endif /* CONFIG_WIRELESS_EXT */
-#endif /* also CONFIG_WIRELESS_EXT */
 
 int rtw_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 {
@@ -12847,7 +12861,6 @@ int rtw_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	int ret = 0;
 
 	switch (cmd) {
-#ifdef CONFIG_WIRELESS_EXT
 	case RTL_IOCTL_WPA_SUPPLICANT:
 		ret = wpa_supplicant_ioctl(dev, &wrq->u.data);
 		break;
@@ -12855,9 +12868,11 @@ int rtw_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	case RTL_IOCTL_HOSTAPD:
 		ret = rtw_hostapd_ioctl(dev, &wrq->u.data);
 		break;
+#ifdef CONFIG_WIRELESS_EXT
 	case SIOCSIWMODE:
 		ret = rtw_wx_set_mode(dev, NULL, &wrq->u, NULL);
 		break;
+#endif
 #endif /* CONFIG_AP_MODE */
 	case SIOCDEVPRIVATE:
 		ret = rtw_ioctl_wext_private(dev, rq);
@@ -12865,7 +12880,6 @@ int rtw_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	case (SIOCDEVPRIVATE+1):
 		ret = rtw_android_priv_cmd(dev, rq, cmd);
 		break;
-#endif
 	default:
 		ret = -EOPNOTSUPP;
 		break;
@@ -12873,4 +12887,3 @@ int rtw_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 
 	return ret;
 }
-

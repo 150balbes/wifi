@@ -324,58 +324,6 @@ rtw_mesh_path_lookup_by_idx(_adapter *adapter, int idx)
 	return __rtw_mesh_path_lookup_by_idx(adapter->mesh_info.mesh_paths, idx);
 }
 
-void dump_mpath(void *sel, _adapter *adapter)
-{
-	struct rtw_mesh_path *mpath;
-	int idx = 0;
-	char dst[ETH_ALEN];
-	char next_hop[ETH_ALEN];
-	u32 sn, metric, qlen;
-	u32 exp_ms = 0, dto_ms;
-	u8 drty;
-	enum rtw_mesh_path_flags flags;
-
-	RTW_PRINT_SEL(sel, "%-17s %-17s %-10s %-10s %-4s %-6s %-6s %-4s flags\n"
-		, "dst", "next_hop", "sn", "metric", "qlen", "exp_ms", "dto_ms", "drty"
-	);
-
-	do {
-		rtw_rcu_read_lock();
-
-		mpath = rtw_mesh_path_lookup_by_idx(adapter, idx);
-		if (mpath) {
-			_rtw_memcpy(dst, mpath->dst, ETH_ALEN);
-			_rtw_memcpy(next_hop, mpath->next_hop->cmn.mac_addr, ETH_ALEN);
-			sn = mpath->sn;
-			metric = mpath->metric;
-			qlen = mpath->frame_queue_len;
-			if (rtw_time_after(mpath->exp_time, rtw_get_current_time()))
-				exp_ms = rtw_get_remaining_time_ms(mpath->exp_time);
-			dto_ms = rtw_systime_to_ms(mpath->discovery_timeout);
-			drty = mpath->discovery_retries;
-			flags = mpath->flags;
-		}
-
-		rtw_rcu_read_unlock();
-
-		if (mpath) {
-			RTW_PRINT_SEL(sel, MAC_FMT" "MAC_FMT" %10u %10u %4u %6u %6u %4u%s%s%s%s%s\n"
-				, MAC_ARG(dst), MAC_ARG(next_hop), sn, metric, qlen
-				, exp_ms < 999999 ? exp_ms : 999999
-				, dto_ms < 999999 ? dto_ms : 999999
-				, drty
-				, (flags & RTW_MESH_PATH_ACTIVE) ? " ACT" : ""
-				, (flags & RTW_MESH_PATH_RESOLVING) ? " RSVING" : ""
-				, (flags & RTW_MESH_PATH_SN_VALID) ? " SN_VALID" : ""
-				, (flags & RTW_MESH_PATH_FIXED) ?  " FIXED" : ""
-				, (flags & RTW_MESH_PATH_RESOLVED) ? " RSVED" : ""
-			);
-		}
-
-		idx++;
-	} while (mpath);
-}
-
 /**
  * rtw_mpp_path_lookup_by_idx - look up a path in the proxy path table by its index
  * @idx: index

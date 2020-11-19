@@ -728,11 +728,7 @@ void	expire_timeout_chk(_adapter *padapter)
 
 			RTW_INFO(FUNC_ADPT_FMT" asoc expire "MAC_FMT", state=0x%x\n"
 				, FUNC_ADPT_ARG(padapter), MAC_ARG(psta->cmn.mac_addr), psta->state);
-			#ifdef CONFIG_ACTIVE_KEEP_ALIVE_CHECK
 			updated |= ap_free_sta(padapter, psta, _FALSE, WLAN_REASON_DEAUTH_LEAVING, _FALSE);
-			#else
-			updated |= ap_free_sta(padapter, psta, _FALSE, WLAN_REASON_DEAUTH_LEAVING, _TRUE);
-			#endif
 			#ifdef CONFIG_RTW_MESH
 			if (MLME_IS_MESH(padapter))
 				rtw_mesh_expire_peer(padapter, sta_addr);
@@ -1777,10 +1773,7 @@ chbw_decision:
 		if (!(ifbmp_ch_changed & BIT(i)) || !pdvobj->padapters[i])
 			continue;
 
-		/* pure AP is not needed*/
-		if (MLME_IS_GO(pdvobj->padapters[i])
-			|| MLME_IS_MESH(pdvobj->padapters[i])
-		) {
+		{
 			u8 ht_option = 0;
 
 			#ifdef CONFIG_80211N_HT
@@ -2078,14 +2071,20 @@ int rtw_check_beacon_data(_adapter *padapter, u8 *pbuf,  int len)
 			psecuritypriv->wpa2_group_cipher = group_cipher;
 			psecuritypriv->wpa2_pairwise_cipher = pairwise_cipher;
 
-			/*
-			Kernel < v5.1, the auth_type set as NL80211_AUTHTYPE_AUTOMATIC 
-			in cfg80211_rtw_start_ap().
-			if the AKM SAE in the RSN IE, we have to update the auth_type for SAE
-			in rtw_check_beacon_data().
-			*/
-			if (CHECK_BIT(WLAN_AKM_TYPE_SAE, akm))
-				psecuritypriv->auth_type = NL80211_AUTHTYPE_SAE;
+#ifdef CONFIG_IOCTL_CFG80211
+			/**
+			 * Kernel < v5.x, the auth_type set as
+			 * NL80211_AUTHTYPE_AUTOMATIC in
+			 * cfg80211_rtw_start_ap(). if the AKM SAE in the RSN
+			 * IE, we have to update the auth_type for SAE in
+			 * rtw_check_beacon_data()
+			 */
+			if (CHECK_BIT(WLAN_AKM_TYPE_SAE, akm)) {
+				RTW_INFO("%s: Auth type as SAE\n", __func__);
+				psecuritypriv->auth_type = MLME_AUTHTYPE_SAE;
+				psecuritypriv->auth_alg = WLAN_AUTH_SAE;
+			}
+#endif /* CONFIG_IOCTL_CFG80211 */
 #if 0
 			switch (group_cipher) {
 			case WPA_CIPHER_NONE:
@@ -2432,9 +2431,9 @@ int rtw_check_beacon_data(_adapter *padapter, u8 *pbuf,  int len)
 		/* Parsing VHT OPERATION IE */
 
 		if (vht_cap == _TRUE
+			&& MLME_IS_MESH(padapter) /* allow only mesh temporarily before VHT IE checking is ready */
 		) {
-			if(MLME_IS_MESH(padapter)) /* allow only mesh temporarily before VHT IE checking is ready */
-				rtw_check_for_vht20(padapter, ie + _BEACON_IE_OFFSET_, pbss_network->IELength - _BEACON_IE_OFFSET_);
+			rtw_check_for_vht20(padapter, ie + _BEACON_IE_OFFSET_, pbss_network->IELength - _BEACON_IE_OFFSET_);
 			pmlmepriv->ori_vht_en = 1;
 			pmlmepriv->vhtpriv.vht_option = _TRUE;
 		} else if (REGSTY_IS_11AC_AUTO(pregistrypriv)) {
@@ -5265,7 +5264,9 @@ u16 rtw_ap_parse_sta_security_ie(_adapter *adapter, struct sta_info *sta, struct
 	else if (sec->mfp_opt >= MFP_OPTIONAL && mfp_opt >= MFP_OPTIONAL)
 		sta->flags |= WLAN_STA_MFP;
 
-	if ((sec->auth_type == NL80211_AUTHTYPE_SAE) &&
+#ifdef CONFIG_IOCTL_CFG80211
+	if (MLME_IS_AP(adapter) &&
+		(sec->auth_type == MLME_AUTHTYPE_SAE) &&
 		(CHECK_BIT(WLAN_AKM_TYPE_SAE, sta->akm_suite_type)) &&
 		(WLAN_AUTH_OPEN == sta->authalg)) {
 		/* WPA3-SAE, PMK caching */
@@ -5276,6 +5277,7 @@ u16 rtw_ap_parse_sta_security_ie(_adapter *adapter, struct sta_info *sta, struct
 			RTW_INFO("SAE: PMKSA cache entry found\n");
 		}
 	}
+#endif /* CONFIG_IOCTL_CFG80211 */
 
 	if (status != _STATS_SUCCESSFUL_)
 		goto exit;

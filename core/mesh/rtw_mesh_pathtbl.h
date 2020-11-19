@@ -166,8 +166,6 @@ void dump_mpp(void *sel, _adapter *adapter);
 
 struct rtw_mesh_path *
 rtw_mesh_path_lookup_by_idx(_adapter *adapter, int idx);
-void dump_mpath(void *sel, _adapter *adapter);
-
 struct rtw_mesh_path *
 rtw_mpp_path_lookup_by_idx(_adapter *adapter, int idx);
 void rtw_mesh_path_fix_nexthop(struct rtw_mesh_path *mpath, struct sta_info *next_hop);

@@ -276,10 +276,6 @@ enum TDLS_option {
 
 #endif /* CONFIG_TDLS */
 
-#ifndef NL80211_AUTHTYPE_SAE
-#define NL80211_AUTHTYPE_SAE 4
-#endif
-
 /*
  * Usage:
  * When one iface acted as AP mode and the other iface is STA mode and scanning,

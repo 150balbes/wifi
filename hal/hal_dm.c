@@ -257,34 +257,7 @@ void rtw_phydm_tx_2path_en(_adapter *adapter)
 	phydm_tx_2path(dm);
 }
 #endif
-#ifdef CONFIG_TDMADIG
-void rtw_phydm_tdmadig(_adapter *adapter, u8 state)
-{
-	struct registry_priv	*pregistrypriv = &adapter->registrypriv;
-	struct mlme_priv		*pmlmepriv = &(adapter->mlmepriv);
-	struct dm_struct *dm = adapter_to_phydm(adapter);
-	u8 tdma_dig_en;
 
-	switch (state) {
-	case TDMADIG_INIT:
-		phydm_tdma_dig_para_upd(dm, ENABLE_TDMA, pregistrypriv->tdmadig_en);
-		phydm_tdma_dig_para_upd(dm, MODE_DECISION, pregistrypriv->tdmadig_mode);
-		break;
-	case TDMADIG_NON_INIT:
-		if(pregistrypriv->tdmadig_dynamic) {
-			if(pmlmepriv->LinkDetectInfo.bBusyTraffic == _TRUE)
-				tdma_dig_en = 0;
-			else
-				tdma_dig_en = pregistrypriv->tdmadig_en;
-			phydm_tdma_dig_para_upd(dm, ENABLE_TDMA, tdma_dig_en);
-		}
-		break;
-	default:
-		break;
-
-	}
-}
-#endif/*CONFIG_TDMADIG*/
 void rtw_phydm_ops_func_init(struct dm_struct *p_phydm)
 {
 	struct ra_table *p_ra_t = &p_phydm->dm_ra_table;
@@ -776,6 +749,26 @@ void rtw_hal_turbo_edca(_adapter *adapter)
 
 }
 
+s8 rtw_dm_get_min_rssi(_adapter *adapter)
+{
+	struct macid_ctl_t *macid_ctl = adapter_to_macidctl(adapter);
+	struct sta_info *sta;
+	s8 min_rssi = 127, rssi;
+	int i;
+
+	for (i = 0; i < MACID_NUM_SW_LIMIT; i++) {
+		sta = macid_ctl->sta[i];
+		if (!sta || !GET_H2CCMD_MSRRPT_PARM_OPMODE(macid_ctl->h2c_msr + i)
+			|| is_broadcast_mac_addr(sta->cmn.mac_addr))
+			continue;
+		rssi = sta->cmn.rssi_stat.rssi;
+		if (rssi >= 0 && min_rssi > rssi)
+			min_rssi = rssi;
+	}
+
+	return min_rssi == 127 ? 0 : min_rssi;
+}
+
 s8 rtw_phydm_get_min_rssi(_adapter *adapter)
 {
 	struct dm_struct *phydm = adapter_to_phydm(adapter);
@@ -907,7 +900,8 @@ void SetHalODMVar(
 		rssi_min = rtw_phydm_get_min_rssi(Adapter);
 
 		_RTW_PRINT_SEL(sel, "============ Rx Info dump ===================\n");
-		_RTW_PRINT_SEL(sel, "is_linked = %d, rssi_min = %d(%%), current_igi = 0x%x\n", podmpriv->is_linked, rssi_min, cur_igi);
+		_RTW_PRINT_SEL(sel, "is_linked = %d, rssi_min = %d(%%)(%d(%%)), current_igi = 0x%x\n"
+			, podmpriv->is_linked, rssi_min, rtw_dm_get_min_rssi(Adapter), cur_igi);
 		_RTW_PRINT_SEL(sel, "cnt_cck_fail = %d, cnt_ofdm_fail = %d, Total False Alarm = %d\n",
 			rtw_phydm_get_phy_cnt(Adapter, FA_CCK),
 			rtw_phydm_get_phy_cnt(Adapter, FA_OFDM),
@@ -1137,21 +1131,14 @@ void rtw_phydm_watchdog_in_lps_lclk(_adapter *adapter)
 {
 	struct mlme_priv	*pmlmepriv = &adapter->mlmepriv;
 	struct sta_priv *pstapriv = &adapter->stapriv;
-	struct sta_info *psta = NULL;
 	u8 cur_igi = 0;
 	s8 min_rssi = 0;
 
 	if (!rtw_is_hw_init_completed(adapter))
 		return;
 
-	psta = rtw_get_stainfo(pstapriv, get_bssid(pmlmepriv));
-	if (psta == NULL)
-		return;
-
 	cur_igi = rtw_phydm_get_cur_igi(adapter);
-	min_rssi = rtw_phydm_get_min_rssi(adapter);
-	if (min_rssi <= 0)
-		min_rssi = psta->cmn.rssi_stat.rssi;
+	min_rssi = rtw_dm_get_min_rssi(adapter);
 	/*RTW_INFO("%s "ADPT_FMT" cur_ig_value=%d, min_rssi = %d\n", __func__,  ADPT_ARG(adapter), cur_igi, min_rssi);*/
 
 	if (min_rssi <= 0)
@@ -1596,10 +1583,6 @@ void rtw_phydm_watchdog(_adapter *adapter, bool in_lps)
 		#endif
 		goto _exit;
 	}*/
-
-	#ifdef CONFIG_TDMADIG
-	rtw_phydm_tdmadig(adapter, TDMADIG_NON_INIT);
-	#endif/*CONFIG_TDMADIG*/
 
 	if (in_lps)
 		phydm_watchdog_lps(&pHalData->odmpriv);

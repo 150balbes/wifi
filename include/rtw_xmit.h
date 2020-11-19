@@ -206,7 +206,11 @@
 #endif
 
 #ifdef CONFIG_USB_HCI
-	#define PACKET_OFFSET_SZ (8)
+	#ifdef USB_PACKET_OFFSET_SZ
+		#define PACKET_OFFSET_SZ (USB_PACKET_OFFSET_SZ)
+	#else
+		#define PACKET_OFFSET_SZ (8)
+	#endif
 	#define TXDESC_OFFSET (TXDESC_SIZE + PACKET_OFFSET_SZ)
 #endif
 
@@ -465,7 +469,6 @@ struct pkt_attrib {
 #endif /* CONFIG_WMMPS_STA */
 	
 	struct sta_info *psta;
-	u8	injected;
 
 	u8 rtsen;
 	u8 cts2self;

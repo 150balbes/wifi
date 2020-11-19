@@ -17,9 +17,7 @@
 
 #define adapter_to_phydm(adapter) (&(GET_HAL_DATA(adapter)->odmpriv))
 #define dvobj_to_phydm(dvobj) adapter_to_phydm(dvobj_get_primary_adapter(dvobj))
-#ifdef CONFIG_TDMADIG
-void rtw_phydm_tdmadig(_adapter *adapter, u8 state);
-#endif
+
 void rtw_phydm_priv_init(_adapter *adapter);
 void Init_ODM_ComInfo(_adapter *adapter);
 void rtw_phydm_init(_adapter *adapter);
@@ -57,6 +55,7 @@ void rtw_hal_iqk_test(_adapter *adapter, bool recovery, bool clear, bool segment
 void rtw_hal_lck_test(_adapter *adapter);
 #endif
 
+s8 rtw_dm_get_min_rssi(_adapter *adapter);
 s8 rtw_phydm_get_min_rssi(_adapter *adapter);
 u8 rtw_phydm_get_cur_igi(_adapter *adapter);
 
@@ -67,12 +66,7 @@ extern void phydm_rssi_monitor_check(void *p_dm_void);
 void rtw_phydm_wd_lps_lclk_hdl(_adapter *adapter);
 void rtw_phydm_watchdog_in_lps_lclk(_adapter *adapter);
 #endif
-#ifdef CONFIG_TDMADIG
-enum rtw_tdmadig_state{
-	TDMADIG_INIT,
-	TDMADIG_NON_INIT,
-};
-#endif
+
 enum phy_cnt {
 	FA_OFDM,
 	FA_CCK,

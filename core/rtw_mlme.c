@@ -1842,7 +1842,7 @@ void rtw_indicate_disconnect(_adapter *padapter, u16 reason, u8 locally_generate
 #endif /* CONFIG_P2P_PS */
 
 #ifdef CONFIG_LPS
-	rtw_lps_ctrl_wk_cmd(padapter, LPS_CTRL_DISCONNECT, 1);
+	rtw_lps_ctrl_wk_cmd(padapter, LPS_CTRL_DISCONNECT, 0);
 #endif
 
 #ifdef CONFIG_BEAMFORMING
@@ -3319,10 +3319,10 @@ void rtw_iface_dynamic_check_timer_handlder(_adapter *adapter)
 
 		bEnterPS = traffic_status_watchdog(adapter, 1);
 		if (bEnterPS) {
-			/* rtw_lps_ctrl_wk_cmd(adapter, LPS_CTRL_ENTER, 1); */
+			/* rtw_lps_ctrl_wk_cmd(adapter, LPS_CTRL_ENTER, 0); */
 			rtw_hal_dm_watchdog_in_lps(adapter);
 		} else {
-			/* call rtw_lps_ctrl_wk_cmd(padapter, LPS_CTRL_LEAVE, 1) in traffic_status_watchdog() */
+			/* call rtw_lps_ctrl_wk_cmd(padapter, LPS_CTRL_LEAVE, 0) in traffic_status_watchdog() */
 		}
 	}
 	#endif /* CONFIG_LPS_LCLK_WD_TIMER	*/
@@ -4315,14 +4315,6 @@ int rtw_rsn_sync_pmkid(_adapter *adapter, u8 *ie, uint ie_len, int i_ent)
 	if (i_ent >= 0) {
 		RTW_INFO(FUNC_ADPT_FMT" append PMKID:"KEY_FMT"\n"
 			, FUNC_ADPT_ARG(adapter), KEY_ARG(sec->PMKIDList[i_ent].PMKID));
-        if (!info.pmkid_list) {
-            /* prevent nullptr dereference when trying to insert a PMKID into 
-             * a frame that did not previously contain one. In order to be minimally
-             * invasive, we just discard requests like these, which might impact
-             * the ability to connect to certain access points, but will at least
-             * prevent the kernel panics */
-            return 0;
-        }
 
 		info.pmkid_cnt = 1; /* update new pmkid_cnt */
 		_rtw_memcpy(info.pmkid_list, sec->PMKIDList[i_ent].PMKID, 16);

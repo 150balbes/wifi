@@ -721,11 +721,8 @@ struct btc_wifi_link_info halbtcoutsrc_getwifilinkinfo(PBTC_COEXIST pBtCoexist)
 	return wifi_link_info;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
+
 static void _btmpoper_timer_hdl(void *p)
-#else
-static void _btmpoper_timer_hdl(struct timer_list *t)
-#endif
 {
 	if (GLBtcBtMpRptWait == _TRUE) {
 		GLBtcBtMpRptWait = _FALSE;
@@ -857,7 +854,7 @@ exit:
 
 s32 halbtcoutsrc_GetWifiRssi(PADAPTER padapter)
 {
-	return rtw_phydm_get_min_rssi(padapter);
+	return rtw_dm_get_min_rssi(padapter);
 }
 
 u32 halbtcoutsrc_GetBtCoexSupportedFeature(void *pBtcContext)
@@ -1345,15 +1342,15 @@ u8 halbtcoutsrc_Set(void *pBtcContext, u8 setType, void *pInBuf)
 
 
 	pBtCoexist = (PBTC_COEXIST)pBtcContext;
+	if (!halbtcoutsrc_IsBtCoexistAvailable(pBtCoexist))
+		return _FALSE;
+
 	padapter = pBtCoexist->Adapter;
 	pHalData = GET_HAL_DATA(padapter);
 	pu8 = (u8 *)pInBuf;
 	pU1Tmp = (u8 *)pInBuf;
 	pU4Tmp = (u32 *)pInBuf;
 	ret = _TRUE;
-
-	if (!halbtcoutsrc_IsBtCoexistAvailable(pBtCoexist))
-		return _FALSE;
 
 	switch (setType) {
 	/* set some u8 type variables. */
@@ -2841,11 +2838,7 @@ u8 EXhalbtcoutsrc_InitlizeVariables(void *padapter)
 	/* BT Control H2C/C2H*/
 	GLBtcBtMpOperSeq = 0;
 	_rtw_mutex_init(&GLBtcBtMpOperLock);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 	rtw_init_timer(&GLBtcBtMpOperTimer, padapter, _btmpoper_timer_hdl, pBtCoexist);
-#else
-	timer_setup(&GLBtcBtMpOperTimer, _btmpoper_timer_hdl, 0);
-#endif
 	_rtw_init_sema(&GLBtcBtMpRptSema, 0);
 	GLBtcBtMpRptSeq = 0;
 	GLBtcBtMpRptStatus = 0;
@@ -3508,15 +3501,18 @@ void EXhalbtcoutsrc_connect_notify(PBTC_COEXIST pBtCoexist, u8 assoType)
 void EXhalbtcoutsrc_media_status_notify(PBTC_COEXIST pBtCoexist, RT_MEDIA_STATUS mediaStatus)
 {
 	u8 mStatus = BTC_MEDIA_MAX;
-	PADAPTER adapter = (PADAPTER)pBtCoexist->Adapter;
-	HAL_DATA_TYPE *hal = GET_HAL_DATA(adapter);
+	PADAPTER adapter = NULL;
+	HAL_DATA_TYPE *hal = NULL;
 
 	if (!halbtcoutsrc_IsBtCoexistAvailable(pBtCoexist))
 		return;
 
-	pBtCoexist->statistics.cnt_media_status_notify++;
 	if (pBtCoexist->manual_control)
 		return;
+
+	pBtCoexist->statistics.cnt_media_status_notify++;
+	adapter = (PADAPTER)pBtCoexist->Adapter;
+	hal = GET_HAL_DATA(adapter);
 
 	if (RT_MEDIA_CONNECT == mediaStatus) {
 		if (hal->current_band_type == BAND_ON_2_4G)
@@ -3614,14 +3610,18 @@ void EXhalbtcoutsrc_media_status_notify(PBTC_COEXIST pBtCoexist, RT_MEDIA_STATUS
 void EXhalbtcoutsrc_specific_packet_notify(PBTC_COEXIST pBtCoexist, u8 pktType)
 {
 	u8 packetType;
-	PADAPTER adapter = (PADAPTER)pBtCoexist->Adapter;
-	HAL_DATA_TYPE *hal = GET_HAL_DATA(adapter);
+	PADAPTER adapter = NULL;
+	HAL_DATA_TYPE *hal = NULL;
 
 	if (!halbtcoutsrc_IsBtCoexistAvailable(pBtCoexist))
 		return;
-	pBtCoexist->statistics.cnt_specific_packet_notify++;
+
 	if (pBtCoexist->manual_control)
 		return;
+
+	pBtCoexist->statistics.cnt_specific_packet_notify++;
+	adapter = (PADAPTER)pBtCoexist->Adapter;
+	hal = GET_HAL_DATA(adapter);
 
 	if (PACKET_DHCP == pktType)
 		packetType = BTC_PACKET_DHCP;
@@ -4297,12 +4297,15 @@ void EXhalbtcoutsrc_StackUpdateProfileInfo(void)
 {
 #ifdef CONFIG_BT_COEXIST_SOCKET_TRX
 	PBTC_COEXIST pBtCoexist = &GLBtCoexist;
-	PADAPTER padapter = (PADAPTER)GLBtCoexist.Adapter;
-	PBT_MGNT pBtMgnt = &padapter->coex_info.BtMgnt;
+	PADAPTER padapter = NULL;
+	PBT_MGNT pBtMgnt = NULL;
 	u8 i;
 
 	if (!halbtcoutsrc_IsBtCoexistAvailable(pBtCoexist))
 		return;
+
+	padapter = (PADAPTER)pBtCoexist->Adapter;
+	pBtMgnt = &padapter->coex_info.BtMgnt;
 
 	pBtCoexist->stack_info.profile_notified = _TRUE;
 

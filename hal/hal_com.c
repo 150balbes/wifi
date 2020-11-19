@@ -11501,7 +11501,7 @@ s32 rtw_hal_set_wifi_btc_port_id_cmd(_adapter *adapter)
 }
 #endif
 
-#define LPS_ACTIVE_TIMEOUT	50 /*number of times*/
+#define LPS_ACTIVE_TIMEOUT	10 /*number of times*/
 void rtw_lps_state_chk(_adapter *adapter, u8 ps_mode)
 {
 	if (ps_mode == PS_MODE_ACTIVE) {
@@ -11517,8 +11517,8 @@ void rtw_lps_state_chk(_adapter *adapter, u8 ps_mode)
 		} while (leave_wait_count--);
 
 		if (ps_ready == _FALSE) {
-			RTW_WARN(FUNC_ADPT_FMT" Power Bit Control is still in HW!\n", FUNC_ADPT_ARG(adapter));
-			return;
+			RTW_ERR(FUNC_ADPT_FMT" PS_MODE_ACTIVE check failed\n", FUNC_ADPT_ARG(adapter));
+			rtw_warn_on(1);
 		}
 	}
 }
@@ -12826,8 +12826,6 @@ u32 Hal_ReadMACAddrFromFile(PADAPTER padapter, u8 *mac_addr)
 
 int hal_config_macaddr(_adapter *adapter, bool autoload_fail)
 {
-	struct dvobj_priv *pdvobjpriv = adapter_to_dvobj(adapter);
-	struct usb_device *udev = pdvobjpriv->pusbdev;
 	HAL_DATA_TYPE *hal_data = GET_HAL_DATA(adapter);
 	u8 addr[ETH_ALEN];
 	int addr_offset = hal_efuse_macaddr_offset(adapter);
@@ -12878,8 +12876,8 @@ bypass_hw_pg:
 
 	_rtw_memset(hal_data->EEPROMMACAddr, 0, ETH_ALEN);
 	ret = _FAIL;
+
 exit:
-	dev_info(&udev->dev, "88XXau %pM hw_info[%02x]", hw_addr, addr_offset);
 	return ret;
 }
 
