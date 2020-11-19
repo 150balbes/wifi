@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef REALTEK_POWER_SEQUENCE_8703B
 #define REALTEK_POWER_SEQUENCE_8703B
 

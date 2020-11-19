@@ -20,7 +20,6 @@
 #define _RTW_XMIT_C_
 
 #include <drv_types.h>
-#include <hal_data.h>
 
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
 #error "Shall be Linux or Windows, but not both!\n"
@@ -440,308 +439,33 @@ _func_exit_;
 
 }
 
-u8 rtw_get_tx_bw_mode(_adapter *adapter, struct sta_info *sta)
-{
-	u8 bw;
-
-	bw = sta->bw_mode;
-	if (MLME_STATE(adapter) & WIFI_ASOC_STATE) {
-		if (adapter->mlmeextpriv.cur_channel <= 14)
-			bw = rtw_min(bw, ADAPTER_TX_BW_2G(adapter));
-		else
-			bw = rtw_min(bw, ADAPTER_TX_BW_5G(adapter));
-	}
-
-	return bw;
-}
-
-void rtw_get_adapter_tx_rate_bmp_by_bw(_adapter *adapter, u8 bw, u16 *r_bmp_cck_ofdm, u32 *r_bmp_ht, u32 *r_bmp_vht)
-{
-	struct dvobj_priv *dvobj = adapter_to_dvobj(adapter);
-	struct macid_ctl_t *macid_ctl = dvobj_to_macidctl(dvobj);
-	struct mlme_ext_priv *mlmeext = &adapter->mlmeextpriv;
-	u8 fix_bw = 0xFF;
-	u16 bmp_cck_ofdm = 0;
-	u32 bmp_ht = 0;
-	u32 bmp_vht = 0;
-	int i;
-
-	#if 0
-	if (adapter->fix_rate != 0xFF && adapter->fix_bw != 0xFF)
-		fix_bw = adapter->fix_bw;
-	#endif
-
-	/* TODO: adapter->fix_rate */
-
-	for (i = 0; i < macid_ctl->num; i++) {
-		if (!rtw_macid_is_used(macid_ctl, i))
-			continue;
-		if (rtw_macid_get_if_g(macid_ctl, i) != adapter->iface_id)
-			continue;
-
-		if (bw == CHANNEL_WIDTH_20) /* CCK, OFDM always 20MHz */
-			bmp_cck_ofdm |= macid_ctl->rate_bmp0[i] & 0x00000FFF;
-
-		/* bypass mismatch bandwidth for HT, VHT */
-		if ((fix_bw != 0xFF && fix_bw != bw) || (fix_bw == 0xFF && macid_ctl->bw[i] != bw))
-			continue;
-
-		if (macid_ctl->vht_en[i])
-			bmp_vht |= (macid_ctl->rate_bmp0[i] >> 12) | (macid_ctl->rate_bmp1[i] << 20);
-		else
-			bmp_ht |= (macid_ctl->rate_bmp0[i] >> 12) | (macid_ctl->rate_bmp1[i] << 20);
-	}
-
-	/* TODO: mlmeext->tx_rate*/
-
-exit:
-	if (r_bmp_cck_ofdm)
-		*r_bmp_cck_ofdm = bmp_cck_ofdm;
-	if (r_bmp_ht)
-		*r_bmp_ht = bmp_ht;
-	if (r_bmp_vht)
-		*r_bmp_vht = bmp_vht;
-}
-
-void rtw_get_shared_macid_tx_rate_bmp_by_bw(struct dvobj_priv *dvobj, u8 bw, u16 *r_bmp_cck_ofdm, u32 *r_bmp_ht, u32 *r_bmp_vht)
-{
-	struct macid_ctl_t *macid_ctl = dvobj_to_macidctl(dvobj);
-	u16 bmp_cck_ofdm = 0;
-	u32 bmp_ht = 0;
-	u32 bmp_vht = 0;
-	int i;
-
-	for (i = 0; i < macid_ctl->num; i++) {
-		if (!rtw_macid_is_used(macid_ctl, i))
-			continue;
-		if (rtw_macid_get_if_g(macid_ctl, i) != -1)
-			continue;
-
-		if (bw == CHANNEL_WIDTH_20) /* CCK, OFDM always 20MHz */
-			bmp_cck_ofdm |= macid_ctl->rate_bmp0[i] & 0x00000FFF;
-
-		/* bypass mismatch bandwidth for HT, VHT */
-		if (macid_ctl->bw[i] != bw)
-			continue;
-
-		if (macid_ctl->vht_en[i])
-			bmp_vht |= (macid_ctl->rate_bmp0[i] >> 12) | (macid_ctl->rate_bmp1[i] << 20);
-		else
-			bmp_ht |= (macid_ctl->rate_bmp0[i] >> 12) | (macid_ctl->rate_bmp1[i] << 20);
-	}
-
-	if (r_bmp_cck_ofdm)
-		*r_bmp_cck_ofdm = bmp_cck_ofdm;
-	if (r_bmp_ht)
-		*r_bmp_ht = bmp_ht;
-	if (r_bmp_vht)
-		*r_bmp_vht = bmp_vht;
-}
-
-void rtw_update_tx_rate_bmp(struct dvobj_priv *dvobj)
-{
-	struct rf_ctl_t *rf_ctl = dvobj_to_rfctl(dvobj);
-	_adapter *adapter = dvobj_get_primary_adapter(dvobj);
-	HAL_DATA_TYPE *hal_data = GET_HAL_DATA(adapter);
-	u8 bw;
-	u16 bmp_cck_ofdm, tmp_cck_ofdm;
-	u32 bmp_ht, tmp_ht, ori_bmp_ht[2];
-	u8 ori_highest_ht_rate_bw_bmp;
-	u32 bmp_vht, tmp_vht, ori_bmp_vht[4];
-	u8 ori_highest_vht_rate_bw_bmp;
-	int i;
-
-	/* backup the original ht & vht highest bw bmp */
-	ori_highest_ht_rate_bw_bmp = rf_ctl->highest_ht_rate_bw_bmp;
-	ori_highest_vht_rate_bw_bmp = rf_ctl->highest_vht_rate_bw_bmp;
-
-	for (bw = CHANNEL_WIDTH_20; bw <= CHANNEL_WIDTH_160; bw++) {
-		/* backup the original ht & vht bmp */
-		if (bw <= CHANNEL_WIDTH_40)
-			ori_bmp_ht[bw] = rf_ctl->rate_bmp_ht_by_bw[bw];
-		if (bw <= CHANNEL_WIDTH_160)
-			ori_bmp_vht[bw] = rf_ctl->rate_bmp_vht_by_bw[bw];
-
-		bmp_cck_ofdm = bmp_ht = bmp_vht = 0;
-		if (hal_is_bw_support(dvobj_get_primary_adapter(dvobj), bw)) {
-			for (i = 0; i < dvobj->iface_nums; i++) {
-				if (!dvobj->padapters[i])
-					continue;
-				rtw_get_adapter_tx_rate_bmp_by_bw(dvobj->padapters[i], bw, &tmp_cck_ofdm, &tmp_ht, &tmp_vht);
-				bmp_cck_ofdm |= tmp_cck_ofdm;
-				bmp_ht |= tmp_ht;
-				bmp_vht |= tmp_vht;
-			}
-			rtw_get_shared_macid_tx_rate_bmp_by_bw(dvobj, bw, &tmp_cck_ofdm, &tmp_ht, &tmp_vht);
-			bmp_cck_ofdm |= tmp_cck_ofdm;
-			bmp_ht |= tmp_ht;
-			bmp_vht |= tmp_vht;
-		}
-		if (bw == CHANNEL_WIDTH_20)
-			rf_ctl->rate_bmp_cck_ofdm = bmp_cck_ofdm;
-		if (bw <= CHANNEL_WIDTH_40)
-			rf_ctl->rate_bmp_ht_by_bw[bw] = bmp_ht;
-		if (bw <= CHANNEL_WIDTH_160)
-			rf_ctl->rate_bmp_vht_by_bw[bw] = bmp_vht;
-	}
-
-#ifndef DBG_HIGHEST_RATE_BMP_BW_CHANGE
-#define DBG_HIGHEST_RATE_BMP_BW_CHANGE 0
-#endif
-
-	{
-		u8 highest_rate_bw;
-		u8 highest_rate_bw_bmp;
-		u8 update_ht_rs = _FALSE;
-		u8 update_vht_rs = _FALSE;
-
-		highest_rate_bw_bmp = BW_CAP_20M;
-		highest_rate_bw = CHANNEL_WIDTH_20;
-		for (bw = CHANNEL_WIDTH_20; bw <= CHANNEL_WIDTH_40; bw++) {
-			if (rf_ctl->rate_bmp_ht_by_bw[highest_rate_bw] < rf_ctl->rate_bmp_ht_by_bw[bw]) {
-				highest_rate_bw_bmp = ch_width_to_bw_cap(bw);
-				highest_rate_bw = bw;
-			} else if (rf_ctl->rate_bmp_ht_by_bw[highest_rate_bw] == rf_ctl->rate_bmp_ht_by_bw[bw])
-				highest_rate_bw_bmp |= ch_width_to_bw_cap(bw);
-		}
-		rf_ctl->highest_ht_rate_bw_bmp = highest_rate_bw_bmp;
-
-		if (ori_highest_ht_rate_bw_bmp != rf_ctl->highest_ht_rate_bw_bmp
-			|| largest_bit(ori_bmp_ht[highest_rate_bw]) != largest_bit(rf_ctl->rate_bmp_ht_by_bw[highest_rate_bw])
-		) {
-			if (DBG_HIGHEST_RATE_BMP_BW_CHANGE) {
-				RTW_INFO("highest_ht_rate_bw_bmp:0x%02x=>0x%02x\n", ori_highest_ht_rate_bw_bmp, rf_ctl->highest_ht_rate_bw_bmp);
-				RTW_INFO("rate_bmp_ht_by_bw[%u]:0x%08x=>0x%08x\n", highest_rate_bw, ori_bmp_ht[highest_rate_bw], rf_ctl->rate_bmp_ht_by_bw[highest_rate_bw]);
-			}
-			update_ht_rs = _TRUE;
-		}
-
-		highest_rate_bw_bmp = BW_CAP_20M;
-		highest_rate_bw = CHANNEL_WIDTH_20;
-		for (bw = CHANNEL_WIDTH_20; bw <= CHANNEL_WIDTH_160; bw++) {
-			if (rf_ctl->rate_bmp_vht_by_bw[highest_rate_bw] < rf_ctl->rate_bmp_vht_by_bw[bw]) {
-				highest_rate_bw_bmp = ch_width_to_bw_cap(bw);
-				highest_rate_bw = bw;
-			} else if (rf_ctl->rate_bmp_vht_by_bw[highest_rate_bw] == rf_ctl->rate_bmp_vht_by_bw[bw])
-				highest_rate_bw_bmp |= ch_width_to_bw_cap(bw);
-		}
-		rf_ctl->highest_vht_rate_bw_bmp = highest_rate_bw_bmp;
-
-		if (ori_highest_vht_rate_bw_bmp != rf_ctl->highest_vht_rate_bw_bmp
-			|| largest_bit(ori_bmp_vht[highest_rate_bw]) != largest_bit(rf_ctl->rate_bmp_vht_by_bw[highest_rate_bw])
-		) {
-			if (DBG_HIGHEST_RATE_BMP_BW_CHANGE) {
-				RTW_INFO("highest_vht_rate_bw_bmp:0x%02x=>0x%02x\n", ori_highest_vht_rate_bw_bmp, rf_ctl->highest_vht_rate_bw_bmp);
-				RTW_INFO("rate_bmp_vht_by_bw[%u]:0x%08x=>0x%08x\n", highest_rate_bw, ori_bmp_vht[highest_rate_bw], rf_ctl->rate_bmp_vht_by_bw[highest_rate_bw]);
-			}
-			update_vht_rs = _TRUE;
-		}
-
-		/* TODO: per rfpath and rate section handling? */
-		if (update_ht_rs == _TRUE || update_vht_rs == _TRUE)
-			rtw_hal_set_tx_power_level(dvobj_get_primary_adapter(dvobj), hal_data->CurrentChannel);
-	}
-}
-
-inline u16 rtw_get_tx_rate_bmp_cck_ofdm(struct dvobj_priv *dvobj)
-{
-	struct rf_ctl_t *rf_ctl = dvobj_to_rfctl(dvobj);
-
-	return rf_ctl->rate_bmp_cck_ofdm;
-}
-
-inline u32 rtw_get_tx_rate_bmp_ht_by_bw(struct dvobj_priv *dvobj, u8 bw)
-{
-	struct rf_ctl_t *rf_ctl = dvobj_to_rfctl(dvobj);
-
-	return rf_ctl->rate_bmp_ht_by_bw[bw];
-}
-
-inline u32 rtw_get_tx_rate_bmp_vht_by_bw(struct dvobj_priv *dvobj, u8 bw)
-{
-	struct rf_ctl_t *rf_ctl = dvobj_to_rfctl(dvobj);
-
-	return rf_ctl->rate_bmp_vht_by_bw[bw];
-}
-
-u8 rtw_get_tx_bw_bmp_of_ht_rate(struct dvobj_priv *dvobj, u8 rate, u8 max_bw)
-{
-	struct rf_ctl_t *rf_ctl = dvobj_to_rfctl(dvobj);
-	u8 bw;
-	u8 bw_bmp = 0;
-	u32 rate_bmp;
-
-	if (!IS_HT_RATE(rate)) {
-		rtw_warn_on(1);
-		goto exit;
-	}
-
-	rate_bmp = 1 << (rate - MGN_MCS0);
-
-	if (max_bw > CHANNEL_WIDTH_40)
-		max_bw = CHANNEL_WIDTH_40;
-
-	for (bw = CHANNEL_WIDTH_20; bw <= max_bw; bw++) {
-		/* RA may use lower rate for retry */
-		if (rf_ctl->rate_bmp_ht_by_bw[bw] >= rate_bmp)
-			bw_bmp |= ch_width_to_bw_cap(bw);
-	}
-
-exit:
-	return bw_bmp;
-}
-
-u8 rtw_get_tx_bw_bmp_of_vht_rate(struct dvobj_priv *dvobj, u8 rate, u8 max_bw)
-{
-	struct rf_ctl_t *rf_ctl = dvobj_to_rfctl(dvobj);
-	u8 bw;
-	u8 bw_bmp = 0;
-	u32 rate_bmp;
-
-	if (!IS_VHT_RATE(rate)) {
-		rtw_warn_on(1);
-		goto exit;
-	}
-
-	rate_bmp = 1 << (rate - MGN_VHT1SS_MCS0);
-
-	if (max_bw > CHANNEL_WIDTH_160)
-		max_bw = CHANNEL_WIDTH_160;
-
-	for (bw = CHANNEL_WIDTH_20; bw <= max_bw; bw++) {
-		/* RA may use lower rate for retry */
-		if (rf_ctl->rate_bmp_vht_by_bw[bw] >= rate_bmp)
-			bw_bmp |= ch_width_to_bw_cap(bw);
-	}
-
-exit:
-	return bw_bmp;
-}
-
-u8 query_ra_short_GI(struct sta_info *psta, u8 bw)
+u8	query_ra_short_GI(struct sta_info *psta)
 {
 	u8	sgi = _FALSE, sgi_20m = _FALSE, sgi_40m = _FALSE, sgi_80m = _FALSE;
 
 #ifdef CONFIG_80211N_HT
 #ifdef CONFIG_80211AC_VHT
-	if (psta->vhtpriv.vht_option)
-		sgi_80m = psta->vhtpriv.sgi_80m;
-#endif
-	sgi_20m = psta->htpriv.sgi_20m;
-	sgi_40m = psta->htpriv.sgi_40m;
+	if (psta->vhtpriv.vht_option) {
+		sgi_80m= psta->vhtpriv.sgi_80m;
+	}
+#endif //CONFIG_80211AC_VHT
+	{
+		sgi_20m = psta->htpriv.sgi_20m;
+		sgi_40m = psta->htpriv.sgi_40m;
+	}
 #endif
 
-	switch (bw) {
-	case CHANNEL_WIDTH_80:
-		sgi = sgi_80m;
-		break;
-	case CHANNEL_WIDTH_40:
-		sgi = sgi_40m;
-		break;
-	case CHANNEL_WIDTH_20:
-	default:
-		sgi = sgi_20m;
-		break;
+	switch(psta->bw_mode){
+		case CHANNEL_WIDTH_80:
+			sgi = sgi_80m;
+			break;
+		case CHANNEL_WIDTH_40:
+			sgi = sgi_40m;
+			break;
+		case CHANNEL_WIDTH_20:
+		default:
+			sgi = sgi_20m;
+			break;
 	}
 
 	return sgi;
@@ -894,7 +618,6 @@ static void update_attrib_vcs_info(_adapter *padapter, struct xmit_frame *pxmitf
 static void update_attrib_phy_info(_adapter *padapter, struct pkt_attrib *pattrib, struct sta_info *psta)
 {
 	struct mlme_ext_priv *mlmeext = &padapter->mlmeextpriv;
-	u8 bw;
 
 	pattrib->rtsen = psta->rtsen;
 	pattrib->cts2self = psta->cts2self;
@@ -909,9 +632,12 @@ static void update_attrib_phy_info(_adapter *padapter, struct pkt_attrib *pattri
 	
 	pattrib->raid = psta->raid;
 
-	bw = rtw_get_tx_bw_mode(padapter, psta);
-	pattrib->bwmode = rtw_min(bw, mlmeext->cur_bwmode);
-	pattrib->sgi = query_ra_short_GI(psta, pattrib->bwmode);
+	if (mlmeext->cur_bwmode < psta->bw_mode)
+		pattrib->bwmode = mlmeext->cur_bwmode;
+	else
+		pattrib->bwmode = psta->bw_mode;
+
+	pattrib->sgi = query_ra_short_GI(psta);
 
 	pattrib->ldpc = psta->ldpc;
 	pattrib->stbc = psta->stbc;
@@ -938,10 +664,10 @@ static void update_attrib_phy_info(_adapter *padapter, struct pkt_attrib *pattri
 
 		pattrib->raid = psta->raid;
 #ifdef CONFIG_80211N_HT
-		pattrib->bwmode = rtw_get_tx_bw_mode(padapter, psta);
+		pattrib->bwmode = psta->bw_mode;
 		pattrib->ht_en = psta->htpriv.ht_option;
 		pattrib->ch_offset = psta->htpriv.ch_offset;
-		pattrib->sgi = query_ra_short_GI(psta, pattrib->bwmode);
+		pattrib->sgi= query_ra_short_GI(psta);
 #endif /* CONFIG_80211N_HT */
 	}
 #endif /* CONFIG_TDLS */
@@ -1330,116 +1056,61 @@ static s32 update_attrib(_adapter *padapter, _pkt *pkt, struct pkt_attrib *pattr
 	else
 		DBG_COUNTER(padapter->tx_logs.core_tx_upd_attrib_unknown);
 
-	bmcast = IS_MCAST(pattrib->ra);
-	if (bmcast) {
-		psta = rtw_get_bcmc_stainfo(padapter);
-		if (psta == NULL) { /* if we cannot get psta => drop the pkt */
-			DBG_COUNTER(padapter->tx_logs.core_tx_upd_attrib_err_sta);
-			RT_TRACE(_module_rtl871x_xmit_c_, _drv_alert_, ("\nupdate_attrib => get sta_info fail, ra:" MAC_FMT "\n", MAC_ARG(pattrib->ra)));
-			#ifdef DBG_TX_DROP_FRAME
-			DBG_871X("DBG_TX_DROP_FRAME %s get sta_info fail, ra:" MAC_FMT"\n", __func__, MAC_ARG(pattrib->ra));
-			#endif
-			res = _FAIL;
-			goto exit;
-		}
-	} else {
-		psta = rtw_get_stainfo(pstapriv, pattrib->ra);
-		if (psta == NULL) { /* if we cannot get psta => drop the pkt */
-			DBG_COUNTER(padapter->tx_logs.core_tx_upd_attrib_err_ucast_sta);
-			RT_TRACE(_module_rtl871x_xmit_c_, _drv_alert_, ("\nupdate_attrib => get sta_info fail, ra:" MAC_FMT"\n", MAC_ARG(pattrib->ra)));
-			#ifdef DBG_TX_DROP_FRAME
-			DBG_871X("DBG_TX_DROP_FRAME %s get sta_info fail, ra:" MAC_FMT"\n", __func__, MAC_ARG(pattrib->ra));
-			#endif
-			res = _FAIL;
-			goto exit;
-		} else if (check_fwstate(pmlmepriv, WIFI_AP_STATE) == _TRUE && !(psta->state & _FW_LINKED)) {
-			DBG_COUNTER(padapter->tx_logs.core_tx_upd_attrib_err_ucast_ap_link);
-			res = _FAIL;
-			goto exit;
-		}
-	}
-
-	if (!(psta->state & _FW_LINKED)) {
-		DBG_COUNTER(padapter->tx_logs.core_tx_upd_attrib_err_link);
-		DBG_871X("%s, psta("MAC_FMT")->state(0x%x) != _FW_LINKED\n", __func__, MAC_ARG(psta->hwaddr), psta->state);
-		res = _FAIL;
-		goto exit;
-	}
-
 	pattrib->pktlen = pktfile.pkt_len;
 
-	/* TODO: 802.1Q VLAN header */
-	/* TODO: IPV6 */
+	if (ETH_P_IP == pattrib->ether_type)
+	{
+		// The following is for DHCP and ARP packet, we use cck1M to tx these packets and let LPS awake some time 
+		// to prevent DHCP protocol fail
 
-	if (ETH_P_IP == pattrib->ether_type) {
-		u8 ip[20];
+		u8 tmp[24];
+		
+		_rtw_pktfile_read(&pktfile, &tmp[0], 24);
 
-		_rtw_pktfile_read(&pktfile, ip, 20);
-
-		if (GET_IPV4_IHL(ip) * 4 > 20)
-			_rtw_pktfile_read(&pktfile, NULL, GET_IPV4_IHL(ip) - 20);
-
-		pattrib->icmp_pkt = 0;
 		pattrib->dhcp_pkt = 0;
-
-		if (GET_IPV4_PROTOCOL(ip) == 0x01) { /* ICMP */
-			pattrib->icmp_pkt = 1;
-			DBG_COUNTER(padapter->tx_logs.core_tx_upd_attrib_icmp);
-
-		} else if (GET_IPV4_PROTOCOL(ip) == 0x11) { /* UDP */
-			u8 udp[8];
-
-			_rtw_pktfile_read(&pktfile, udp, 8);
-
-			if ((GET_UDP_SRC(udp) == 68 && GET_UDP_DST(udp) == 67)
-				|| (GET_UDP_SRC(udp) == 67 && GET_UDP_DST(udp) == 68)
-			) {
-				/* 67 : UDP BOOTP server, 68 : UDP BOOTP client */
-				if (pattrib->pktlen > 282) { /* MINIMUM_DHCP_PACKET_SIZE */
+		if (pktfile.pkt_len > 282) {//MINIMUM_DHCP_PACKET_SIZE) {
+			if (ETH_P_IP == pattrib->ether_type) {// IP header
+				if (((tmp[21] == 68) && (tmp[23] == 67)) ||
+					((tmp[21] == 67) && (tmp[23] == 68))) {
+					// 68 : UDP BOOTP client
+					// 67 : UDP BOOTP server
+					RT_TRACE(_module_rtl871x_xmit_c_,_drv_err_,("======================update_attrib: get DHCP Packet \n"));
+					// Use low rate to send DHCP packet.
+					//if(pMgntInfo->IOTAction & HT_IOT_ACT_WA_IOT_Broadcom) 
+					//{
+					//	tcb_desc->DataRate = MgntQuery_TxRateExcludeCCKRates(ieee);//0xc;//ofdm 6m
+					//	tcb_desc->bTxDisableRateFallBack = false;
+					//}
+					//else
+					//	pTcb->DataRate = Adapter->MgntInfo.LowestBasicRate; 
+					//RTPRINT(FDM, WA_IOT, ("DHCP TranslateHeader(), pTcb->DataRate = 0x%x\n", pTcb->DataRate)); 
 					pattrib->dhcp_pkt = 1;
 					DBG_COUNTER(padapter->tx_logs.core_tx_upd_attrib_dhcp);
-					if (0)
-						DBG_871X("send DHCP packet\n");
-				}
-			}
-
-		} else if (GET_IPV4_PROTOCOL(ip) == 0x06 /* TCP */
-			&& rtw_st_ctl_chk_reg_s_proto(&psta->st_ctl, 0x06) == _TRUE
-		) {
-			u8 tcp[20];
-
-			_rtw_pktfile_read(&pktfile, tcp, 20);
-
-			if (rtw_st_ctl_chk_reg_rule(&psta->st_ctl, padapter, IPV4_SRC(ip), TCP_SRC(tcp), IPV4_DST(ip), TCP_DST(tcp)) == _TRUE) {
-				if (GET_TCP_SYN(tcp) && GET_TCP_ACK(tcp)) {
-					session_tracker_add_cmd(padapter, psta
-						, IPV4_SRC(ip), TCP_SRC(tcp)
-						, IPV4_SRC(ip), TCP_DST(tcp));
-					if (DBG_SESSION_TRACKER)
-						DBG_871X(FUNC_ADPT_FMT" local:"IP_FMT":"PORT_FMT", remote:"IP_FMT":"PORT_FMT" SYN-ACK\n"
-							, FUNC_ADPT_ARG(padapter)
-							, IP_ARG(IPV4_SRC(ip)), PORT_ARG(TCP_SRC(tcp))
-							, IP_ARG(IPV4_DST(ip)), PORT_ARG(TCP_DST(tcp)));
-				}
-				if (GET_TCP_FIN(tcp)) {
-					session_tracker_del_cmd(padapter, psta
-						, IPV4_SRC(ip), TCP_SRC(tcp)
-						, IPV4_SRC(ip), TCP_DST(tcp));
-					if (DBG_SESSION_TRACKER)
-						DBG_871X(FUNC_ADPT_FMT" local:"IP_FMT":"PORT_FMT", remote:"IP_FMT":"PORT_FMT" FIN\n"
-							, FUNC_ADPT_ARG(padapter)
-							, IP_ARG(IPV4_SRC(ip)), PORT_ARG(TCP_SRC(tcp))
-							, IP_ARG(IPV4_DST(ip)), PORT_ARG(TCP_DST(tcp)));
 				}
 			}
 		}
 
+		//for parsing ICMP pakcets
+		{
+			struct iphdr *piphdr = (struct iphdr *)tmp;
+
+			pattrib->icmp_pkt = 0;	
+			if(piphdr->protocol == 0x1) // protocol type in ip header 0x1 is ICMP			
+			{
+				pattrib->icmp_pkt = 1;
+				DBG_COUNTER(padapter->tx_logs.core_tx_upd_attrib_icmp);
+			}
+		}	
+
+		
 	} else if (0x888e == pattrib->ether_type) {
 		DBG_871X_LEVEL(_drv_always_, "send eapol packet\n");
 	}
 
-	if ((pattrib->ether_type == 0x888e) || (pattrib->dhcp_pkt == 1))
+	if ( (pattrib->ether_type == 0x888e) || (pattrib->dhcp_pkt == 1) )
+	{
 		rtw_set_scan_deny(padapter, 3000);
+	}
 
 #ifdef CONFIG_LPS
 	// If EAPOL , ARP , OR DHCP packet, driver must be in active mode.
@@ -1463,9 +1134,49 @@ static s32 update_attrib(_adapter *padapter, _pkt *pkt, struct pkt_attrib *pattr
 	}
 #endif //CONFIG_LPS
 
-#ifdef CONFIG_BEAMFORMING
-	update_attrib_txbf_info(padapter, pattrib, psta);
-#endif
+	bmcast = IS_MCAST(pattrib->ra);
+	
+	// get sta_info
+	if (bmcast) {
+		psta = rtw_get_bcmc_stainfo(padapter);
+	} else {
+		psta = rtw_get_stainfo(pstapriv, pattrib->ra);
+		if (psta == NULL)	{ // if we cannot get psta => drop the pkt
+			DBG_COUNTER(padapter->tx_logs.core_tx_upd_attrib_err_ucast_sta);
+			RT_TRACE(_module_rtl871x_xmit_c_, _drv_alert_, ("\nupdate_attrib => get sta_info fail, ra:" MAC_FMT"\n", MAC_ARG(pattrib->ra)));
+			#ifdef DBG_TX_DROP_FRAME
+			DBG_871X("DBG_TX_DROP_FRAME %s get sta_info fail, ra:" MAC_FMT"\n", __FUNCTION__, MAC_ARG(pattrib->ra));
+			#endif
+			res =_FAIL;
+			goto exit;
+		}
+		else if((check_fwstate(pmlmepriv, WIFI_AP_STATE)==_TRUE)&&(!(psta->state & _FW_LINKED)))
+		{
+			DBG_COUNTER(padapter->tx_logs.core_tx_upd_attrib_err_ucast_ap_link);
+			res =_FAIL;
+			goto exit;
+		}
+	}
+
+	if(psta == NULL)
+	{		// if we cannot get psta => drop the pkt
+		DBG_COUNTER(padapter->tx_logs.core_tx_upd_attrib_err_sta);
+		RT_TRACE(_module_rtl871x_xmit_c_, _drv_alert_, ("\nupdate_attrib => get sta_info fail, ra:" MAC_FMT "\n", MAC_ARG(pattrib->ra)));
+		#ifdef DBG_TX_DROP_FRAME
+		DBG_871X("DBG_TX_DROP_FRAME %s get sta_info fail, ra:" MAC_FMT"\n", __FUNCTION__, MAC_ARG(pattrib->ra));
+		#endif
+		res = _FAIL;
+		goto exit;
+	}
+
+	if(!(psta->state &_FW_LINKED))
+	{
+		DBG_COUNTER(padapter->tx_logs.core_tx_upd_attrib_err_link);
+		DBG_871X("%s, psta("MAC_FMT")->state(0x%x) != _FW_LINKED\n", __func__, MAC_ARG(psta->hwaddr), psta->state);
+		return _FAIL;
+	}
+
+
 
 	//TODO:_lock
 	if(update_attrib_sec_info(padapter, pattrib, psta) == _FAIL)
@@ -4041,148 +3752,6 @@ static void do_queue_select(_adapter	*padapter, struct pkt_attrib *pattrib)
 	pattrib->qsel = qsel;
 }
 
-/*
- * The main transmit(tx) entry
- *
- * Return
- *	1	enqueue
- *	0	success, hardware will handle this xmit frame(packet)
- *	<0	fail
- */
- #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24))
-s32 rtw_monitor_xmit_entry(struct sk_buff *skb, struct net_device *ndev)
-{
-	int ret = 0;
-	int rtap_len;
-	int qos_len = 0;
-	int dot11_hdr_len = 24;
-	int snap_len = 6;
-	unsigned char *pdata;
-	u16 frame_ctl;
-	unsigned char src_mac_addr[6];
-	unsigned char dst_mac_addr[6];
-	struct rtw_ieee80211_hdr *dot11_hdr;
-	struct ieee80211_radiotap_header *rtap_hdr;
-	_adapter *padapter = (_adapter *)rtw_netdev_priv(ndev);
-
-	if (skb)
-		rtw_mstat_update(MSTAT_TYPE_SKB, MSTAT_ALLOC_SUCCESS, skb->truesize);
-
-	if (unlikely(skb->len < sizeof(struct ieee80211_radiotap_header)))
-		goto fail;
-
-	rtap_hdr = (struct ieee80211_radiotap_header *)skb->data;
-	if (unlikely(rtap_hdr->it_version))
-		goto fail;
-
-	rtap_len = ieee80211_get_radiotap_len(skb->data);
-	if (unlikely(skb->len < rtap_len))
-		goto fail;
-
-	if (rtap_len != 12) {
-		DBG_8192C("radiotap len (should be 14): %d\n", rtap_len);
-		goto fail;
-	}
-
-	/* Skip the ratio tap header */
-	skb_pull(skb, rtap_len);
-
-	dot11_hdr = (struct rtw_ieee80211_hdr *)skb->data;
-	frame_ctl = le16_to_cpu(dot11_hdr->frame_ctl);
-	/* Check if the QoS bit is set */
-
-	if ((frame_ctl & RTW_IEEE80211_FCTL_FTYPE) == RTW_IEEE80211_FTYPE_DATA) {
-
-		struct xmit_frame		*pmgntframe;
-		struct pkt_attrib	*pattrib;
-		unsigned char	*pframe;
-		struct rtw_ieee80211_hdr *pwlanhdr;
-		struct xmit_priv	*pxmitpriv = &(padapter->xmitpriv);
-		struct mlme_ext_priv	*pmlmeext = &(padapter->mlmeextpriv);
-		u8 *buf = skb->data;
-		u32 len = skb->len;
-		u8 category, action;
-		int type = -1;
-
-		pmgntframe = alloc_mgtxmitframe(pxmitpriv);
-		if (pmgntframe == NULL) {
-			rtw_udelay_os(500);
-			goto fail;
-		}
-		pattrib = &pmgntframe->attrib;
-
-		update_monitor_frame_attrib(padapter, pattrib);
-
-		pattrib->retry_ctrl = _FALSE;
-
-		_rtw_memset(pmgntframe->buf_addr, 0, WLANHDR_OFFSET + TXDESC_OFFSET);
-
-		pframe = (u8 *)(pmgntframe->buf_addr) + TXDESC_OFFSET;
-
-		_rtw_memcpy(pframe, (void *)buf, len);
-
-		pattrib->pktlen = len;
-
-		pwlanhdr = (struct rtw_ieee80211_hdr *)pframe;
-
-		if (is_broadcast_mac_addr(pwlanhdr->addr3) || is_broadcast_mac_addr(pwlanhdr->addr1))
-			pattrib->rate = MGN_24M;
-
-		pmlmeext->mgnt_seq = GetSequence(pwlanhdr);
-		pattrib->seqnum = pmlmeext->mgnt_seq;
-		pmlmeext->mgnt_seq++;
-
-		pattrib->last_txcmdsz = pattrib->pktlen;
-
-		dump_mgntframe(padapter, pmgntframe);
-
-	} else {
-		struct xmit_frame		*pmgntframe;
-		struct pkt_attrib	*pattrib;
-		unsigned char	*pframe;
-		struct rtw_ieee80211_hdr *pwlanhdr;
-		struct xmit_priv	*pxmitpriv = &(padapter->xmitpriv);
-		struct mlme_ext_priv	*pmlmeext = &(padapter->mlmeextpriv);
-		u8 *buf = skb->data;
-		u32 len = skb->len;
-		u8 category, action;
-		int type = -1;
-
-		pmgntframe = alloc_mgtxmitframe(pxmitpriv);
-		if (pmgntframe == NULL)
-			goto fail;
-
-		pattrib = &pmgntframe->attrib;
-		update_mgntframe_attrib(padapter, pattrib);
-		pattrib->retry_ctrl = _FALSE;
-
-		_rtw_memset(pmgntframe->buf_addr, 0, WLANHDR_OFFSET + TXDESC_OFFSET);
-
-		pframe = (u8 *)(pmgntframe->buf_addr) + TXDESC_OFFSET;
-
-		_rtw_memcpy(pframe, (void *)buf, len);
-
-		pattrib->pktlen = len;
-
-		pwlanhdr = (struct rtw_ieee80211_hdr *)pframe;
-
-		pmlmeext->mgnt_seq = GetSequence(pwlanhdr);
-		pattrib->seqnum = pmlmeext->mgnt_seq;
-		pmlmeext->mgnt_seq++;
-
-		pattrib->last_txcmdsz = pattrib->pktlen;
-
-		dump_mgntframe(padapter, pmgntframe);
-
-	}
-
-fail:
-
-		rtw_skb_free(skb);
-
-		return 0;
-}
-#endif
 /*
  * The main transmit(tx) entry
  *

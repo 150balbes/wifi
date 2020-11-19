@@ -174,7 +174,6 @@ void sreset_restore_network_station(_adapter *padapter)
 	struct mlme_priv *mlmepriv = &padapter->mlmepriv;
 	struct mlme_ext_priv	*pmlmeext = &padapter->mlmeextpriv;
 	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
-	u8 doiqk = _FALSE;
 
 	#if 0
 	{
@@ -215,13 +214,10 @@ void sreset_restore_network_station(_adapter *padapter)
 		#endif
 	}
 
-	doiqk = _TRUE;
-	rtw_hal_set_hwreg(padapter, HW_VAR_DO_IQK , &doiqk);
+	rtw_hal_set_hwreg(padapter, HW_VAR_DO_IQK, NULL);
 
 	set_channel_bwmode(padapter, pmlmeext->cur_channel, pmlmeext->cur_ch_offset, pmlmeext->cur_bwmode);
 
-	doiqk = _FALSE;
-	rtw_hal_set_hwreg(padapter , HW_VAR_DO_IQK , &doiqk);
 	//disable dynamic functions, such as high power, DIG
 	/*rtw_phydm_func_disable_all(padapter);*/
 	

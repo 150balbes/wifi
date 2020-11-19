@@ -154,6 +154,7 @@ void rtl8188e_set_p2p_ps_offload_cmd(PADAPTER padapter, u8 p2p_ps_state);
 #endif //CONFIG_P2P
 
 void CheckFwRsvdPageContent(PADAPTER padapter);
+void rtl8188e_set_FwMediaStatus_cmd(PADAPTER padapter, u16 mstatus_rpt );
 
 #ifdef CONFIG_TSF_RESET_OFFLOAD
 //u8 rtl8188e_reset_tsf(_adapter *padapter, u8 reset_port);
@@ -162,6 +163,10 @@ int reset_tsf(PADAPTER Adapter, u8 reset_port );
 
 //#define H2C_8188E_RSVDPAGE_LOC_LEN      5
 //#define H2C_8188E_AOAC_RSVDPAGE_LOC_LEN 7
+
+#ifdef CONFIG_WOWLAN
+void SetFwRelatedForWoWLAN8188ES(_adapter* padapter, u8 bHostIsGoingtoSleep);
+#endif//CONFIG_WOWLAN
 
 //---------------------------------------------------------------------------------------------------------//
 //----------------------------------    H2C CMD CONTENT    --------------------------------------------------//

@@ -527,21 +527,11 @@ _func_exit_;
 
 int rtw_xmit_entry(_pkt *pkt, _nic_hdl pnetdev)
 {
-	_adapter *padapter = (_adapter *)rtw_netdev_priv(pnetdev);
-	struct	mlme_priv	*pmlmepriv = &(padapter->mlmepriv);
 	int ret = 0;
 
 	if (pkt) {
-		if (check_fwstate(pmlmepriv, WIFI_MONITOR_STATE) == _TRUE) {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24))
-			rtw_monitor_xmit_entry((struct sk_buff *)pkt, pnetdev);
-#endif
-		}
-		else {
-			rtw_mstat_update(MSTAT_TYPE_SKB, MSTAT_ALLOC_SUCCESS, pkt->truesize);
-			ret = _rtw_xmit_entry(pkt, pnetdev);
-		}
-
+		rtw_mstat_update(MSTAT_TYPE_SKB, MSTAT_ALLOC_SUCCESS, pkt->truesize);
+		ret = _rtw_xmit_entry(pkt, pnetdev);
 	}
 
 	return ret;

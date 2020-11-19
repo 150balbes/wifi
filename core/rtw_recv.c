@@ -28,6 +28,15 @@
 
 #endif
 
+static u8 rtw_rfc1042_header[] =
+{ 0xaa, 0xaa, 0x03, 0x00, 0x00, 0x00 };
+/* Bridge-Tunnel header (for EtherTypes ETH_P_AARP and ETH_P_IPX) */
+static u8 rtw_bridge_tunnel_header[] =
+{ 0xaa, 0xaa, 0x03, 0x00, 0x00, 0xf8 };
+
+static u8 SNAP_ETH_TYPE_IPX[2] = {0x81, 0x37};
+
+static u8 SNAP_ETH_TYPE_APPLETALK_AARP[2] = {0x80, 0xf3};
 
 #ifdef CONFIG_NEW_SIGNAL_STAT_PROCESS
 void rtw_signal_stat_timer_hdl(RTW_TIMER_HDL_ARGS);
@@ -82,11 +91,6 @@ _func_enter_;
 	//_rtw_memset((unsigned char *)precvpriv, 0, sizeof (struct  recv_priv));
 
 	_rtw_spinlock_init(&precvpriv->lock);
-
-#ifdef CONFIG_RECV_THREAD_MODE
-	_rtw_init_sema(&precvpriv->recv_sema, 0);
-	_rtw_init_sema(&precvpriv->terminate_recvthread_sema, 0);
-#endif
 
 	_rtw_init_queue(&precvpriv->free_recv_queue);
 	_rtw_init_queue(&precvpriv->recv_pending_queue);
@@ -198,19 +202,6 @@ _func_enter_;
 
 _func_exit_;
 
-}
-
-bool rtw_rframe_del_wfd_ie(union recv_frame *rframe, u8 ies_offset)
-{
-#define DBG_RFRAME_DEL_WFD_IE 0
-	u8 *ies = rframe->u.hdr.rx_data + sizeof(struct rtw_ieee80211_hdr_3addr) + ies_offset;
-	uint ies_len_ori = rframe->u.hdr.len - (ies - rframe->u.hdr.rx_data);
-	uint ies_len;
-
-	ies_len = rtw_del_wfd_ie(ies, ies_len_ori, DBG_RFRAME_DEL_WFD_IE ? __func__ : NULL);
-	rframe->u.hdr.len -= ies_len_ori - ies_len;
-
-	return ies_len_ori != ies_len;
 }
 
 union recv_frame *_rtw_alloc_recvframe (_queue *pfree_recv_queue)
@@ -1043,20 +1034,14 @@ sint OnTDLS(_adapter *adapter, union recv_frame *precv_frame)
 			+ PAYLOAD_TYPE_LEN 
 			+ category_field;
 
-	DBG_871X("[TDLS] Recv %s from "MAC_FMT"\n", rtw_tdls_action_txt(*paction), MAC_ARG(pattrib->src));
-
-	if (hal_chk_wl_func(adapter, WL_FUNC_TDLS) == _FALSE) {
-		DBG_871X("Ignore tdls frame since hal doesn't support tdls\n");
-		ret = _FAIL;
-		return ret;
-	}
-
 	if (ptdlsinfo->tdls_enable == _FALSE) {
 		DBG_871X("recv tdls frame, "
 				"but tdls haven't enabled\n");
 		ret = _FAIL;
 		return ret;
 	}
+
+	DBG_871X("[TDLS] Recv %s from "MAC_FMT"\n", rtw_tdls_action_txt(*paction), MAC_ARG(pattrib->src));
 	
 	switch(*paction){
 	case TDLS_SETUP_REQUEST:
@@ -1831,7 +1816,7 @@ sint validate_recv_ctrl_frame(_adapter *padapter, union recv_frame *precv_frame)
 	else if(GetFrameSubType(pframe) == WIFI_NDPA) {
 #ifdef CONFIG_BEAMFORMING
 		beamforming_get_ndpa_frame(padapter, precv_frame);
-#endif/*CONFIG_BEAMFORMING*/
+#endif
 	}
 
 	return _FAIL;
@@ -2330,8 +2315,7 @@ _func_enter_;
 
 #if 1 //Dump rx packets
 {
-	u8 bDumpRxPkt = 0;
-
+	u8 bDumpRxPkt;
 	rtw_hal_get_def_var(adapter, HAL_DEF_DBG_DUMP_RXPKT, &(bDumpRxPkt));
 	if (bDumpRxPkt == 1) //dump all rx packets
 		dump_rx_packet(ptr);
@@ -3562,15 +3546,11 @@ int recv_indicatepkt_reorder(_adapter *padapter, union recv_frame *prframe)
 	//recv_indicatepkts_in_order(padapter, preorder_ctrl, _TRUE);
 	if(recv_indicatepkts_in_order(padapter, preorder_ctrl, _FALSE)==_TRUE)
 	{
-		if (!preorder_ctrl->bReorderWaiting) {
-			preorder_ctrl->bReorderWaiting = _TRUE;
 		_set_timer(&preorder_ctrl->reordering_ctrl_timer, REORDER_WAIT_TIME);
-		}
 		_exit_critical_bh(&ppending_recvframe_queue->lock, &irql);
 	}
 	else
 	{
-		preorder_ctrl->bReorderWaiting = _FALSE;
 		_exit_critical_bh(&ppending_recvframe_queue->lock, &irql);
 		_cancel_timer_ex(&preorder_ctrl->reordering_ctrl_timer);
 	}
@@ -3602,10 +3582,6 @@ void rtw_reordering_ctrl_timeout_handler(void *pcontext)
 	//DBG_871X("+rtw_reordering_ctrl_timeout_handler()=>\n");
 
 	_enter_critical_bh(&ppending_recvframe_queue->lock, &irql);
-
-	if (preorder_ctrl) {
-		preorder_ctrl->bReorderWaiting = _FALSE;
-	}
 
 	if(recv_indicatepkts_in_order(padapter, preorder_ctrl, _TRUE)==_TRUE)
 	{
@@ -3989,11 +3965,6 @@ static sint fill_radiotap_hdr(_adapter *padapter, union recv_frame *precvframe, 
 	/* (0 << IEEE80211_RADIOTAP_AMPDU_STATUS)      | \ */
 	/* (0 << IEEE80211_RADIOTAP_VHT)               | \ */
 #endif
-
-#ifndef IEEE80211_RADIOTAP_RX_FLAGS
-#define IEEE80211_RADIOTAP_RX_FLAGS 14
-#endif
-
 #ifndef IEEE80211_RADIOTAP_MCS
 #define IEEE80211_RADIOTAP_MCS 19
 #endif
@@ -4061,8 +4032,9 @@ static sint fill_radiotap_hdr(_adapter *padapter, union recv_frame *precvframe, 
 	if (pattrib->mfrag)
 		hdr_buf[rt_len] |= IEEE80211_RADIOTAP_F_FRAG;
 
-	/* always append FCS */
-	hdr_buf[rt_len] |= IEEE80211_RADIOTAP_F_FCS;
+#ifndef CONFIG_RX_PACKET_APPEND_FCS
+		hdr_buf[rt_len] |= IEEE80211_RADIOTAP_F_FCS;
+#endif
 
 	if (0)
 		hdr_buf[rt_len] |= IEEE80211_RADIOTAP_F_DATAPAD;
@@ -4264,7 +4236,7 @@ static sint fill_radiotap_hdr(_adapter *padapter, union recv_frame *precvframe, 
 	return ret;
 
 }
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24))
+
 int recv_frame_monitor(_adapter *padapter, union recv_frame *rframe)
 {
 	int ret = _SUCCESS;
@@ -4311,7 +4283,7 @@ int recv_frame_monitor(_adapter *padapter, union recv_frame *rframe)
 exit:
 	return ret;
 }
-#endif
+
 int recv_func_prehandle(_adapter *padapter, union recv_frame *rframe)
 {
 	int ret = _SUCCESS;
@@ -4529,9 +4501,7 @@ int recv_func(_adapter *padapter, union recv_frame *rframe)
 
 	if (check_fwstate(mlmepriv, WIFI_MONITOR_STATE)) {
 		/* monitor mode */
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24))
 		recv_frame_monitor(padapter, rframe);
-#endif
 		ret = _SUCCESS;
 		goto exit;
 	} else
@@ -4939,6 +4909,9 @@ void rx_query_phy_status(
 		psta->rssi = pattrib->phy_info.RecvSignalPower;
 	//_exit_critical_bh(&pHalData->odm_stainfo_lock, &irqL);
 
+#ifdef CONFIG_SW_ANTENNA_DIVERSITY
+	if (GET_HAL_DATA(padapter)->odmpriv.RSSI_test == _FALSE)
+#endif
 	{
 		precvframe->u.hdr.psta = NULL;
 		if (pkt_info.bPacketMatchBSSID
@@ -4981,48 +4954,3 @@ void rtw_reset_continual_no_rx_packet(struct sta_info *sta, int tid_index)
 {	
 	ATOMIC_SET(&sta->continual_no_rx_packet[tid_index], 0);	
 }
-
-#ifdef CONFIG_RECV_THREAD_MODE
-thread_return rtw_recv_thread(thread_context context)
-{
-	_adapter *adapter = (_adapter *)context;
-	struct recv_priv *recvpriv = &adapter->recvpriv;
-	s32 err = _SUCCESS;
-
-	thread_enter("RTW_RECV_THREAD");
-
-	RTW_INFO(FUNC_ADPT_FMT" enter\n", FUNC_ADPT_ARG(adapter));
-
-	do {
-		err = _rtw_down_sema(&recvpriv->recv_sema);
-		if (_FAIL == err) {
-			RTW_ERR(FUNC_ADPT_FMT" down recv_sema fail!\n", FUNC_ADPT_ARG(adapter));
-			goto exit;
-		}
-
-		if (RTW_CANNOT_RUN(adapter)) {
-			RTW_INFO(FUNC_ADPT_FMT" DS:%d, SR:%d\n", FUNC_ADPT_ARG(adapter)
-				, rtw_is_drv_stopped(adapter), rtw_is_surprise_removed(adapter));
-			goto exit;
-		}
-
-		err = rtw_hal_recv_hdl(adapter);
-
-		if (err == RTW_RFRAME_UNAVAIL
-			|| err == RTW_RFRAME_PKT_UNAVAIL
-		) {
-			rtw_msleep_os(1);
-			_rtw_up_sema(&recvpriv->recv_sema);
-		}
-
-		flush_signals_thread();
-
-	} while (err != _FAIL);
-
-exit:
-	_rtw_up_sema(&adapter->recvpriv.terminate_recvthread_sema);
-	RTW_INFO(FUNC_ADPT_FMT" exit\n", FUNC_ADPT_ARG(adapter));
-	thread_exit();
-}
-#endif /* CONFIG_RECV_THREAD_MODE */
-

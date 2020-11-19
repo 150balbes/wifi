@@ -216,7 +216,7 @@ static u8 gpio_hostwakeup_alloc_irq(PADAPTER padapter)
 		status |= IRQF_TRIGGER_FALLING;
 
 	err = request_threaded_irq(oob_irq, gpio_hostwakeup_irq_thread, NULL,
-		status, "rtw_wifi_gpio_wakeup", padapter);
+				   status, "rtw_wifi_gpio_wakeup", padapter);
 
 	if (err < 0) {
 		DBG_871X("Oops: can't allocate gpio irq %d err:%d\n", oob_irq, err);
@@ -459,9 +459,6 @@ u8 rtw_set_hal_ops(PADAPTER padapter)
 	if( rtw_hal_ops_check(padapter) == _FAIL)
 		return _FAIL;
 
-	if (hal_spec_init(padapter) == _FAIL)
-		return _FAIL;
-
 	return _SUCCESS;
 }
 
@@ -569,11 +566,12 @@ _adapter *rtw_sdio_if1_init(struct dvobj_priv *dvobj)
 	//3 8. get WLan MAC address
 	// set mac addr
 	rtw_macaddr_cfg(&psdio->func->dev, adapter_mac_addr(padapter), get_hal_mac_addr(padapter));
-#ifdef CONFIG_P2P
 	rtw_init_wifidirect_addrs(padapter, adapter_mac_addr(padapter), adapter_mac_addr(padapter));
-#endif /* CONFIG_P2P */
 
 	rtw_hal_disable_interrupt(padapter);
+
+	if (padapter->net_closed == _TRUE)
+		rtw_hal_deinit(padapter);
 
 	DBG_871X("bDriverStopped:%s, bSurpriseRemoved:%s, bup:%d, hw_init_completed:%d\n"
 		, rtw_is_drv_stopped(padapter)?"True":"False"
@@ -817,16 +815,13 @@ _func_enter_;
 		rtw_pm_set_lps(padapter, PS_MODE_ACTIVE);
 		LeaveAllPowerSaveMode(padapter);
 	}
+
 	rtw_set_drv_stopped(padapter);	/*for stop thread*/
 #ifdef CONFIG_CONCURRENT_MODE
 	rtw_drv_if2_stop(dvobj->padapters[IFACE_ID1]);
 #endif
 
 #ifdef CONFIG_BT_COEXIST
-	#ifdef CONFIG_BT_COEXIST_SOCKET_TRX
-	if (GET_HAL_DATA(padapter)->EEPROMBluetoothCoexist)
-		rtw_btcoex_close_socket(padapter);
-	#endif
 	rtw_btcoex_HaltNotify(padapter);
 #endif
 
@@ -972,7 +967,7 @@ static int rtw_sdio_resume(struct device *dev)
 
 }
 
-static int rtw_drv_entry(void)
+static int __init rtw_drv_entry(void)
 {
 	int ret = 0;
 
@@ -1019,7 +1014,7 @@ exit:
 	return ret;
 }
 
-static void rtw_drv_halt(void)
+static void __exit rtw_drv_halt(void)
 {
 	DBG_871X_LEVEL(_drv_always_, "module exit start\n");
 

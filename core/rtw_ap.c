@@ -598,20 +598,12 @@ void	expire_timeout_chk(_adapter *padapter)
 #ifdef CONFIG_ACTIVE_KEEP_ALIVE_CHECK
 if (chk_alive_num) {
 
-	u8 backup_ch = 0, backup_bw, backup_offset;
-	u8 union_ch = 0, union_bw, union_offset;
+	u8 backup_oper_channel=0;
 	struct mlme_ext_priv *pmlmeext = &padapter->mlmeextpriv;
-
-	if (!rtw_get_ch_setting_union(padapter, &union_ch, &union_bw, &union_offset)
-		|| pmlmeext->cur_channel != union_ch)
-		goto bypass_active_keep_alive;
-
 	/* switch to correct channel of current network  before issue keep-alive frames */
 	if (rtw_get_oper_ch(padapter) != pmlmeext->cur_channel) {
-		backup_ch = rtw_get_oper_ch(padapter);
-		backup_bw = rtw_get_oper_bw(padapter);
-		backup_offset = rtw_get_oper_choffset(padapter);
-		set_channel_bwmode(padapter, union_ch, union_offset, union_bw);
+		backup_oper_channel = rtw_get_oper_ch(padapter);
+		SelectChannel(padapter, pmlmeext->cur_channel);
 	}
 
 	/* issue null data to check sta alive*/
@@ -660,12 +652,8 @@ if (chk_alive_num) {
 
 	}
 
-	/* back to the original operation channel */
-	if (backup_ch > 0)
-		set_channel_bwmode(padapter, backup_ch, backup_offset, backup_bw);
-
-bypass_active_keep_alive:
-	;
+	if (backup_oper_channel>0) /* back to the original operation channel */
+		SelectChannel(padapter, backup_oper_channel);
 }
 #endif /* CONFIG_ACTIVE_KEEP_ALIVE_CHECK */
 
@@ -681,7 +669,6 @@ void add_RATid(_adapter *padapter, struct sta_info *psta, u8 rssi_level)
 	struct ht_priv	*psta_ht = NULL;
 	struct mlme_priv *pmlmepriv = &(padapter->mlmepriv);
 	WLAN_BSSID_EX *pcur_network = (WLAN_BSSID_EX *)&pmlmepriv->cur_network.network;
-	u8 bw;
 
 #ifdef CONFIG_80211N_HT
 	if(psta)
@@ -815,8 +802,7 @@ void add_RATid(_adapter *padapter, struct sta_info *psta, u8 rssi_level)
 	rtw_hal_update_sta_rate_mask(padapter, psta);
 	tx_ra_bitmap = psta->ra_mask;
 
-	bw = rtw_get_tx_bw_mode(padapter, psta);
-	shortGIrate = query_ra_short_GI(psta, bw);
+	shortGIrate = query_ra_short_GI(psta);
 
 	if ( pcur_network->Configuration.DSConfig > 14 ) {
 		
@@ -875,12 +861,17 @@ void update_bmc_sta(_adapter *padapter)
 	int supportRateNum = 0;
 	u64 tx_ra_bitmap = 0;
 	struct mlme_priv *pmlmepriv = &(padapter->mlmepriv);
+	struct mlme_ext_priv	*pmlmeext = &(padapter->mlmeextpriv);
+	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);	
 	WLAN_BSSID_EX *pcur_network = (WLAN_BSSID_EX *)&pmlmepriv->cur_network.network;	
 	struct sta_info *psta = rtw_get_bcmc_stainfo(padapter);
 
 	if(psta)
 	{
 		psta->aid = 0;//default set to 0
+
+		pmlmeinfo->FW_sta_info[psta->mac_id].psta = psta;
+
 		psta->qos_option = 0;
 #ifdef CONFIG_80211N_HT	
 		psta->htpriv.ht_option = _FALSE;
@@ -1048,26 +1039,23 @@ void update_sta_info_apmode(_adapter *padapter, struct sta_info *psta)
 		}
 
 #ifdef CONFIG_BEAMFORMING
-		/*Config Tx beamforming setting*/
+		// Config Tx beamforming setting
 		if (TEST_FLAG(phtpriv_ap->beamform_cap, BEAMFORMING_HT_BEAMFORMEE_ENABLE) && 
 			GET_HT_CAP_TXBF_EXPLICIT_COMP_STEERING_CAP((u8 *)(&phtpriv_sta->ht_cap)))
 		{
 			SET_FLAG(cur_beamform_cap, BEAMFORMING_HT_BEAMFORMER_ENABLE);
-			/*Shift to BEAMFORMING_HT_BEAMFORMEE_CHNL_EST_CAP*/
-			SET_FLAG(cur_beamform_cap, GET_HT_CAP_TXBF_CHNL_ESTIMATION_NUM_ANTENNAS((u8 *)(&phtpriv_sta->ht_cap)) << 6);
 		}
 
 		if (TEST_FLAG(phtpriv_ap->beamform_cap, BEAMFORMING_HT_BEAMFORMER_ENABLE) &&
 			GET_HT_CAP_TXBF_EXPLICIT_COMP_FEEDBACK_CAP((u8 *)(&phtpriv_sta->ht_cap)))
 		{
 			SET_FLAG(cur_beamform_cap, BEAMFORMING_HT_BEAMFORMEE_ENABLE);
-			/*Shift to BEAMFORMING_HT_BEAMFORMER_STEER_NUM*/
-			SET_FLAG(cur_beamform_cap, GET_HT_CAP_TXBF_COMP_STEERING_NUM_ANTENNAS((u8 *)(&phtpriv_sta->ht_cap)) << 4);
 		}
+
 		if (cur_beamform_cap) {
 			DBG_871X("Client STA(%d) HT Beamforming Cap = 0x%02X\n", psta->aid, cur_beamform_cap);
 		}
-#endif /*CONFIG_BEAMFORMING*/
+#endif //CONFIG_BEAMFORMING
 	}
 	else
 	{
@@ -1498,7 +1486,6 @@ void start_bss_network(_adapter *padapter, struct createbss_parm *parm)
 	u8 req_ch, req_bw, req_offset;
 	bool ch_setting_changed = _FALSE;
 	u8 ch_to_set = 0, bw_to_set, offset_to_set;
-	u8 doiqk = _FALSE;
 
 	if (parm->req_ch == 0) {
 		/* change to unspecificed ch, bw, offset, get from IE */
@@ -1580,6 +1567,8 @@ void start_bss_network(_adapter *padapter, struct createbss_parm *parm)
 	//Beacon Control related register
 	rtw_hal_set_hwreg(padapter, HW_VAR_BEACON_INTERVAL, (u8 *)(&bcn_interval));
 
+	rtw_hal_set_hwreg(padapter, HW_VAR_DO_IQK, NULL);
+
 #if 0
 	if(pmlmepriv->cur_network.join_res != _TRUE) //setting only at  first time
 	{
@@ -1620,14 +1609,9 @@ change_chbw:
 	rtw_dfs_master_status_apply(padapter, MLME_AP_STARTED);
 	#endif
 
-	doiqk = _TRUE;
-	rtw_hal_set_hwreg(padapter , HW_VAR_DO_IQK , &doiqk);
-	
 	if (ch_to_set != 0)
 		set_channel_bwmode(padapter, ch_to_set, offset_to_set, bw_to_set);
 
-	doiqk = _FALSE;
-	rtw_hal_set_hwreg(padapter , HW_VAR_DO_IQK , &doiqk);
 	if (DUMP_ADAPTERS_STATUS) {
 		DBG_871X(FUNC_ADPT_FMT" done\n", FUNC_ADPT_ARG(padapter));
 		dump_adapters_status(RTW_DBGDUMP , adapter_to_dvobj(padapter));
@@ -1691,8 +1675,7 @@ int rtw_check_beacon_data(_adapter *padapter, u8 *pbuf,  int len)
 	u8 vht_cap=_FALSE;
 	struct mlme_ext_priv	*pmlmeext = &(padapter->mlmeextpriv);
 	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
-	u8 rf_num = 0;
-	
+
 	/* SSID */
 	/* Supported rates */
 	/* DS Params */
@@ -2064,8 +2047,6 @@ int rtw_check_beacon_data(_adapter *padapter, u8 *pbuf,  int len)
 			SET_HT_CAP_TXBF_EXPLICIT_COMP_STEERING_CAP(pht_cap, 1);
 			// Compressed Steering Number Antennas
 			SET_HT_CAP_TXBF_COMP_STEERING_NUM_ANTENNAS(pht_cap, 1);
-			rtw_hal_get_def_var(padapter, HAL_DEF_BEAMFORMER_CAP, (u8 *)&rf_num);
-			SET_HT_CAP_TXBF_CHNL_ESTIMATION_NUM_ANTENNAS(pht_cap, rf_num);		
 		}
 
 		// HT Beamformee
@@ -2075,8 +2056,6 @@ int rtw_check_beacon_data(_adapter *padapter, u8 *pbuf,  int len)
 			SET_HT_CAP_TXBF_RECEIVE_NDP_CAP(pht_cap, 1);
 			// Explicit Compressed Beamforming Feedback Capable
 			SET_HT_CAP_TXBF_EXPLICIT_COMP_FEEDBACK_CAP(pht_cap, 2);
-			rtw_hal_get_def_var(padapter, HAL_DEF_BEAMFORMEE_CAP, (u8 *)&rf_num);
-			SET_HT_CAP_TXBF_COMP_STEERING_NUM_ANTENNAS(pht_cap, rf_num);
 		}
 #endif //CONFIG_BEAMFORMING
 
@@ -2132,7 +2111,10 @@ int rtw_check_beacon_data(_adapter *padapter, u8 *pbuf,  int len)
 		pmlmepriv->htpriv.ht_option = _TRUE;
 		pmlmepriv->qospriv.qos_option = 1;
 
-		pmlmepriv->htpriv.ampdu_enable = pregistrypriv->ampdu_enable ? _TRUE : _FALSE;
+		if(pregistrypriv->ampdu_enable==1)
+		{
+			pmlmepriv->htpriv.ampdu_enable = _TRUE;
+		}
 
 		HT_caps_handler(padapter, (PNDIS_802_11_VARIABLE_IEs)pHT_caps_ie);
 		
@@ -2153,15 +2135,16 @@ int rtw_check_beacon_data(_adapter *padapter, u8 *pbuf,  int len)
 
 	pmlmepriv->vhtpriv.vht_option = _FALSE;
 	// if channel in 5G band, then add vht ie .
-	if ((pbss_network->Configuration.DSConfig > 14)
-		&& (pmlmepriv->htpriv.ht_option == _TRUE)
-		&& REGSTY_IS_11AC_ENABLE(pregistrypriv)
-		&& hal_chk_proto_cap(padapter, PROTO_CAP_11AC)
-		&& (!pmlmepriv->country_ent || COUNTRY_CHPLAN_EN_11AC(pmlmepriv->country_ent))
-	) {
-		if (vht_cap == _TRUE)
+	if ((pbss_network->Configuration.DSConfig > 14) && 
+		(pmlmepriv->htpriv.ht_option == _TRUE) &&
+		(pregistrypriv->vht_enable)) 
+	{
+		if(vht_cap == _TRUE)
+		{
 			pmlmepriv->vhtpriv.vht_option = _TRUE;
-		else if (REGSTY_IS_11AC_AUTO(pregistrypriv)) {
+		}
+		else if(pregistrypriv->vht_enable == 2) // auto enabled
+		{
 			u8	cap_len, operation_len;
 
 			rtw_vht_use_default_setting(padapter);
@@ -3586,7 +3569,7 @@ u8 ap_free_sta(_adapter *padapter, struct sta_info *psta, bool active, u16 reaso
 		rtw_indicate_sta_disassoc_event(padapter, psta);
 	}
 
-	report_del_sta_event(padapter, psta->hwaddr, reason, enqueue, _FALSE);
+	report_del_sta_event(padapter, psta->hwaddr, reason, enqueue);
 
 	beacon_updated = bss_cap_update_on_sta_leave(padapter, psta);
 
@@ -3748,7 +3731,13 @@ void sta_info_update(_adapter *padapter, struct sta_info *psta)
 /* called >= TSR LEVEL for USB or SDIO Interface*/
 void ap_sta_info_defer_update(_adapter *padapter, struct sta_info *psta)
 {
-	if (psta->state & _FW_LINKED) {
+	struct mlme_ext_priv *pmlmeext = &padapter->mlmeextpriv;
+	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
+
+	if(psta->state & _FW_LINKED)
+	{
+		pmlmeinfo->FW_sta_info[psta->mac_id].psta = psta;
+	
 		//add ratid
 		add_RATid(padapter, psta, 0);//DM_RATR_STA_INIT
 	}	
@@ -3866,6 +3855,15 @@ void start_ap_mode(_adapter *padapter)
 
 	for (i = 0 ;  i < NUM_STA ; i++)
 		pstapriv->sta_aid[i] = NULL;
+
+/* to avoid memory leak issue, don't set to NULL directly
+	pmlmepriv->wps_beacon_ie = NULL;	
+	pmlmepriv->wps_probe_resp_ie = NULL;
+	pmlmepriv->wps_assoc_resp_ie = NULL;
+	
+	pmlmepriv->p2p_beacon_ie = NULL;
+	pmlmepriv->p2p_probe_resp_ie = NULL;
+*/
 	
 	//for ACL 
 	_rtw_init_listhead(&(pacl_list->acl_node_q.queue));
@@ -4106,7 +4104,7 @@ bool rtw_ap_chbw_decision(_adapter *adapter, u8 req_ch, u8 req_bw, u8 req_offset
 		DBG_871X(FUNC_ADPT_FMT" union no self: %u,%u,%u\n", FUNC_ADPT_ARG(adapter), u_ch, u_bw, u_offset);
 		DBG_871X(FUNC_ADPT_FMT" req: %u,%u,%u\n", FUNC_ADPT_ARG(adapter), req_ch, req_bw, req_offset);
 
-		rtw_adjust_chbw(adapter, u_ch, &dec_bw, &dec_offset);
+		rtw_regsty_adjust_chbw(&adapter->registrypriv, u_ch, &dec_bw, &dec_offset);
 
 		rtw_sync_chbw(&dec_ch, &dec_bw, &dec_offset
 			, &u_ch, &u_bw, &u_offset);
@@ -4123,7 +4121,7 @@ bool rtw_ap_chbw_decision(_adapter *adapter, u8 req_ch, u8 req_bw, u8 req_offset
 		DBG_871X(FUNC_ADPT_FMT" union no self: %u,%u,%u\n", FUNC_ADPT_ARG(adapter), u_ch, u_bw, u_offset);
 		DBG_871X(FUNC_ADPT_FMT" req: %u,%u,%u\n", FUNC_ADPT_ARG(adapter), req_ch, req_bw, req_offset);
 
-		rtw_adjust_chbw(adapter, dec_ch, &dec_bw, &dec_offset);
+		rtw_regsty_adjust_chbw(&adapter->registrypriv, dec_ch, &dec_bw, &dec_offset);
 		
 		if (rtw_is_chbw_grouped(u_ch, u_bw, u_offset, dec_ch, dec_bw, dec_offset)) {
 
@@ -4142,7 +4140,7 @@ bool rtw_ap_chbw_decision(_adapter *adapter, u8 req_ch, u8 req_bw, u8 req_offset
 		/* single AP mode */
 
 		DBG_871X(FUNC_ADPT_FMT" req: %u,%u,%u\n", FUNC_ADPT_ARG(adapter), req_ch, req_bw, req_offset);
-		rtw_adjust_chbw(adapter, dec_ch, &dec_bw, &dec_offset);
+		rtw_regsty_adjust_chbw(&adapter->registrypriv, dec_ch, &dec_bw, &dec_offset);
 
 		#if defined(CONFIG_DFS_MASTER)
 		/* check NOL */

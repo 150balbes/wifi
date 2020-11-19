@@ -68,26 +68,20 @@ u32 GlobalDebugLevel = _drv_err_;
 void dump_drv_version(void *sel)
 {
 	DBG_871X_SEL_NL(sel, "%s %s\n", DRV_NAME, DRIVERVERSION);
-	//DBG_871X_SEL_NL(sel, "build time: %s %s\n", __DATE__, __TIME__);
+//	DBG_871X_SEL_NL(sel, "build time: %s %s\n", __DATE__, __TIME__);
 }
 
 void dump_drv_cfg(void *sel)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24))
 	char *kernel_version = utsname()->release;
 	
 	DBG_871X_SEL_NL(sel, "\nKernel Version: %s\n", kernel_version);
-#endif
-
 	DBG_871X_SEL_NL(sel, "Driver Version: %s\n", DRIVERVERSION);
 	DBG_871X_SEL_NL(sel, "------------------------------------------------\n");
 #ifdef CONFIG_IOCTL_CFG80211
 	DBG_871X_SEL_NL(sel, "CFG80211\n");
 	#ifdef RTW_USE_CFG80211_STA_EVENT
 	DBG_871X_SEL_NL(sel, "RTW_USE_CFG80211_STA_EVENT\n");
-	#endif
-	#ifdef CONFIG_RADIO_WORK
-	DBG_871X_SEL_NL(sel, "CONFIG_RADIO_WORK\n");
 	#endif
 #else
 	DBG_871X_SEL_NL(sel, "WEXT\n");
@@ -108,9 +102,6 @@ void dump_drv_cfg(void *sel)
 
 #ifdef CONFIG_LOAD_PHY_PARA_FROM_FILE
 	DBG_871X_SEL_NL(sel, "LOAD_PHY_PARA_FROM_FILE - REALTEK_CONFIG_PATH=%s\n", REALTEK_CONFIG_PATH);
-	#if defined(CONFIG_MULTIDRV) || defined(REALTEK_CONFIG_PATH_WITH_IC_NAME_FOLDER)
-	RTW_PRINT_SEL(sel, "LOAD_PHY_PARA_FROM_FILE - REALTEK_CONFIG_PATH_WITH_IC_NAME_FOLDER\n");
-	#endif
 	#ifdef CONFIG_CALIBRATE_TX_POWER_BY_REGULATORY
 	DBG_871X_SEL_NL(sel, "CONFIG_CALIBRATE_TX_POWER_BY_REGULATORY\n");
 	#endif
@@ -118,11 +109,6 @@ void dump_drv_cfg(void *sel)
 	DBG_871X_SEL_NL(sel, "CONFIG_CALIBRATE_TX_POWER_TO_MAX\n");
 	#endif
 #endif
-	RTW_PRINT_SEL(sel, "RTW_DEF_MODULE_REGULATORY_CERT=0x%02x\n", RTW_DEF_MODULE_REGULATORY_CERT);
-
-	RTW_PRINT_SEL(sel, "CONFIG_TXPWR_BY_RATE_EN=%d\n", CONFIG_TXPWR_BY_RATE_EN);
-	RTW_PRINT_SEL(sel, "CONFIG_TXPWR_LIMIT_EN=%d\n", CONFIG_TXPWR_LIMIT_EN);
-
 
 #ifdef CONFIG_DISABLE_ODM
 	DBG_871X_SEL_NL(sel, "CONFIG_DISABLE_ODM\n");
@@ -289,6 +275,7 @@ void rf_reg_dump(void *sel, _adapter *adapter)
 	for (path=0;path<path_nums;path++) {
 		DBG_871X_SEL_NL(sel, "RF_Path(%x)\n",path);
 		for (i=0;i<0x100;i++) {
+			//value = PHY_QueryRFReg(adapter, (RF90_RADIO_PATH_E)path,i, bMaskDWord);
 			value = rtw_hal_read_rfreg(adapter, path, i, 0xffffffff);
 			if(j%4==1)
 				DBG_871X_SEL_NL(sel, "0x%02x ",i);
@@ -371,45 +358,6 @@ void sta_rx_reorder_ctl_dump(void *sel, struct sta_info *sta)
 	}
 }
 
-void dump_tx_rate_bmp(void *sel, struct dvobj_priv *dvobj)
-{
-	_adapter *adapter = dvobj_get_primary_adapter(dvobj);
-	struct rf_ctl_t *rfctl = dvobj_to_rfctl(dvobj);
-	u8 bw;
-
-	RTW_PRINT_SEL(sel, "%-6s", "bw");
-	if (hal_chk_proto_cap(adapter, PROTO_CAP_11AC))
-		_RTW_PRINT_SEL(sel, " %-11s", "vht");
-
-	_RTW_PRINT_SEL(sel, " %-11s %-4s %-3s\n", "ht", "ofdm", "cck");
-
-	for (bw = CHANNEL_WIDTH_20; bw <= CHANNEL_WIDTH_160; bw++) {
-		if (!hal_is_bw_support(adapter, bw))
-			continue;
-
-		RTW_PRINT_SEL(sel, "%6s", ch_width_str(bw));
-		if (hal_chk_proto_cap(adapter, PROTO_CAP_11AC)) {
-			_RTW_PRINT_SEL(sel, " %03x %03x %03x"
-				, RATE_BMP_GET_VHT_3SS(rfctl->rate_bmp_vht_by_bw[bw])
-				, RATE_BMP_GET_VHT_2SS(rfctl->rate_bmp_vht_by_bw[bw])
-				, RATE_BMP_GET_VHT_1SS(rfctl->rate_bmp_vht_by_bw[bw])
-			);
-		}
-
-		_RTW_PRINT_SEL(sel, " %02x %02x %02x %02x"
-			, bw <= CHANNEL_WIDTH_40 ? RATE_BMP_GET_HT_4SS(rfctl->rate_bmp_ht_by_bw[bw]) : 0
-			, bw <= CHANNEL_WIDTH_40 ? RATE_BMP_GET_HT_3SS(rfctl->rate_bmp_ht_by_bw[bw]) : 0
-			, bw <= CHANNEL_WIDTH_40 ? RATE_BMP_GET_HT_2SS(rfctl->rate_bmp_ht_by_bw[bw]) : 0
-			, bw <= CHANNEL_WIDTH_40 ? RATE_BMP_GET_HT_1SS(rfctl->rate_bmp_ht_by_bw[bw]) : 0
-		);
-
-		_RTW_PRINT_SEL(sel, "  %03x   %01x\n"
-			, bw <= CHANNEL_WIDTH_20 ? RATE_BMP_GET_OFDM(rfctl->rate_bmp_cck_ofdm) : 0
-			, bw <= CHANNEL_WIDTH_20 ? RATE_BMP_GET_CCK(rfctl->rate_bmp_cck_ofdm) : 0
-		);
-	}
-}
-
 void dump_adapters_status(void *sel, struct dvobj_priv *dvobj)
 {
 	struct rf_ctl_t *rfctl = dvobj_to_rfctl(dvobj);
@@ -417,37 +365,36 @@ void dump_adapters_status(void *sel, struct dvobj_priv *dvobj)
 	_adapter *iface;
 	u8 u_ch, u_bw, u_offset;
 
-	DBG_871X_SEL_NL(sel, "%-2s %-8s %-17s %-4s %-7s %s\n"
-		, "id", "ifname", "macaddr", "port", "ch", "status");
+	DBG_871X_SEL_NL(sel, "%-2s %-8s %-4s %-7s %s\n"
+		, "id", "ifname", "port", "ch", "status");
 
-	DBG_871X_SEL_NL(sel, "------------------------------------------\n");
+	DBG_871X_SEL_NL(sel, "------------------------\n");
 
 	for (i = 0; i < dvobj->iface_nums; i++) {
 		iface = dvobj->padapters[i];
 		if (iface) {
-			DBG_871X_SEL_NL(sel, "%2d %-8s "MAC_FMT" %4hhu %3u,%u,%u "MLME_STATE_FMT" %s%s\n"
+			DBG_871X_SEL_NL(sel, "%2d %-8s %4hhu %3u,%u,%u "MLME_STATE_FMT" %s%s\n"
 				, i, ADPT_ARG(iface)
-				, MAC_ARG(adapter_mac_addr(iface))
 				, get_iface_type(iface)
 				, iface->mlmeextpriv.cur_channel
 				, iface->mlmeextpriv.cur_bwmode
 				, iface->mlmeextpriv.cur_ch_offset
-				, MLME_STATE_ARG(iface)
+				, ADPT_MLME_S_ARG(iface)
 				, rtw_is_surprise_removed(iface)?" SR":""
 				, rtw_is_drv_stopped(iface)?" DS":""
 			);
 		}
 	}
 
-	DBG_871X_SEL_NL(sel, "------------------------------------------\n");
+	DBG_871X_SEL_NL(sel, "------------------------\n");
 
 	rtw_get_ch_setting_union(dvobj->padapters[IFACE_ID0], &u_ch, &u_bw, &u_offset);
-	DBG_871X_SEL_NL(sel, "%34s %3u,%u,%u\n"
+	DBG_871X_SEL_NL(sel, "%16s %3u,%u,%u\n"
 		, "union:"
 		, u_ch, u_bw, u_offset
 	);
 
-	DBG_871X_SEL_NL(sel, "%34s %3u,%u,%u\n"
+	DBG_871X_SEL_NL(sel, "%16s %3u,%u,%u\n"
 		, "oper:"
 		, dvobj->oper_channel
 		, dvobj->oper_bwmode
@@ -456,7 +403,7 @@ void dump_adapters_status(void *sel, struct dvobj_priv *dvobj)
 
 	#ifdef CONFIG_DFS_MASTER
 	if (rfctl->radar_detect_ch != 0) {
-		DBG_871X_SEL_NL(sel, "%34s %3u,%u,%u"
+		DBG_871X_SEL_NL(sel, "%16s %3u,%u,%u"
 			, "radar_detect:"
 			, rfctl->radar_detect_ch
 			, rfctl->radar_detect_bw
@@ -469,59 +416,6 @@ void dump_adapters_status(void *sel, struct dvobj_priv *dvobj)
 			DBG_871X_SEL(sel, "\n");
 	}
 	#endif
-}
-
-#define SEC_CAM_ENT_ID_TITLE_FMT "%-2s"
-#define SEC_CAM_ENT_ID_TITLE_ARG "id"
-#define SEC_CAM_ENT_ID_VALUE_FMT "%2u"
-#define SEC_CAM_ENT_ID_VALUE_ARG(id) (id)
-
-#define SEC_CAM_ENT_TITLE_FMT "%-6s %-17s %-32s %-3s %-7s %-2s %-2s %-5s"
-#define SEC_CAM_ENT_TITLE_ARG "ctrl", "addr", "key", "kid", "type", "MK", "GK", "valid"
-#define SEC_CAM_ENT_VALUE_FMT "0x%04x "MAC_FMT" "KEY_FMT" %3u %-7s %2u %2u %5u"
-#define SEC_CAM_ENT_VALUE_ARG(ent) \
-	(ent)->ctrl \
-	, MAC_ARG((ent)->mac) \
-	, KEY_ARG((ent)->key) \
-	, ((ent)->ctrl) & 0x03 \
-	, security_type_str((((ent)->ctrl) >> 2) & 0x07) \
-	, (((ent)->ctrl) >> 5) & 0x01 \
-	, (((ent)->ctrl) >> 6) & 0x01 \
-	, (((ent)->ctrl) >> 15) & 0x01
-
-void dump_sec_cam_ent(void *sel, struct sec_cam_ent *ent, int id)
-{
-	if (id >= 0) {
-		DBG_871X_SEL_NL(sel, SEC_CAM_ENT_ID_VALUE_FMT " " SEC_CAM_ENT_VALUE_FMT"\n"
-			, SEC_CAM_ENT_ID_VALUE_ARG(id), SEC_CAM_ENT_VALUE_ARG(ent));
-	} else {
-		DBG_871X_SEL_NL(sel, SEC_CAM_ENT_VALUE_FMT"\n", SEC_CAM_ENT_VALUE_ARG(ent));
-	}
-}
-
-void dump_sec_cam_ent_title(void *sel, u8 has_id)
-{
-	if (has_id) {
-		DBG_871X_SEL_NL(sel, SEC_CAM_ENT_ID_TITLE_FMT " " SEC_CAM_ENT_TITLE_FMT"\n"
-			, SEC_CAM_ENT_ID_TITLE_ARG, SEC_CAM_ENT_TITLE_ARG);
-	} else {
-		DBG_871X_SEL_NL(sel, SEC_CAM_ENT_TITLE_FMT"\n", SEC_CAM_ENT_TITLE_ARG);
-	}
-}
-
-void dump_sec_cam(void *sel, _adapter *adapter)
-{
-	struct dvobj_priv *dvobj = adapter_to_dvobj(adapter);
-	struct cam_ctl_t *cam_ctl = &dvobj->cam_ctl;
-	struct sec_cam_ent ent;
-	int i;
-
-	DBG_871X_SEL_NL(sel, "HW sec cam:\n");
-	dump_sec_cam_ent_title(sel, 1);
-	for (i = 0; i < cam_ctl->num; i++) {
-		rtw_sec_read_cam_ent(adapter, i, (u8 *)(&ent.ctrl), ent.mac, ent.key);
-		dump_sec_cam_ent(sel , &ent, i);
-	}
 }
 
 #ifdef CONFIG_PROC_DEBUG
@@ -1278,8 +1172,7 @@ ssize_t proc_reset_trx_info(struct file *file, const char __user *buffer, size_t
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(dev);
 	struct dvobj_priv *psdpriv = padapter->dvobj;
 	struct debug_priv *pdbgpriv = &psdpriv->drv_dbg;
-	char cmd[32] = {0};
-	u8 cnt = 0;
+	char cmd[32] = {'0'};
 
 	if (count > sizeof(cmd)) {
 		rtw_warn_on(1);
@@ -1287,9 +1180,7 @@ ssize_t proc_reset_trx_info(struct file *file, const char __user *buffer, size_t
 	}
 
 	if (buffer && !copy_from_user(cmd, buffer, count)) {
-		int num = sscanf(cmd, "%hhx", &cnt);
-
-		if (0 == cnt) {
+		if('0' == cmd[0]){
 			pdbgpriv->dbg_rx_ampdu_drop_count = 0;
 			pdbgpriv->dbg_rx_ampdu_forced_indicate_count = 0;
 			pdbgpriv->dbg_rx_ampdu_loss_count = 0;
@@ -1427,13 +1318,8 @@ ssize_t proc_set_rate_ctl(struct file *file, const char __user *buffer, size_t c
 
 		int num = sscanf(tmp, "%hhx %hhu", &fix_rate, &data_fb);
 
-		if (num >= 1) {
-			u8 fix_rate_ori = adapter->fix_rate;
-
+		if (num >= 1)
 			adapter->fix_rate = fix_rate;
-			if (fix_rate_ori != fix_rate)
-				rtw_update_tx_rate_bmp(adapter_to_dvobj(adapter));
-		}
 		if (num >= 2)
 			adapter->data_fb = data_fb?1:0;
 	}
@@ -2560,12 +2446,6 @@ int proc_get_all_sta_info(struct seq_file *m, void *v)
 				DBG_871X_SEL_NL(m, "tx_data_pkts=%llu\n", psta->sta_stats.tx_pkts);
 				DBG_871X_SEL_NL(m, "tx_bytes=%llu\n", psta->sta_stats.tx_bytes);
 #endif //CONFIG_TDLS
-
-				dump_st_ctl(m, &psta->st_ctl);
-
-				if (STA_OP_WFD_MODE(psta))
-					DBG_871X_SEL_NL(m, "op_wfd_mode:0x%02x\n", STA_OP_WFD_MODE(psta));
-
 				DBG_871X_SEL_NL(m, "==============================\n");
 			}
 
@@ -3527,11 +3407,6 @@ int proc_get_tdls_info(struct seq_file *m, void *v)
 	u8 SpaceBtwnItemAndValueTmp = 0;
 	u8 NumOfTdlsStaToShow = 0;
 	BOOLEAN FirstMatchFound = _FALSE;
-
-	if (hal_chk_wl_func(padapter, WL_FUNC_TDLS) == _FALSE) {
-		DBG_871X_SEL_NL(m, "No tdls info can be shown since hal doesn't support tdls\n");
-		return 0;
-	}
 
 	proc_tdls_display_tdls_function_info(m);
 	proc_tdls_display_network_info(m);

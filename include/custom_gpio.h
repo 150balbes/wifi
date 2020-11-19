@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef __CUSTOM_GPIO_H__
 #define __CUSTOM_GPIO_H___
 

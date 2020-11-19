@@ -166,8 +166,6 @@ extern void rtl871x_cedbg(const char *fmt, ...);
 	#define MSG_8192C(x, ...) do {} while(0)
 	#define DBG_8192C(x,...) do {} while(0)
 	#define DBG_871X_LEVEL(x,...) do {} while(0)
-	#define RTW_WARN(x, ...) do {} while(0)
-	#define RTW_INFO(x, ...) do {} while(0)
 #endif
 
 #undef _dbgdump
@@ -185,7 +183,7 @@ extern void rtl871x_cedbg(const char *fmt, ...);
 	#define _dbgdump rtl871x_cedbg
 	#define _seqdump(sel, fmt, arg...) _dbgdump(fmt, ##arg)
 #elif defined PLATFORM_LINUX
-	#define _dbgdump printk
+	#define _dbgdump pr_debug
 	#define _seqdump seq_printf
 #elif defined PLATFORM_FREEBSD
 	#define _dbgdump printf
@@ -209,26 +207,6 @@ extern void rtl871x_cedbg(const char *fmt, ...);
 				_dbgdump(DRIVER_PREFIX fmt, ##arg);\
 		}\
 	}while(0)
-
-#define RTW_ERR(fmt, arg...) DBG_871X_LEVEL(_drv_err_, fmt, ##arg)
-
-#undef RTW_PRINT_DUMP
-#define RTW_PRINT_DUMP(_TitleString, _HexData, _HexDataLen)			\
-	do {\
-		int __i;								\
-		u8	*ptr = (u8 *)_HexData;				\
-		_dbgdump("%s", DRIVER_PREFIX);						\
-		_dbgdump(_TitleString); 					\
-		for (__i = 0; __i < (int)_HexDataLen; __i++) {				\
-			_dbgdump("%02X%s", ptr[__i], (((__i + 1) % 4) == 0) ? "  " : " ");	\
-			if (((__i + 1) % 16) == 0)	\
-				_dbgdump("\n"); 		\
-		}								\
-		_dbgdump("\n"); 						\
-	} while (0)
-
-#undef RTW_INFO_DUMP
-#define RTW_INFO_DUMP RTW_PRINT_DUMP
 
 /* without driver-defined prefix */
 #undef _DBG_871X_LEVEL
@@ -265,8 +243,6 @@ extern void rtl871x_cedbg(const char *fmt, ...);
 		} \
 	}while(0)
 
-#define RTW_PRINT_SEL DBG_871X_SEL_NL
-#define _RTW_PRINT_SEL DBG_871X_SEL
 #endif /* defined(_seqdump) */
 
 #endif /* defined(_dbgdump) */
@@ -287,14 +263,6 @@ extern void rtl871x_cedbg(const char *fmt, ...);
 	#define DBG_8192C(...)     do {\
 		_dbgdump(DRIVER_PREFIX __VA_ARGS__);\
 	}while(0)
-
-	#undef RTW_WARN
-	#define RTW_WARN(...)	  do {\
-		_dbgdump(DRIVER_PREFIX"WARN " __VA_ARGS__);\
-	}while(0)
-
-	#undef RTW_INFO
-	#define RTW_INFO DBG_871X
 #endif /* defined(_dbgdump) */
 #endif /* CONFIG_DEBUG */
 
@@ -381,13 +349,7 @@ struct sta_info;
 void sta_rx_reorder_ctl_dump(void *sel, struct sta_info *sta);
 
 struct dvobj_priv;
-void dump_tx_rate_bmp(void *sel, struct dvobj_priv *dvobj);
 void dump_adapters_status(void *sel, struct dvobj_priv *dvobj);
-
-struct sec_cam_ent;
-void dump_sec_cam_ent(void *sel, struct sec_cam_ent *ent, int id);
-void dump_sec_cam_ent_title(void *sel, u8 has_id);
-void dump_sec_cam(void *sel, _adapter *adapter);
 
 #ifdef CONFIG_PROC_DEBUG
 ssize_t proc_set_write_reg(struct file *file, const char __user *buffer, size_t count, loff_t *pos, void *data);

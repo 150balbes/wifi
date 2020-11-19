@@ -40,7 +40,7 @@
 #elif defined (CONFIG_USB_HCI)
 
 #ifdef CONFIG_USB_TX_AGGREGATION
-	#if defined(CONFIG_PLATFORM_ARM_SUNxI) || defined(CONFIG_PLATFORM_ARM_SUN6I) || defined(CONFIG_PLATFORM_ARM_SUN7I) || defined(CONFIG_PLATFORM_ARM_SUN8I) || defined(CONFIG_PLATFORM_ARM_SUN50IW1P1)
+	#if defined(CONFIG_PLATFORM_ARM_SUNxI) || defined(CONFIG_PLATFORM_ARM_SUN6I) || defined(CONFIG_PLATFORM_ARM_SUN7I) || defined(CONFIG_PLATFORM_ARM_SUN8I)
 		#define MAX_XMITBUF_SZ (12288)  //12k 1536*8
 	#elif defined (CONFIG_PLATFORM_MSTAR)
 		#define MAX_XMITBUF_SZ	7680	// 7.5k
@@ -85,7 +85,7 @@
 #endif
 
 #ifdef CONFIG_RTL8812A
-#define MAX_CMDBUF_SZ	(512*14)
+#define MAX_CMDBUF_SZ	(512*12)
 #else
 #define MAX_CMDBUF_SZ	(5120)	//(4096)
 #endif
@@ -403,16 +403,26 @@ struct pkt_attrib
 	struct sta_info *ptdls_sta;
 #endif //CONFIG_TDLS
 	u8 key_type;
-
 	u8 icmp_pkt;
-
-#ifdef CONFIG_BEAMFORMING
-	u16 txbf_p_aid;/*beamforming Partial_AID*/
-	u16 txbf_g_id;/*beamforming Group ID*/
- #endif
-
+	
 };
 #endif
+
+#ifdef PLATFORM_FREEBSD
+#define ETH_ALEN	6		/* Octets in one ethernet addr	 */
+#define ETH_HLEN	14		/* Total octets in header.	 */
+#define ETH_P_IP	0x0800		/* Internet Protocol packet	*/
+
+/*struct rtw_ieee80211_hdr {
+	uint16_t frame_control;
+	uint16_t duration_id;
+	u8 addr1[6];
+	u8 addr2[6];
+	u8 addr3[6];
+	uint16_t seq_ctrl;
+	u8 addr4[6];
+} ;*/
+#endif //PLATFORM_FREEBSD
 
 #define WLANHDR_OFFSET	64
 
@@ -460,8 +470,6 @@ enum {
 	RTW_SCTX_DONE_DRV_STOP,
 	RTW_SCTX_DONE_DEV_REMOVE,
 	RTW_SCTX_DONE_CMD_ERROR,
-	RTW_SCTX_DONE_CMD_DROP,
-	RTX_SCTX_CSTR_WAIT_RPT2,
 };
 
 
@@ -826,9 +834,8 @@ void _rtw_free_xmit_priv (struct xmit_priv *pxmitpriv);
 
 void rtw_alloc_hwxmits(_adapter *padapter);
 void rtw_free_hwxmits(_adapter *padapter);
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24))
-s32 rtw_monitor_xmit_entry(struct sk_buff *skb, struct net_device *ndev);
-#endif
+
+
 s32 rtw_xmit(_adapter *padapter, _pkt **pkt);
 bool xmitframe_hiq_filter(struct xmit_frame *xmitframe);
 #if defined(CONFIG_AP_MODE) || defined(CONFIG_TDLS)
@@ -838,17 +845,7 @@ void wakeup_sta_to_xmit(_adapter *padapter, struct sta_info *psta);
 void xmit_delivery_enabled_frames(_adapter *padapter, struct sta_info *psta);
 #endif
 
-u8 rtw_get_tx_bw_mode(_adapter *adapter, struct sta_info *sta);
-
-void rtw_get_adapter_tx_rate_bmp_by_bw(_adapter *adapter, u8 bw, u16 *r_bmp_cck_ofdm, u32 *r_bmp_ht, u32 *r_bmp_vht);
-void rtw_update_tx_rate_bmp(struct dvobj_priv *dvobj);
-u16 rtw_get_tx_rate_bmp_cck_ofdm(struct dvobj_priv *dvobj);
-u32 rtw_get_tx_rate_bmp_ht_by_bw(struct dvobj_priv *dvobj, u8 bw);
-u32 rtw_get_tx_rate_bmp_vht_by_bw(struct dvobj_priv *dvobj, u8 bw);
-u8 rtw_get_tx_bw_bmp_of_ht_rate(struct dvobj_priv *dvobj, u8 rate, u8 max_bw);
-u8 rtw_get_tx_bw_bmp_of_vht_rate(struct dvobj_priv *dvobj, u8 rate, u8 max_bw);
-
-u8 query_ra_short_GI(struct sta_info *psta, u8 bw);
+u8	query_ra_short_GI(struct sta_info *psta);
 
 u8	qos_acm(u8 acm_mask, u8 priority);
 

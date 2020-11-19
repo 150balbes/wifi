@@ -42,15 +42,6 @@ enum _CHIP_TYPE {
 	MAX_CHIP_TYPE
 };
 
-extern const u32 _chip_type_to_odm_ic_type[];
-#define chip_type_to_odm_ic_type(chip_type) (((chip_type) >= MAX_CHIP_TYPE) ? _chip_type_to_odm_ic_type[MAX_CHIP_TYPE] : _chip_type_to_odm_ic_type[(chip_type)])
-
-typedef enum _HAL_HW_TIMER_TYPE {
-	HAL_TIMER_NONE = 0,
-	HAL_TIMER_TXBF = 1,
-	HAL_TIMER_EARLYMODE = 2,
-} HAL_HW_TIMER_TYPE, *PHAL_HW_TIMER_TYPE;
-
 
 typedef enum _HW_VARIABLES{
 	HW_VAR_MEDIA_STATUS,
@@ -80,6 +71,8 @@ typedef enum _HW_VARIABLES{
 	/* PHYDM odm->SupportAbility */
 	HW_VAR_CAM_EMPTY_ENTRY,
 	HW_VAR_CAM_INVALID_ALL,
+	HW_VAR_CAM_WRITE,
+	HW_VAR_CAM_READ,
 	HW_VAR_AC_PARAM_VO,
 	HW_VAR_AC_PARAM_VI,
 	HW_VAR_AC_PARAM_BE,
@@ -101,6 +94,7 @@ typedef enum _HW_VARIABLES{
 	HW_VAR_BT_SET_COEXIST,
 	HW_VAR_BT_ISSUE_DELBA,	
 	HW_VAR_CURRENT_ANTENNA,
+	HW_VAR_ANTENNA_DIVERSITY_LINK,
 	HW_VAR_ANTENNA_DIVERSITY_SELECT,
 	HW_VAR_SWITCH_EPHY_WoWLAN,
 	HW_VAR_EFUSE_USAGE,
@@ -128,6 +122,7 @@ typedef enum _HW_VARIABLES{
 	HW_VAR_C2H_HANDLE,
 	HW_VAR_RPT_TIMER_SETTING,
 	HW_VAR_TX_RPT_MAX_MACID,	
+	HW_VAR_H2C_MEDIA_STATUS_RPT,
 	HW_VAR_CHK_HI_QUEUE_EMPTY,
 	HW_VAR_DL_BCN_SEL,
 	HW_VAR_AMPDU_MAX_TIME,
@@ -144,20 +139,12 @@ typedef enum _HW_VARIABLES{
 	HW_VAR_SOUNDING_STATUS,
 	HW_VAR_SOUNDING_FW_NDPA,
 	HW_VAR_SOUNDING_CLK,
-/*Add by YuChen for TXBF HW timer*/
-	HW_VAR_HW_REG_TIMER_INIT,
-	HW_VAR_HW_REG_TIMER_RESTART,
-	HW_VAR_HW_REG_TIMER_START,
-	HW_VAR_HW_REG_TIMER_STOP,
-/*Add by YuChen for TXBF HW timer*/
 	HW_VAR_DL_RSVD_PAGE,
-	HW_VAR_MACID_LINK,
-	HW_VAR_MACID_NOLINK,
 	HW_VAR_MACID_SLEEP,
 	HW_VAR_MACID_WAKEUP,
 	HW_VAR_DUMP_MAC_QUEUE_INFO,
 	HW_VAR_ASIX_IOT,
-	HW_VAR_EN_HW_UPDATE_TSF,
+	HW_VAR_E2500_IOT,
 }HW_VARIABLES;
 
 typedef enum _HAL_DEF_VARIABLE{
@@ -180,8 +167,6 @@ typedef enum _HAL_DEF_VARIABLE{
 	HAL_DEF_RX_STBC, 				// RX STBC support
 	HAL_DEF_EXPLICIT_BEAMFORMER,// Explicit  Compressed Steering Capable
 	HAL_DEF_EXPLICIT_BEAMFORMEE,// Explicit Compressed Beamforming Feedback Capable
-	HAL_DEF_BEAMFORMER_CAP,
-	HAL_DEF_BEAMFORMEE_CAP,
 	HW_VAR_MAX_RX_AMPDU_FACTOR,
 	HW_DEF_RA_INFO_DUMP,
 	HAL_DEF_DBG_DUMP_TXPKT,
@@ -197,7 +182,6 @@ typedef enum _HAL_DEF_VARIABLE{
 	HAL_DEF_DBG_DIS_PWT, //disable Tx power training or not.
 	HAL_DEF_EFUSE_USAGE,	/* Get current EFUSE utilization. 2008.12.19. Added by Roger. */
 	HAL_DEF_EFUSE_BYTES,
-	HW_VAR_BEST_AMPDU_DENSITY,
 }HAL_DEF_VARIABLE;
 
 typedef enum _HAL_ODM_VARIABLE{
@@ -223,8 +207,6 @@ typedef enum _HAL_INTF_PS_FUNC{
 }HAL_INTF_PS_FUNC;
 
 typedef s32 (*c2h_id_filter)(u8 *c2h_evt);
-
-struct txpwr_idx_comp;
 
 struct hal_ops {
 	/*** initialize section ***/
@@ -256,11 +238,8 @@ struct hal_ops {
 
 	/*** recv section ***/
 	s32	(*init_recv_priv)(_adapter *padapter);
-	void	(*free_recv_priv)(_adapter *padapter);
-#ifdef CONFIG_RECV_THREAD_MODE
-	s32 (*recv_hdl)(_adapter *adapter);
-#endif
-#if defined(CONFIG_USB_HCI) || defined(CONFIG_PCI_HCI)
+	void	(*free_recv_priv)(_adapter *padapter);	
+#if defined(CONFIG_USB_HCI)||defined(CONFIG_PCI_HCI)
 	u32	(*inirp_init)(_adapter *padapter);
 	u32	(*inirp_deinit)(_adapter *padapter);
 #endif
@@ -284,14 +263,14 @@ struct hal_ops {
 	
 	void	(*InitSwLeds)(_adapter *padapter);
 	void	(*DeInitSwLeds)(_adapter *padapter);
+		
 
+	void	(*set_bwmode_handler)(_adapter *padapter, CHANNEL_WIDTH Bandwidth, u8 Offset);
+	void	(*set_channel_handler)(_adapter *padapter, u8 channel);
 	void	(*set_chnl_bw_handler)(_adapter *padapter, u8 channel, CHANNEL_WIDTH Bandwidth, u8 Offset40, u8 Offset80);
 
 	void	(*set_tx_power_level_handler)(_adapter *padapter, u8 channel);
 	void	(*get_tx_power_level_handler)(_adapter *padapter, s32 *powerlevel);
-
-	void (*set_tx_power_index_handler)(_adapter *padapter, u32 powerindex, u8 rfpath, u8 rate);
-	u8(*get_tx_power_index_handler)(_adapter *padapter, u8 rfpath, u8 rate, u8 bandwidth, u8 channel, struct txpwr_idx_comp *tic);
 
 	void	(*hal_dm_watchdog)(_adapter *padapter);
 #ifdef CONFIG_LPS_LCLK_WD_TIMER
@@ -363,16 +342,15 @@ struct hal_ops {
 	s32 (*fill_h2c_cmd)(PADAPTER, u8 ElementID, u32 CmdLen, u8 *pCmdBuffer);
 	void (*fill_fake_txdesc)(PADAPTER, u8 *pDesc, u32 BufferLen,
 			u8 IsPsPoll, u8 IsBTQosNull, u8 bDataFrame);
-	s32 (*fw_dl)(_adapter *adapter, u8 wowlan);
-
+	
 #if defined(CONFIG_WOWLAN) || defined(CONFIG_AP_WOWLAN)
+	void (*hal_set_wowlan_fw)(_adapter *adapter, u8 sleep);
 	void (*clear_interrupt)(_adapter *padapter);
 #endif	
 	u8 (*hal_get_tx_buff_rsvd_page_num)(_adapter *adapter, bool wowlan);
 #ifdef CONFIG_GPIO_API
 	void (*update_hisr_hsisr_ind)(PADAPTER padapter, u32 flag);
 #endif
-	void (*fw_correct_bcn)(PADAPTER padapter);
 };
 
 typedef	enum _RT_EEPROM_TYPE{
@@ -625,6 +603,8 @@ s32	rtw_hal_interrupt_handler(_adapter *padapter);
 void	rtw_hal_interrupt_handler(_adapter *padapter, u16 pkt_len, u8 *pbuf);
 #endif
 
+void	rtw_hal_set_bwmode(_adapter *padapter, CHANNEL_WIDTH Bandwidth, u8 Offset);
+void	rtw_hal_set_chan(_adapter *padapter, u8 channel);
 void	rtw_hal_set_chnl_bw(_adapter *padapter, u8 channel, CHANNEL_WIDTH Bandwidth, u8 Offset40, u8 Offset80);
 void	rtw_hal_dm_watchdog(_adapter *padapter);
 void	rtw_hal_dm_watchdog_in_lps(_adapter *padapter);
@@ -659,11 +639,7 @@ int rtw_hal_iol_cmd(ADAPTER *adapter, struct xmit_frame *xmit_frame, u32 max_wat
 s32 rtw_hal_xmit_thread_handler(_adapter *padapter);
 #endif
 
-#ifdef CONFIG_RECV_THREAD_MODE
-s32 rtw_hal_recv_hdl(_adapter *adapter);
-#endif
-
-void rtw_hal_notch_filter(_adapter *adapter, bool enable);
+void rtw_hal_notch_filter(_adapter * adapter, bool enable);
 
 bool rtw_hal_c2h_valid(_adapter *adapter, u8 *buf);
 s32 rtw_hal_c2h_evt_read(_adapter *adapter, u8 *buf);
@@ -684,16 +660,10 @@ u8 rtw_hal_get_txbuff_rsvd_page_num(_adapter *adapter, bool wowlan);
 void rtw_hal_update_hisr_hsisr_ind(_adapter *padapter, u32 flag);
 #endif
 
-void rtw_hal_fw_correct_bcn(_adapter *padapter);
-s32 rtw_hal_fw_dl(_adapter *padapter, u8 wowlan);
-
 #if defined(CONFIG_WOWLAN) || defined(CONFIG_AP_WOWLAN)
 void rtw_hal_clear_interrupt(_adapter *padapter);
+void rtw_hal_set_wowlan_fw(_adapter *padapter, u8 sleep);
 #endif
-
-void rtw_hal_set_tx_power_index(PADAPTER, u32 powerindex, u8 rfpath, u8 rate);
-u8 rtw_hal_get_tx_power_index(PADAPTER, u8 rfpath, u8 rate, u8 bandwidth, u8 channel,struct txpwr_idx_comp *tic);
-
 u8 rtw_hal_ops_check(_adapter *padapter);
 
 #endif //__HAL_INTF_H__

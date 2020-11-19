@@ -22,7 +22,6 @@
 #define    __PHYDMACS_H__
 
 #define ACS_VERSION	"1.0"
-#define CLM_VERSION "1.0"
 
 #define ODM_MAX_CHANNEL_2G			14
 #define ODM_MAX_CHANNEL_5G			24
@@ -102,28 +101,5 @@ phydm_GetNHMStatisticsAP(
 );
 
 #endif  //#if ( DM_ODM_SUPPORT_TYPE & ODM_AP )
-
-
-VOID
-phydm_CLMInit(
-	IN		PVOID			pDM_VOID,
-	IN		u2Byte			sampleNum
-);
-
-VOID
-phydm_CLMtrigger(
-	IN		PVOID			pDM_VOID
-);
-
-BOOLEAN
-phydm_checkCLMready(
-	IN		PVOID			pDM_VOID
-);
-
-u2Byte
-phydm_getCLMresult(
-	IN		PVOID			pDM_VOID
-);
-
 
 #endif  //#ifndef	__PHYDMACS_H__

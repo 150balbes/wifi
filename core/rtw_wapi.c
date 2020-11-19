@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 #ifdef CONFIG_WAPI_SUPPORT
 
 #include <linux/unistd.h>

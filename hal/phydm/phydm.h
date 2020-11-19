@@ -50,7 +50,6 @@
 #endif
 
 #if (DM_ODM_SUPPORT_TYPE & (ODM_CE))
-#include "phydm_beamforming.h"
 #include "phydm_noisemonitor.h"
 #include "halphyrf_ce.h"
 #include "phydm_powertracking_ce.h"
@@ -88,9 +87,7 @@
 
 #define	TRAFFIC_LOW	0
 #define	TRAFFIC_HIGH	1
-#define	TRAFFIC_ULTRA_LOW	2
-#define	TRAFFIC_MID	3
-
+#define	TRAFFIC_UltraLOW	2
 
 #define	NONE			0
 
@@ -402,11 +399,6 @@ typedef enum _ODM_Common_Info_Definition
 	ODM_CMNINFO_DOMAIN_CODE_2G,
 	ODM_CMNINFO_DOMAIN_CODE_5G,
 	ODM_CMNINFO_IQKFWOFFLOAD,
-	ODM_CMNINFO_HUBUSBMODE,
-	ODM_CMNINFO_FWDWRSVDPAGEINPROGRESS,
-	ODM_CMNINFO_TX_TP,
-	ODM_CMNINFO_RX_TP,
-	ODM_CMNINFO_SOUNDING_SEQ,
 	//-----------HOOK BEFORE REG INIT-----------//	
 
 
@@ -470,7 +462,6 @@ typedef enum _ODM_Common_Info_Definition
 #endif
 #endif
 	ODM_CMNINFO_AP_TOTAL_NUM,
-	ODM_CMNINFO_POWER_TRAINING,
 //------------CALL BY VALUE-------------//
 
 	//
@@ -620,6 +611,8 @@ typedef  struct DM_Out_Source_Dynamic_Mechanism_Structure
 	// Init Value
 	//
 //-----------HOOK BEFORE REG INIT-----------//	
+    BOOLEAN         NoisyDecision;
+    u4Byte          NoisyDecision_Smooth;
 	// ODM Platform info AP/ADSL/CE/MP = 1/2/3/4
 	u1Byte			SupportPlatform;		
 	// ODM Support Ability DIG/RATR/TX_PWR_TRACK/ ¡K¡K = 1/2/3/¡K
@@ -638,10 +631,10 @@ typedef  struct DM_Out_Source_Dynamic_Mechanism_Structure
 	// Board Type Normal/HighPower/MiniCard/SLIM/Combo/... = 0/1/2/3/4/...
 	u1Byte			BoardType;
 	u1Byte			PackageType;
-	u2Byte			TypeGLNA;
-	u2Byte			TypeGPA;
-	u2Byte			TypeALNA;
-	u2Byte			TypeAPA;
+	u1Byte			TypeGLNA;
+	u1Byte			TypeGPA;
+	u1Byte			TypeALNA;
+	u1Byte			TypeAPA;
 	// with external LNA  NO/Yes = 0/1
 	u1Byte			ExtLNA; // 2G
 	u1Byte			ExtLNA5G; //5G
@@ -715,11 +708,6 @@ typedef  struct DM_Out_Source_Dynamic_Mechanism_Structure
 	
 //--------- POINTER REFERENCE-----------//
 	pu2Byte			pForcedDataRate;
-	pu1Byte			HubUsbMode;
-	BOOLEAN			*pbFwDwRsvdPageInProgress;
-	u4Byte			*pCurrentTxTP;
-	u4Byte			*pCurrentRxTP;
-	u1Byte			*pSoundingSeq;
 //------------CALL BY VALUE-------------//
 	BOOLEAN			bLinkInProcess;
 	BOOLEAN			bWIFI_Direct;
@@ -750,7 +738,6 @@ typedef  struct DM_Out_Source_Dynamic_Mechanism_Structure
 	BOOLEAN			bBtDisableEdcaTurbo;	// Under some condition, don't enable the EDCA Turbo
 	BOOLEAN			bBtBusy;   			// BT is busy.
 	BOOLEAN			bBtLimitedDig;   		// BT is busy.
-	BOOLEAN			bDisablePhyApi;
 //------------CALL BY VALUE-------------//
 	u1Byte			RSSI_A;
 	u1Byte			RSSI_B;
@@ -760,8 +747,7 @@ typedef  struct DM_Out_Source_Dynamic_Mechanism_Structure
 	u8Byte			RSSI_TRSW_H;
 	u8Byte			RSSI_TRSW_L;	
 	u8Byte			RSSI_TRSW_iso;
-	u1Byte			TXAntStatus;
-	u1Byte			RXAntStatus;
+	u1Byte			TRXAntStatus;
 	u1Byte			cck_lna_idx;
 	u1Byte			cck_vga_idx;
 	u1Byte			ofdm_agc_idx[4];
@@ -775,11 +761,6 @@ typedef  struct DM_Out_Source_Dynamic_Mechanism_Structure
 	BOOLEAN			IsTxagcOffsetPositiveA;
 	u4Byte			TxagcOffsetValueB;
 	BOOLEAN			IsTxagcOffsetPositiveB;
-	u4Byte			tx_tp;
-	u4Byte			rx_tp;
-	u4Byte			total_tp;
-	u8Byte			curTxOkCnt;
-	u8Byte			curRxOkCnt;	
 	u8Byte			lastTxOkCnt;
 	u8Byte			lastRxOkCnt;
 	u4Byte			BbSwingOffsetA;
@@ -804,15 +785,10 @@ typedef  struct DM_Out_Source_Dynamic_Mechanism_Structure
 	u1Byte			dm_dig_max_TH;
 	u1Byte 			dm_dig_min_TH;
 	u1Byte 			print_agc;
-	u1Byte			TrafficLoad;
-	u1Byte			pre_TrafficLoad;
-
 
 	//For Adaptivtiy
 	u2Byte			NHM_cnt_0;
 	u2Byte			NHM_cnt_1;
-	s1Byte			TH_L2H_default;
-	s1Byte			TH_EDCCA_HL_diff_default;
 	s1Byte			TH_L2H_ini;
 	s1Byte			TH_EDCCA_HL_diff;
 	s1Byte			TH_L2H_ini_mode2;
@@ -834,11 +810,6 @@ typedef  struct DM_Out_Source_Dynamic_Mechanism_Structure
 	u1Byte			pre_c2h_seq;
 	BOOLEAN			fw_buff_is_enpty;
 	u4Byte			data_frame_num;
-
-	/*for noise detection*/
-	BOOLEAN			NoisyDecision; /*b_noisy*/
-	BOOLEAN			pre_b_noisy;	
-	u4Byte			NoisyDecision_Smooth;
 
 #if (DM_ODM_SUPPORT_TYPE &  (ODM_CE))
 	ODM_NOISE_MONITOR noise_level;//[ODM_MAX_CHANNEL_NUM];
@@ -880,19 +851,13 @@ typedef  struct DM_Out_Source_Dynamic_Mechanism_Structure
 	//
 	//ODM Structure
 	//
-#if (defined(CONFIG_PHYDM_ANTENNA_DIVERSITY))
+        #if (defined(CONFIG_HW_ANTENNA_DIVERSITY))
 	#if (DM_ODM_SUPPORT_TYPE & (ODM_AP))
 	BDC_T					DM_BdcTable;
 	#endif
-	
-	#ifdef CONFIG_HL_SMART_ANTENNA_TYPE1
-	SAT_T						dm_sat_table;
-	#endif
-	
-#endif
+        #endif
 	FAT_T						DM_FatTable;
 	DIG_T						DM_DigTable;
-
 	PS_T						DM_PSTable;
 	Pri_CCA_T					DM_PriCCA;
 #if (DM_ODM_SUPPORT_TYPE & ODM_WIN)
@@ -902,6 +867,7 @@ typedef  struct DM_Out_Source_Dynamic_Mechanism_Structure
 	FALSE_ALARM_STATISTICS		FalseAlmCnt;
 	FALSE_ALARM_STATISTICS		FlaseAlmCntBuddyAdapter;
 	SWAT_T						DM_SWAT_Table;
+	BOOLEAN						RSSI_test;
 	CFO_TRACKING    				DM_CfoTrack;
 	ACS							DM_ACS;
 
@@ -934,6 +900,9 @@ typedef  struct DM_Out_Source_Dynamic_Mechanism_Structure
 	//for DIG
 	//u1Byte		bDMInitialGainEnable;
 	//u1Byte		binitialized; // for dm_initial_gain_Multi_STA use.
+	//for Antenna diversity
+	//u8	AntDivCfg;// 0:OFF , 1:ON, 2:by efuse
+	//PSTA_INFO_T RSSI_target;
 
 	BOOLEAN			*pbDriverStopped;
 	BOOLEAN			*pbDriverIsGoingToPnpSetPowerSleep;
@@ -969,13 +938,13 @@ typedef  struct DM_Out_Source_Dynamic_Mechanism_Structure
 	//
 	// Power Training
 	//
+	BOOLEAN			bDisablePowerTraining;
 	u1Byte			ForcePowerTrainingState;
 	BOOLEAN			bChangeState;
 	u4Byte			PT_score;
 	u8Byte			OFDM_RX_Cnt;
 	u8Byte			CCK_RX_Cnt;
 #endif
-	BOOLEAN			bDisablePowerTraining;
 
 	//
 	// ODM system resource.
@@ -1001,9 +970,7 @@ typedef  struct DM_Out_Source_Dynamic_Mechanism_Structure
 	RT_WORK_ITEM			RaRptWorkitem;
 	RT_WORK_ITEM			sbdcnt_workitem;
 #endif
-#endif
 
-#if (DM_ODM_SUPPORT_TYPE & (ODM_WIN | ODM_CE))
 #if (BEAMFORMING_SUPPORT == 1)
 	RT_BEAMFORMING_INFO BeamformingInfo;
 #endif 

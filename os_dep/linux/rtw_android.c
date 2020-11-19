@@ -42,8 +42,6 @@
 #include <linux/irq.h>
 #endif
 
-#include "rtw_version.h"
-
 extern void macstr2num(u8 *dst, u8 *src);
 
 const char *android_wifi_cmd_str[ANDROID_WIFI_CMD_MAX] = {
@@ -97,8 +95,7 @@ const char *android_wifi_cmd_str[ANDROID_WIFI_CMD_MAX] = {
 	"GTK_REKEY_OFFLOAD",
 #endif //CONFIG_GTK_OL
 /*	Private command for	P2P disable*/
-	"P2P_DISABLE",
-	"DRIVER_VERSION"
+	"P2P_DISABLE"
 };
 
 #ifdef CONFIG_PNO_SUPPORT
@@ -351,7 +348,7 @@ int rtw_android_cmdstr_to_num(char *cmdstr)
 {
 	int cmd_num;
 	for(cmd_num=0 ; cmd_num<ANDROID_WIFI_CMD_MAX; cmd_num++)
-		if(0 == strnicmp(cmdstr , android_wifi_cmd_str[cmd_num], strlen(android_wifi_cmd_str[cmd_num])) )
+		if(0 == strncasecmp(cmdstr , android_wifi_cmd_str[cmd_num], strlen(android_wifi_cmd_str[cmd_num])) )
 			break;
 
 	return cmd_num;
@@ -476,27 +473,12 @@ int rtw_android_set_miracast_mode(struct net_device *net, char *command, int tot
 
 	num = sscanf(arg, "%hhu", &mode);
 
-	if (num < 1)
-		goto exit;
-
-	switch (mode) {
-	case 1: /* soruce */
-		mode = MIRACAST_SOURCE;
-		break;
-	case 2: /* sink */
-		mode = MIRACAST_SINK;
-		break;
-	case 0: /* disabled */
-	default:
-		mode = MIRACAST_DISABLED;
-		break;
+	if (num >= 1) {
+		wfd_info->stack_wfd_mode = mode;
+		DBG_871X("Miracast mode: %s(%u)\n", get_miracast_mode_str(wfd_info->stack_wfd_mode), wfd_info->stack_wfd_mode);
+		ret = _SUCCESS;
 	}
-	wfd_info->stack_wfd_mode = mode;
-	DBG_871X("stack miracast mode: %s\n", get_miracast_mode_str(wfd_info->stack_wfd_mode));
 
-	ret = _SUCCESS;
-
-exit:
 	return (ret == _SUCCESS)?0:-1;
 }
 #endif /* CONFIG_WFD */
@@ -627,14 +609,14 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 	}
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0))
-        if (!access_ok(priv_cmd.buf, priv_cmd.total_len)){
+	if (!access_ok(priv_cmd.buf, priv_cmd.total_len)){
 #else
 	if (!access_ok(VERIFY_READ, priv_cmd.buf, priv_cmd.total_len)){
 #endif
 	 	DBG_871X("%s: failed to access memory\n", __FUNCTION__);
 		ret = -EFAULT;
 		goto exit;
-	 }
+	}
 	if (copy_from_user(command, (void *)priv_cmd.buf, priv_cmd.total_len)) {
 		ret = -EFAULT;
 		goto exit;
@@ -658,17 +640,6 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 			,__FUNCTION__, command, ifr->ifr_name);
 		ret = 0;
 		goto exit;
-	}
-
-	if (!hal_chk_wl_func(padapter, WL_FUNC_MIRACAST)) {
-		switch (cmd_num) {
-		case ANDROID_WIFI_CMD_WFD_ENABLE:
-		case ANDROID_WIFI_CMD_WFD_DISABLE:
-		case ANDROID_WIFI_CMD_WFD_SET_TCPPORT:
-		case ANDROID_WIFI_CMD_WFD_SET_MAX_TPUT:
-		case ANDROID_WIFI_CMD_WFD_SET_DEVTYPE:
-			goto response;
-		}
 	}
 
 	switch(cmd_num) {
@@ -808,8 +779,9 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		//	We can enable the WFD function by using the following command:
 		//	wpa_cli driver wfd-enable
 
-		if (padapter->wdinfo.driver_interface == DRIVER_CFG80211)
-			rtw_wfd_enable(padapter, 1);
+		pwfd_info = &padapter->wfd_info;
+		if( padapter->wdinfo.driver_interface == DRIVER_CFG80211 )
+			pwfd_info->wfd_enable = _TRUE;
 		break;
 	}
 
@@ -819,8 +791,9 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		//	We can disable the WFD function by using the following command:
 		//	wpa_cli driver wfd-disable
 
-		if (padapter->wdinfo.driver_interface == DRIVER_CFG80211)
-			rtw_wfd_enable(padapter, 0);
+		pwfd_info = &padapter->wfd_info;
+		if( padapter->wdinfo.driver_interface == DRIVER_CFG80211 )
+			pwfd_info->wfd_enable = _FALSE;
 		break;
 	}
 	case ANDROID_WIFI_CMD_WFD_SET_TCPPORT:
@@ -829,8 +802,11 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		//	We can set the tcp port number by using the following command:
 		//	wpa_cli driver wfd-set-tcpport = 554
 
-		if (padapter->wdinfo.driver_interface == DRIVER_CFG80211)
-			rtw_wfd_set_ctrl_port(padapter, (u16)get_int_from_command(priv_cmd.buf));
+		pwfd_info = &padapter->wfd_info;
+		if( padapter->wdinfo.driver_interface == DRIVER_CFG80211 )
+		{
+			pwfd_info->rtsp_ctrlport = ( u16 ) get_int_from_command( priv_cmd.buf );
+	}
 		break;
 	}
 	case ANDROID_WIFI_CMD_WFD_SET_MAX_TPUT:
@@ -901,12 +877,6 @@ int rtw_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 
 		rtw_p2p_enable(padapter, P2P_ROLE_DISABLE);
 #endif // CONFIG_P2P
-		break;
-	}
-	case ANDROID_WIFI_CMD_DRIVERVERSION:
-	{
-		bytes_written = strlen(DRIVERVERSION);
-		snprintf(command, bytes_written+1, DRIVERVERSION);
 		break;
 	}
 	default:

@@ -26,7 +26,6 @@
 
 #ifndef __DRV_TYPES_H__
 #define __DRV_TYPES_H__
-
 #include <drv_conf.h>
 #include <basic_types.h>
 #include <osdep_service.h>
@@ -93,7 +92,6 @@ typedef struct _ADAPTER _adapter, ADAPTER,*PADAPTER;
 #include <rtw_sreset.h>
 #include <hal_intf.h>
 #include <hal_com.h>
-#include<hal_com_h2c.h>
 #include <hal_com_led.h>
 #include "../hal/hal_dm.h"
 #include <rtw_qos.h>
@@ -119,7 +117,9 @@ typedef struct _ADAPTER _adapter, ADAPTER,*PADAPTER;
 #include <rtw_mem.h>
 #endif
 
+#ifdef CONFIG_P2P
 #include <rtw_p2p.h>
+#endif // CONFIG_P2P
 
 #ifdef CONFIG_TDLS
 #include <rtw_tdls.h>
@@ -200,9 +200,6 @@ struct registry_priv
 	u16	busy_thresh;
 	u8	ack_policy;
 	u8	mp_mode;
-#if defined(CONFIG_MP_INCLUDED) && defined(CONFIG_RTW_CUSTOMER_STR)
-	u8 mp_customer_str;
-#endif
 	u8  mp_dm;
 	u8	software_encrypt;
 	u8	software_decrypt;
@@ -220,8 +217,6 @@ struct registry_priv
 	u8	uapsd_acvo_en;
 
 	WLAN_BSSID_EX    dev_network;
-
-	u8 tx_bw_mode;
 
 #ifdef CONFIG_80211N_HT
 	u8	ht_enable;
@@ -244,8 +239,6 @@ struct registry_priv
 	u8	stbc_cap;
 	// BIT0: Enable VHT Beamformer, BIT1: Enable VHT Beamformee, BIT4: Enable HT Beamformer, BIT5: Enable HT Beamformee
 	u8	beamform_cap;
-	u8	beamformer_rf_num;
-	u8	beamformee_rf_num;
 #endif //CONFIG_80211N_HT
 
 #ifdef CONFIG_80211AC_VHT
@@ -261,9 +254,7 @@ struct registry_priv
 
 	u8	wifi_spec;// !turbo_mode
 	u8	special_rf_path; // 0: 2T2R ,1: only turn on path A 1T1R
-	char alpha2[2];
 	u8	channel_plan;
-	u8  full_ch_in_p2p_handshake; /* 0: reply only softap channel, 1: reply full channel list*/
 #ifdef CONFIG_BT_COEXIST
 	u8	btcoex;
 	u8	bt_iso;
@@ -318,13 +309,6 @@ struct registry_priv
 	u8	RegEnableTxPowerByRate;
 	u8	RegPowerBase;
 	u8	RegPwrTblSel;
-
-	u8 target_tx_pwr_valid;
-	s8 target_tx_pwr_2g[RF_PATH_MAX][RATE_SECTION_NUM];
-#ifdef CONFIG_IEEE80211_BAND_5GHZ
-	s8 target_tx_pwr_5g[RF_PATH_MAX][RATE_SECTION_NUM - 1];
-#endif
-
 	s8	TxBBSwing_2G;
 	s8	TxBBSwing_5G;
 	u8	AmplifierType_2G;
@@ -350,20 +334,14 @@ struct registry_priv
 	u8 adaptivity_mode;
 	u8 adaptivity_dml;
 	u8 adaptivity_dc_backoff;
-	s8 adaptivity_th_l2h_ini;
-	s8 adaptivity_th_edcca_hl_diff;
-
 	u8 boffefusemask;
 	BOOLEAN bFileMaskEfuse;
 #ifdef CONFIG_AUTO_CHNL_SEL_NHM
 	u8 acs_mode;
 	u8 acs_auto_scan;
 #endif
-	u32	reg_rxgain_offset_2g;
-	u32	reg_rxgain_offset_5gl;
-	u32	reg_rxgain_offset_5gm;
-	u32	reg_rxgain_offset_5gh;
 };
+
 
 //For registry parameters
 #define RGTRY_OFT(field) ((ULONG)FIELD_OFFSET(struct registry_priv,field))
@@ -382,15 +360,7 @@ struct registry_priv
 #define BSSID_OFT(field) ((ULONG)FIELD_OFFSET(WLAN_BSSID_EX,field))
 #define BSSID_SZ(field)   sizeof(((PWLAN_BSSID_EX) 0)->field)
 
-#define BW_MODE_2G(bw_mode) ((bw_mode) & 0x0F)
-#define BW_MODE_5G(bw_mode) ((bw_mode) >> 4)
-#define REGSTY_BW_2G(regsty) BW_MODE_2G((regsty)->bw_mode)
-#define REGSTY_BW_5G(regsty) BW_MODE_5G((regsty)->bw_mode)
-#define REGSTY_IS_BW_2G_SUPPORT(regsty, bw) (REGSTY_BW_2G((regsty)) >= (bw))
-#define REGSTY_IS_BW_5G_SUPPORT(regsty, bw) (REGSTY_BW_5G((regsty)) >= (bw))
 
-#define REGSTY_IS_11AC_ENABLE(regsty) ((regsty)->vht_enable != 0)
-#define REGSTY_IS_11AC_AUTO(regsty) ((regsty)->vht_enable == 2)
 
 #ifdef CONFIG_SDIO_HCI
 #include <drv_types_sdio.h>
@@ -613,32 +583,14 @@ struct rtw_traffic_statistics {
 
 #define SEC_STATUS_STA_PK_GK_CONFLICT_DIS_BMC_SEARCH	BIT0
 
-struct sec_cam_bmp {
-	u32 m0;
-#if (SEC_CAM_ENT_NUM_SW_LIMIT > 32)
-	u32 m1;
-#endif
-#if (SEC_CAM_ENT_NUM_SW_LIMIT > 64)
-	u32 m2;
-#endif
-#if (SEC_CAM_ENT_NUM_SW_LIMIT > 96)
-	u32 m3;
-#endif
-};
-
 struct cam_ctl_t {
 	_lock lock;
-
 	u8 sec_cap;
 	u32 flags;
-
-	u8 num;
-	struct sec_cam_bmp used;
-
-	_mutex sec_cam_access_mutex;
+	u64 bitmap;
 };
 
-struct sec_cam_ent {
+struct cam_entry_cache {
 	u16 ctrl;
 	u8 mac[ETH_ALEN];
 	u8 key[16];
@@ -669,57 +621,9 @@ struct macid_ctl_t {
 	struct macid_bmp bmc;
 	struct macid_bmp if_g[IFACE_ID_MAX];
 	struct macid_bmp ch_g[2]; /* 2 ch concurrency */
-	u8 h2c_msr[MACID_NUM_SW_LIMIT];
-	u8 bw[MACID_NUM_SW_LIMIT];
-	u8 vht_en[MACID_NUM_SW_LIMIT];
-	u32 rate_bmp0[MACID_NUM_SW_LIMIT];
-	u32 rate_bmp1[MACID_NUM_SW_LIMIT];
-	struct sta_info *sta[MACID_NUM_SW_LIMIT];
 };
 
-/* used for rf_ctl_t.rate_bmp_cck_ofdm */
-#define RATE_BMP_CCK		0x000F
-#define RATE_BMP_OFDM		0xFFF0
-#define RATE_BMP_HAS_CCK(_bmp_cck_ofdm)		(_bmp_cck_ofdm & RATE_BMP_CCK)
-#define RATE_BMP_HAS_OFDM(_bmp_cck_ofdm)	(_bmp_cck_ofdm & RATE_BMP_OFDM)
-#define RATE_BMP_GET_CCK(_bmp_cck_ofdm)		(_bmp_cck_ofdm & RATE_BMP_CCK)
-#define RATE_BMP_GET_OFDM(_bmp_cck_ofdm)	((_bmp_cck_ofdm & RATE_BMP_OFDM) >> 4)
-
-/* used for rf_ctl_t.rate_bmp_ht_by_bw */
-#define RATE_BMP_HT_1SS		0x000000FF
-#define RATE_BMP_HT_2SS		0x0000FF00
-#define RATE_BMP_HT_3SS		0x00FF0000
-#define RATE_BMP_HT_4SS		0xFF000000
-#define RATE_BMP_HAS_HT_1SS(_bmp_ht)		(_bmp_ht & RATE_BMP_HT_1SS)
-#define RATE_BMP_HAS_HT_2SS(_bmp_ht)		(_bmp_ht & RATE_BMP_HT_2SS)
-#define RATE_BMP_HAS_HT_3SS(_bmp_ht)		(_bmp_ht & RATE_BMP_HT_3SS)
-#define RATE_BMP_HAS_HT_4SS(_bmp_ht)		(_bmp_ht & RATE_BMP_HT_4SS)
-#define RATE_BMP_GET_HT_1SS(_bmp_ht)		(_bmp_ht & RATE_BMP_HT_1SS)
-#define RATE_BMP_GET_HT_2SS(_bmp_ht)		((_bmp_ht & RATE_BMP_HT_2SS) >> 8)
-#define RATE_BMP_GET_HT_3SS(_bmp_ht)		((_bmp_ht & RATE_BMP_HT_3SS) >> 16)
-#define RATE_BMP_GET_HT_4SS(_bmp_ht)		((_bmp_ht & RATE_BMP_HT_4SS) >> 24)
-
-/* used for rf_ctl_t.rate_bmp_vht_by_bw */
-#define RATE_BMP_VHT_1SS	0x000003FF
-#define RATE_BMP_VHT_2SS	0x000FFC00
-#define RATE_BMP_VHT_3SS	0x3FF00000
-#define RATE_BMP_HAS_VHT_1SS(_bmp_vht)		(_bmp_vht & RATE_BMP_VHT_1SS)
-#define RATE_BMP_HAS_VHT_2SS(_bmp_vht)		(_bmp_vht & RATE_BMP_VHT_2SS)
-#define RATE_BMP_HAS_VHT_3SS(_bmp_vht)		(_bmp_vht & RATE_BMP_VHT_3SS)
-#define RATE_BMP_GET_VHT_1SS(_bmp_vht)		(_bmp_vht & RATE_BMP_VHT_1SS)
-#define RATE_BMP_GET_VHT_2SS(_bmp_vht)		((_bmp_vht & RATE_BMP_VHT_2SS) >> 10)
-#define RATE_BMP_GET_VHT_3SS(_bmp_vht)		((_bmp_vht & RATE_BMP_VHT_3SS) >> 20)
-
 struct rf_ctl_t {
-	/* used for debug or by tx power limit */
-	u16 rate_bmp_cck_ofdm;		/* 20MHz */
-	u32 rate_bmp_ht_by_bw[2];	/* 20MHz, 40MHz. 4SS supported */
-	u32 rate_bmp_vht_by_bw[4];	/* 20MHz, 40MHz, 80MHz, 160MHz. up to 3SS supported */
-
-	/* used by tx power limit */
-	u8 highest_ht_rate_bw_bmp;
-	u8 highest_vht_rate_bw_bmp;
-
 	#ifdef CONFIG_DFS_MASTER
 	bool radar_detect_by_sta_link;
 	bool pre_radar_detect_by_sta_link;
@@ -760,16 +664,8 @@ struct dvobj_priv
 
 	_mutex hw_init_mutex;
 	_mutex h2c_fwcmd_mutex;
-
-#ifdef CONFIG_RTW_CUSTOMER_STR
-	_mutex customer_str_mutex;
-	struct submit_ctx *customer_str_sctx;
-	u8 customer_str[RTW_CUSTOMER_STR_LEN];
-#endif
-
 	_mutex setch_mutex;
 	_mutex setbw_mutex;
-	_mutex rf_read_reg_mutex;
 #ifdef CONFIG_SDIO_INDIRECT_ACCESS
 	_mutex sd_indirect_access_mutex;
 #endif
@@ -788,7 +684,7 @@ struct dvobj_priv
 	struct macid_ctl_t macid_ctl;
 
 	struct cam_ctl_t cam_ctl;
-	struct sec_cam_ent cam_cache[SEC_CAM_ENT_NUM_SW_LIMIT];
+	struct cam_entry_cache cam_cache[TOTAL_CAM_ENTRY];
 
 	struct rf_ctl_t rf_ctl;
 
@@ -931,7 +827,7 @@ struct dvobj_priv
 #define rfctl_to_dvobj(rfctl) container_of((rfctl), struct dvobj_priv, rf_ctl)
 
 #ifdef PLATFORM_LINUX
-static struct device *dvobj_to_dev(struct dvobj_priv *dvobj)
+inline static struct device *dvobj_to_dev(struct dvobj_priv *dvobj)
 {
 	/* todo: get interface type from dvobj and the return the dev accordingly */
 #ifdef RTW_DVOBJ_CHIP_HW_TYPE
@@ -953,7 +849,6 @@ static struct device *dvobj_to_dev(struct dvobj_priv *dvobj)
 #endif
 
 _adapter *dvobj_get_port0_adapter(struct dvobj_priv *dvobj);
-#define dvobj_get_primary_adapter(dvobj)	((dvobj)->padapters[IFACE_ID0])
 
 enum _IFACE_TYPE {
 	IFACE_PORT0, //mapping to port0 for C/D series chips
@@ -1001,9 +896,6 @@ typedef struct loopbackdata
 
 }LOOPBACKDATA, *PLOOPBACKDATA;
 #endif
-
-#define ADAPTER_TX_BW_2G(adapter) BW_MODE_2G((adapter)->driver_tx_bw_mode)
-#define ADAPTER_TX_BW_5G(adapter) BW_MODE_5G((adapter)->driver_tx_bw_mode)
 
 struct _ADAPTER{
 	int	DriverState;// for disable driver using module, use dongle to replace module.
@@ -1226,9 +1118,6 @@ struct _ADAPTER{
 	//for debug purpose
 	u8 fix_rate;
 	u8 data_fb; /* data rate fallback, valid only when fix_rate is not 0xff */
-
-	u8 driver_tx_bw_mode;
-
 	u8 driver_vcs_en; //Enable=1, Disable=0 driver control vrtl_carrier_sense for tx
 	u8 driver_vcs_type;//force 0:disable VCS, 1:RTS-CTS, 2:CTS-to-self when vcs_en=1.
 	u8 driver_ampdu_spacing;//driver control AMPDU Density for peer sta's rx
@@ -1251,9 +1140,8 @@ struct _ADAPTER{
 #endif
 };
 
-#define adapter_to_dvobj(adapter) ((adapter)->dvobj)
-#define adapter_to_regsty(adapter) dvobj_to_regsty(adapter_to_dvobj((adapter)))
-#define adapter_to_pwrctl(adapter) dvobj_to_pwrctl(adapter_to_dvobj((adapter)))
+#define adapter_to_dvobj(adapter) (adapter->dvobj)
+#define adapter_to_pwrctl(adapter) (dvobj_to_pwrctl(adapter->dvobj))
 #define adapter_wdev_data(adapter) (&((adapter)->wdev_data))
 #if defined(RTW_SINGLE_WIPHY)
 #define adapter_to_wiphy(adapter) dvobj_to_wiphy(adapter_to_dvobj(adapter))
@@ -1264,9 +1152,6 @@ struct _ADAPTER{
 #define adapter_to_rfctl(adapter) dvobj_to_rfctl(adapter_to_dvobj((adapter)))
 
 #define adapter_mac_addr(adapter) (adapter->mac_addr)
-
-#define mlme_to_adapter(mlme) container_of((mlme), struct _ADAPTER, mlmepriv)
-#define tdls_info_to_adapter(tdls) container_of((tdls), struct _ADAPTER, tdlsinfo)
 
 #define rtw_get_chip_type(adapter) (((PADAPTER)adapter)->dvobj->chip_type)
 #define rtw_get_hw_type(adapter) (((PADAPTER)adapter)->dvobj->HardwareType)

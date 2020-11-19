@@ -64,7 +64,7 @@ void rtw_reset_tdls_info(_adapter* padapter)
 
 #ifdef CONFIG_WFD
 	ptdlsinfo->wfd_info = &padapter->wfd_info;
-#endif
+#endif /* ONFIG_WFD */
 }
 
 int rtw_init_tdls_info(_adapter* padapter)
@@ -431,9 +431,7 @@ void rtw_tdls_process_vht_cap(_adapter *padapter, struct sta_info *ptdls_sta, u8
 		ptdls_sta->flags &= ~WLAN_STA_VHT;
 
 	if (ptdls_sta->flags & WLAN_STA_VHT) {
-		if (REGSTY_IS_11AC_ENABLE(&padapter->registrypriv)
-			&& hal_chk_proto_cap(padapter, PROTO_CAP_11AC)
-			&& (!pmlmepriv->country_ent || COUNTRY_CHPLAN_EN_11AC(pmlmepriv->country_ent)))
+		if (padapter->registrypriv.vht_enable == _TRUE)
 			ptdls_sta->vhtpriv.vht_option = _TRUE;
 		else 
 			ptdls_sta->vhtpriv.vht_option = _FALSE;
@@ -770,36 +768,35 @@ u8 *rtw_tdls_set_wmm_params(_adapter *padapter, u8 *pframe, struct pkt_attrib *p
 #ifdef CONFIG_WFD
 void rtw_tdls_process_wfd_ie(struct tdls_info *ptdlsinfo, u8 *ptr, u8 length)
 {
-	u8 *wfd_ie;
+	u8	wfd_ie[ 128 ] = { 0x00 };
 	u32	wfd_ielen = 0;
-
-	if (!hal_chk_wl_func(tdls_info_to_adapter(ptdlsinfo), WL_FUNC_MIRACAST))
-		return;
-
+	u32	wfd_offset = 0;
 	/* Try to get the TCP port information when receiving the negotiation response. */
 
-	wfd_ie = rtw_get_wfd_ie(ptr, length, NULL, &wfd_ielen);
-	while (wfd_ie) {
-		u8 *attr_content;
+	wfd_offset = 0;
+	wfd_offset = rtw_get_wfd_ie( ptr + wfd_offset, length - wfd_offset, wfd_ie, &wfd_ielen );
+	while (wfd_offset) {
+		u8	attr_content[ 10 ] = { 0x00 };
 		u32	attr_contentlen = 0;
 		int	i;
 
 		DBG_871X( "[%s] WFD IE Found!!\n", __FUNCTION__ );
-		attr_content = rtw_get_wfd_attr_content(wfd_ie, wfd_ielen, WFD_ATTR_DEVICE_INFO, NULL, &attr_contentlen);
-		if (attr_content && attr_contentlen) {
+		rtw_get_wfd_attr_content( wfd_ie, wfd_ielen, WFD_ATTR_DEVICE_INFO, attr_content, &attr_contentlen);
+		if (attr_contentlen) {
 			ptdlsinfo->wfd_info->peer_rtsp_ctrlport = RTW_GET_BE16( attr_content + 2 );
 			DBG_871X( "[%s] Peer PORT NUM = %d\n", __FUNCTION__, ptdlsinfo->wfd_info->peer_rtsp_ctrlport );
 		}
 
-		attr_content = rtw_get_wfd_attr_content(wfd_ie, wfd_ielen, WFD_ATTR_LOCAL_IP_ADDR, NULL, &attr_contentlen);
-		if (attr_content && attr_contentlen) {
+		_rtw_memset( attr_content, 0x00, 10);
+		attr_contentlen = 0;
+		rtw_get_wfd_attr_content( wfd_ie, wfd_ielen, WFD_ATTR_LOCAL_IP_ADDR, attr_content, &attr_contentlen);
+		if (attr_contentlen) {
 			_rtw_memcpy(ptdlsinfo->wfd_info->peer_ip_address, ( attr_content + 1 ), 4);
-			DBG_871X("[%s] Peer IP = %02u.%02u.%02u.%02u\n", __FUNCTION__, 
+			DBG_871X( "[%s] Peer IP = %02u.%02u.%02u.%02u \n", __FUNCTION__, 
 				ptdlsinfo->wfd_info->peer_ip_address[0], ptdlsinfo->wfd_info->peer_ip_address[1],
 				ptdlsinfo->wfd_info->peer_ip_address[2], ptdlsinfo->wfd_info->peer_ip_address[3]);
 		}
-
-		wfd_ie = rtw_get_wfd_ie(wfd_ie + wfd_ielen, (ptr + length) - (wfd_ie + wfd_ielen), NULL, &wfd_ielen);
+		wfd_offset = rtw_get_wfd_ie( ptr + wfd_offset, length - wfd_offset, wfd_ie, &wfd_ielen );
 	}
 }
 
@@ -1671,8 +1668,8 @@ sint On_TDLS_Setup_Req(_adapter *padapter, union recv_frame *precv_frame)
 			ptdlsinfo->sta_maximum = _TRUE;
 
 #ifdef CONFIG_WFD
-		rtw_tdls_process_wfd_ie(ptdlsinfo, ptr + FIXED_IE, parsing_length);
-#endif
+		rtw_tdls_process_wfd_ie(ptdlsinfo, ptr + FIXED_IE, parsing_length - FIXED_IE);
+#endif /* CONFIG_WFD */
 
 	}else {
 		goto exit;
@@ -1830,8 +1827,8 @@ int On_TDLS_Setup_Rsp(_adapter *padapter, union recv_frame *precv_frame)
 	_rtw_memcpy(ptdls_sta->ANonce, ANonce, 32);
 
 #ifdef CONFIG_WFD
-	rtw_tdls_process_wfd_ie(ptdlsinfo, ptr + FIXED_IE, parsing_length);
-#endif
+	rtw_tdls_process_wfd_ie(ptdlsinfo, ptr + FIXED_IE, parsing_length - FIXED_IE);
+#endif /* CONFIG_WFD */
 
 	if (status_code != _STATS_SUCCESSFUL_) {
 		txmgmt.status_code = status_code;
@@ -2380,9 +2377,6 @@ void wfd_ie_tdls(_adapter * padapter, u8 *pframe, u32 *pktlen )
 	u8 wfdie[ MAX_WFD_IE_LEN] = { 0x00 };
 	u32 wfdielen = 0;
 
-	if (!hal_chk_wl_func(padapter, WL_FUNC_MIRACAST))
-		return;
-
 	/* WFD OUI */
 	wfdielen = 0;
 	wfdie[ wfdielen++ ] = 0x50;
@@ -2417,7 +2411,7 @@ void wfd_ie_tdls(_adapter * padapter, u8 *pframe, u32 *pktlen )
 	/* Value2: */
 	/* Session Management Control Port */
 	/* Default TCP port for RTSP messages is 554 */
-	RTW_PUT_BE16(wfdie + wfdielen, pwfd_info->tdls_rtsp_ctrlport);
+	RTW_PUT_BE16(wfdie + wfdielen, pwfd_info->rtsp_ctrlport );
 	wfdielen += 2;
 
 	/* Value3: */
@@ -2523,20 +2517,15 @@ void rtw_build_tdls_setup_req_ies(_adapter * padapter, struct xmit_frame * pxmit
 		pframe = rtw_tdls_set_qos_cap(pframe, pattrib);
 
 #ifdef CONFIG_80211AC_VHT
-	if ((padapter->mlmepriv.htpriv.ht_option == _TRUE) && (pmlmeext->cur_channel > 14)
-		&& REGSTY_IS_11AC_ENABLE(pregistrypriv)
-		&& hal_chk_proto_cap(padapter, PROTO_CAP_11AC)
-		&& (!padapter->mlmepriv.country_ent || COUNTRY_CHPLAN_EN_11AC(padapter->mlmepriv.country_ent))
-	) {
+	if ((padapter->mlmepriv.htpriv.ht_option == _TRUE) && (pregistrypriv->vht_enable == _TRUE) && (pmlmeext->cur_channel > 14)) {
 		pframe = rtw_tdls_set_aid(padapter, pframe, pattrib);
 		pframe = rtw_tdls_set_vht_cap(padapter, pframe, pattrib);
 	}
 #endif
 
 #ifdef CONFIG_WFD
-	if (padapter->wdinfo.wfd_tdls_enable == 1)
-		wfd_ie_tdls(padapter, pframe, &(pattrib->pktlen));
-#endif
+	wfd_ie_tdls( padapter, pframe, &(pattrib->pktlen) );
+#endif /* CONFIG_WFD */
 
 }
 
@@ -2623,11 +2612,7 @@ void rtw_build_tdls_setup_rsp_ies(_adapter * padapter, struct xmit_frame * pxmit
 		pframe = rtw_tdls_set_qos_cap(pframe, pattrib);
 
 #ifdef CONFIG_80211AC_VHT
-	if ((padapter->mlmepriv.htpriv.ht_option == _TRUE) && (pmlmeext->cur_channel > 14)
-		&& REGSTY_IS_11AC_ENABLE(pregistrypriv)
-		&& hal_chk_proto_cap(padapter, PROTO_CAP_11AC)
-		&& (!padapter->mlmepriv.country_ent || COUNTRY_CHPLAN_EN_11AC(padapter->mlmepriv.country_ent))
-	) {
+	if ((padapter->mlmepriv.htpriv.ht_option == _TRUE) && (pregistrypriv->vht_enable == _TRUE) && (pmlmeext->cur_channel > 14)) {
 		pframe = rtw_tdls_set_aid(padapter, pframe, pattrib);
 		pframe = rtw_tdls_set_vht_cap(padapter, pframe, pattrib);
 		pframe = rtw_tdls_set_vht_op_mode_notify(padapter, pframe, pattrib, pmlmeext->cur_bwmode);
@@ -2635,9 +2620,8 @@ void rtw_build_tdls_setup_rsp_ies(_adapter * padapter, struct xmit_frame * pxmit
 #endif
 
 #ifdef CONFIG_WFD
-	if (padapter->wdinfo.wfd_tdls_enable)
-		wfd_ie_tdls(padapter, pframe, &(pattrib->pktlen));
-#endif
+	wfd_ie_tdls( padapter, pframe, &(pattrib->pktlen) );
+#endif /* CONFIG_WFD */
 
 }
 
@@ -2699,12 +2683,8 @@ void rtw_build_tdls_setup_cfm_ies(_adapter * padapter, struct xmit_frame * pxmit
 		pframe = rtw_tdls_set_wmm_params(padapter, pframe, pattrib);
 
 #ifdef CONFIG_80211AC_VHT
-	if ((padapter->mlmepriv.htpriv.ht_option == _TRUE)
-		&& (ptdls_sta->vhtpriv.vht_option == _TRUE) && (pmlmeext->cur_channel > 14)
-		&& REGSTY_IS_11AC_ENABLE(pregistrypriv)
-		&& hal_chk_proto_cap(padapter, PROTO_CAP_11AC)
-		&& (!padapter->mlmepriv.country_ent || COUNTRY_CHPLAN_EN_11AC(padapter->mlmepriv.country_ent))
-	) {
+	if ((padapter->mlmepriv.htpriv.ht_option == _TRUE) && (pregistrypriv->vht_enable == _TRUE) 
+		&& (ptdls_sta->vhtpriv.vht_option == _TRUE) && (pmlmeext->cur_channel > 14)) {
 		pframe = rtw_tdls_set_vht_operation(padapter, pframe, pattrib, pmlmeext->cur_channel);
 		pframe = rtw_tdls_set_vht_op_mode_notify(padapter, pframe, pattrib, pmlmeext->cur_bwmode);
 	}
@@ -3084,6 +3064,11 @@ void rtw_free_tdls_timer(struct sta_info *psta)
 #endif
 	_cancel_timer_ex(&psta->handshake_timer);
 	_cancel_timer_ex(&psta->pti_timer);
+}
+
+u8	update_sgi_tdls(_adapter *padapter, struct sta_info *psta)
+{
+	return query_ra_short_GI(psta);
 }
 
 u32 update_mask_tdls(_adapter *padapter, struct sta_info *psta)

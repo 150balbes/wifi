@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 //===========================================
 // The following is for 8192D 2Ant BT Co-exist definition
 //===========================================

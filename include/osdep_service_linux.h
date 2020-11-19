@@ -84,10 +84,8 @@
 
 	/* Monitor mode */
 	#include <net/ieee80211_radiotap.h>
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24))
-	#include <linux/ieee80211.h>
-#endif
-#ifdef CONFIG_IOCTL_CFG80211
+
+#ifdef CONFIG_IOCTL_CFG80211	
 /*	#include <linux/ieee80211.h> */
 	#include <net/cfg80211.h>
 #endif //CONFIG_IOCTL_CFG80211
@@ -405,13 +403,11 @@ static inline void rtw_netif_stop_queue(struct net_device *pnetdev)
 #endif
 }
 
-static inline int rtw_merge_string(char *dst, int dst_len, const char *src1, const char *src2)
+static inline void rtw_merge_string(char *dst, int dst_len, char *src1, char *src2)
 {
 	int	len = 0;
-	len += snprintf(dst + len, dst_len - len, "%s", src1);
-	len += snprintf(dst + len, dst_len - len, "%s", src2);
-
-	return len;
+	len += snprintf(dst+len, dst_len - len, "%s", src1);
+	len += snprintf(dst+len, dst_len - len, "%s", src2);
 }
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27))

@@ -940,18 +940,6 @@ typedef enum _HT_CAP_AMPDU_FACTOR {
 	MAX_AMPDU_FACTOR_64K	= 3,	
 }HT_CAP_AMPDU_FACTOR;
 
-
-typedef enum _HT_CAP_AMPDU_DENSITY {
-	AMPDU_DENSITY_VALUE_0 = 0 , /* For no restriction */
-	AMPDU_DENSITY_VALUE_1 = 1 , /* For 1/4 us */
-	AMPDU_DENSITY_VALUE_2 = 2 , /* For 1/2 us */
-	AMPDU_DENSITY_VALUE_3 = 3 , /* For 1 us */
-	AMPDU_DENSITY_VALUE_4 = 4 , /* For 2 us */
-	AMPDU_DENSITY_VALUE_5 = 5 , /* For 4 us */
-	AMPDU_DENSITY_VALUE_6 = 6 , /* For 8 us */
-	AMPDU_DENSITY_VALUE_7 = 7 , /* For 16 us */
-} HT_CAP_AMPDU_DENSITY;
-
 /* 802.11n HT capabilities masks */
 #define IEEE80211_HT_CAP_LDPC_CODING		0x0001
 #define IEEE80211_HT_CAP_SUP_WIDTH		0x0002
@@ -1006,7 +994,7 @@ typedef enum _HT_CAP_AMPDU_DENSITY {
  * According to IEEE802.11n spec size varies from 8K to 64K (in powers of 2)
  */
 #define IEEE80211_MIN_AMPDU_BUF 0x8
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,19,0))
+#ifndef IEEE80211_MAX_AMPDU_BUF
 #define IEEE80211_MAX_AMPDU_BUF 0x40
 #endif
 

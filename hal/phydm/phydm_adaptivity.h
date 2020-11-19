@@ -22,10 +22,7 @@
 #ifndef	__PHYDMADAPTIVITY_H__
 #define    __PHYDMADAPTIVITY_H__
 
-#define ADAPTIVITY_VERSION	"9.0"
-
-#define PwdBUpperBound	7
-#define DFIRloss	5
+#define ADAPTIVITY_VERSION	"8.6.1"
 
 #if (DM_ODM_SUPPORT_TYPE & (ODM_WIN))
 typedef enum _tag_PhyDM_REGULATION_Type {
@@ -37,11 +34,6 @@ typedef enum _tag_PhyDM_REGULATION_Type {
 	MAX_REGULATION_NUM = 4
 } PhyDM_REGULATION_TYPE;
 #endif
-
-typedef enum tag_PhyDM_set_LNA {
-	PhyDM_disable_LNA		= 0,
-	PhyDM_enable_LNA		= 1,
-} PhyDM_set_LNA;
 
 
 typedef enum tag_PhyDM_TRx_MUX_Type
@@ -70,7 +62,6 @@ typedef struct _ADAPTIVITY_STATISTICS {
 	BOOLEAN			bCheck;
 	BOOLEAN			DynamicLinkAdaptivity;
 	u1Byte			APNumTH;
-	u1Byte			AdajustIGILevel;
 } ADAPTIVITY_STATISTICS, *PADAPTIVITY_STATISTICS;
 
 VOID
@@ -143,12 +134,6 @@ Phydm_Adaptivity(
 	IN		PVOID					pDM_VOID,
 	IN		u1Byte					IGI
 	);
-
-VOID
-phydm_setEDCCAThresholdAPI(
-	IN	PVOID	pDM_VOID,
-	IN	u1Byte	IGI
-);
 
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
 VOID

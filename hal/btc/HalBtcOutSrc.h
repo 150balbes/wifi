@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef	__HALBTC_OUT_SRC_H__
 #define __HALBTC_OUT_SRC_H__
 
@@ -439,7 +438,7 @@ typedef	BOOLEAN
 	IN	u1Byte			setType,
 	OUT	PVOID			pInBuf
 	);
-typedef u2Byte
+typedef VOID
 (*BFP_BTC_SET_BT_REG)(
 	IN 	PVOID			pBtcContext,
 	IN	u1Byte			regType,
@@ -452,12 +451,11 @@ typedef BOOLEAN
 	IN	u1Byte			txTime,
 	IN	u1Byte			btChnl
 	);
-typedef u2Byte 
+typedef u4Byte 
 (*BFP_BTC_GET_BT_REG)(
 	IN 	PVOID			pBtcContext,
 	IN	u1Byte			regType,
-	IN	u4Byte			offset,
-	IN	pu4Byte			data
+	IN	u4Byte			offset
 	);
 typedef VOID
 (*BFP_BTC_DISP_DBG_MSG)(
@@ -670,12 +668,6 @@ VOID
 EXhalbtcoutsrc_PnpNotify(
 	IN	PBTC_COEXIST		pBtCoexist,
 	IN	u1Byte			pnpState
-	);
-VOID
-EXhalbtcoutsrc_ScoreBoardStatusNotify(
-	IN	PBTC_COEXIST		pBtCoexist,
-	IN	pu1Byte			tmpBuf,
-	IN	u1Byte			length
 	);
 VOID
 EXhalbtcoutsrc_CoexDmSwitch(

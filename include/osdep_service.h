@@ -21,14 +21,9 @@
 #define __OSDEP_SERVICE_H_
 
 
-#define _FAIL					0
-#define _SUCCESS				1
-#define RTW_RX_HANDLED			2
-#define RTW_RFRAME_UNAVAIL		3
-#define RTW_RFRAME_PKT_UNAVAIL	4
-#define RTW_RBUF_UNAVAIL		5
-#define RTW_RBUF_PKT_UNAVAIL	6
-
+#define _FAIL		0
+#define _SUCCESS	1
+#define RTW_RX_HANDLED 2
 //#define RTW_STATUS_TIMEDOUT -110
 
 #undef _TRUE
@@ -262,8 +257,7 @@ extern void*	rtw_malloc2d(int h, int w, size_t size);
 extern void	rtw_mfree2d(void *pbuf, int h, int w, int size);
 
 extern void	_rtw_memcpy(void *dec, const void *sour, u32 sz);
-extern void _rtw_memmove(void *dst, const void *src, u32 sz);
-extern int	_rtw_memcmp(const void *dst, const void *src, u32 sz);
+extern int	_rtw_memcmp(void *dst, void *src, u32 sz);
 extern void	_rtw_memset(void *pbuf, int c, u32 sz);
 
 extern void	_rtw_init_listhead(_list *list);
@@ -289,8 +283,7 @@ extern void	_rtw_spinunlock(_lock	*plock);
 extern void	_rtw_spinlock_ex(_lock	*plock);
 extern void	_rtw_spinunlock_ex(_lock	*plock);
 
-extern void	_rtw_init_queue(_queue *pqueue);
-extern void _rtw_deinit_queue(_queue *pqueue);
+extern void	_rtw_init_queue(_queue	*pqueue);
 extern u32	_rtw_queue_empty(_queue	*pqueue);
 extern u32	rtw_end_of_queue_search(_list *queue, _list *pelement);
 
@@ -486,17 +479,6 @@ __inline static u32 bitshift(u32 bitmask)
 	return i;
 }
 
-static inline int largest_bit(u32 bitmask)
-{
-	int i;
-
-	for (i = 31; i >= 0; i--)
-		if (bitmask & BIT(i))
-			break;
-
-	return i;
-}
-
 #define rtw_min(a, b) ((a>b)?b:a)
 #define rtw_is_range_a_in_b(hi_a, lo_a, hi_b, lo_b) (((hi_a) <= (hi_b)) && ((lo_a) >= (lo_b)))
 #define rtw_is_range_overlap(hi_a, lo_a, hi_b, lo_b) (((hi_a) > (lo_b)) && ((lo_a) < (hi_b)))
@@ -537,10 +519,9 @@ extern int ATOMIC_INC_RETURN(ATOMIC_T *v);
 extern int ATOMIC_DEC_RETURN(ATOMIC_T *v);
 
 //File operation APIs, just for linux now
-extern int rtw_is_file_readable(const char *path);
-extern int rtw_is_file_readable_with_size(const char *path, u32 *sz);
-extern int rtw_retrieve_from_file(const char *path, u8 *buf, u32 sz);
-extern int rtw_store_to_file(const char *path, u8 *buf, u32 sz);
+extern int rtw_is_file_readable(char *path);
+extern int rtw_retrieve_from_file(char *path, u8 *buf, u32 sz);
+extern int rtw_store_to_file(char *path, u8* buf, u32 sz);
 
 
 #ifndef PLATFORM_FREEBSD
@@ -635,40 +616,7 @@ void *rtw_cbuf_pop(struct rtw_cbuf *cbuf);
 struct rtw_cbuf *rtw_cbuf_alloc(u32 size);
 void rtw_cbuf_free(struct rtw_cbuf *cbuf);
 
-struct map_seg_t {
-	u16 sa;
-	u16 len;
-	u8 *c;
-};
-
-struct map_t {
-	u16 len;
-	u16 seg_num;
-	u8 init_value;
-	struct map_seg_t *segs;
-};
-
-#define MAPSEG_ARRAY_ENT(_sa, _len, _c, arg...) \
-	{ .sa = _sa, .len = _len, .c = (u8[_len]){ _c, ##arg}, }
-
-#define MAPSEG_PTR_ENT(_sa, _len, _p) \
-	{ .sa = _sa, .len = _len, .c = _p, }
-
-#define MAP_ENT(_len, _seg_num, _init_v, _seg, arg...) \
-	{ .len = _len, .seg_num = _seg_num, .init_value = _init_v, .segs = (struct map_seg_t[_seg_num]){ _seg, ##arg}, }
-
-int map_readN(const struct map_t *map, u16 offset, u16 len, u8 *buf);
-u8 map_read8(const struct map_t *map, u16 offset);
-
-/* String handler */
-
-BOOLEAN is_null(char c);
-BOOLEAN is_eol(char c);
-BOOLEAN is_space(char c);
-BOOLEAN IsHexDigit(char chTmp);
-BOOLEAN is_alpha(char chTmp);
-char alpha_to_upper(char c);
-
+// String handler
 /*
  * Write formatted output to sized buffer
  */
