@@ -1,83 +1,100 @@
-# Realtek RTL8811CU/RTL8821CU USB wifi adapter driver version 5.4.1 for Linux 4.4.x up to 5.x
+# Driver for the Allwinner XRadio XR819 wifi chip #
 
-Before build this driver make sure `make`, `gcc`, `linux-header` and `git` have been installed.
+This is an experimental wifi driver for the XRADIO XR819 wifi chip - as used in Single Board Computers (SBCs) such as the *Orange Pi Zero* or the *Nanopi Duo*, and TV-boxes like the the *Sunvell R69*. 
 
-## First, clone this repository
-```
-mkdir -p ~/build
-cd ~/build
-git clone https://github.com/brektrou/rtl8821CU.git
-```
-## Build and install with DKMS
+Tested kernel versions: `4.14 - 5.6`
 
-DKMS is a system which will automatically recompile and install a kernel module when a new kernel gets installed or updated. To make use of DKMS, install the dkms package.
+**STA-Mode** (standard client station) and **AP-Mode** (device as access point) using **WPA2** work. Hidden and open APs as well as WEP- or WPA1-encrypted connection are not supported. P2P has not been tested. 
 
-### Debian/Ubuntu:
-```
-sudo apt-get install dkms
-```
-### Arch Linux/Manjaro:
-```
-sudo pacman -S dkms
-```
-To make use of the **DKMS** feature with this project, just run:
-```
-./dkms-install.sh
-```
-If you later on want to remove it, run:
-```
-./dkms-remove.sh
-```
+# Firmware and dts-files #
 
-### Plug your USB-wifi-adapter into your PC
-If wifi can be detected, congratulations.
-If not, maybe you need to switch your device usb mode by the following steps in terminal:
-1. find your usb-wifi-adapter device ID, like "0bda:1a2b", by type:
-```
-lsusb
-```
-2. switch the mode by type: (the device ID must be yours.)
+Get **firmware binaries** from somewhere, e.g. https://github.com/karabek/xradio/tree/master/firmware (`boot_xr819.bin`, `fw_xr819.bin`, `sdd_xr819.bin`) and place into your firmware folder (e.g. `/lib/firmware/xr819/`)
 
-Need install `usb_modeswitch` (Archlinux: `sudo pacman -S usb_modeswitch`)
+Example **device tree** files (for kernel version 5.5) can be found here:
+https://github.com/karabek/xradio/blob/master/dts/.
+
+# Building on a host system #
+
+Cross-compilations allows building a complete linux system with custom drivers on a suitable host system (e.g. your PC).
+
+## Building with armbian ##
+
+The **armbian project** (https://www.armbian.com/) provides an ideal build environment for building linux on arm based devices:
+https://github.com/armbian/build
+Armbian has built-in xradio-support.
+
+## Building on any host system ##
+
+To cross-compile and build the kernel module yourself on a host system get a suitable toolchain and try something like this:
+
 ```
-sudo usb_modeswitch -KW -v 0bda -p 1a2b
-systemctl start bluetooth.service - starting Bluetooth service if it's in inactive state
+make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- -C <PATH TO YOUR LINUX SRC> M=$PWD modules
+make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- -C <PATH TO YOUR LINUX SRC> M=$PWD INSTALL_MOD_PATH=<PATH TO INSTALL MODULE> modules_install
 ```
 
-It should work.
+For info on Toolchains see http://linux-sunxi.org/Toolchain.
 
-## Build and install without DKMS
-Use following commands:
-```
-cd ~/build/rtl8821CU
-make
-sudo make install
-```
-If you later on want to remove it, do the following:
-```
-cd ~/build/rtl8821CU
-sudo make uninstall
-```
-## Checking installed driver
-If you successfully install the driver, the driver is installed on `/lib/modules/<linux version>/kernel/drivers/net/wireless/realtek/rtl8821cu`. Check the driver with the `ls` command:
-```
-ls /lib/modules/$(uname -r)/kernel/drivers/net/wireless/realtek/rtl8821cu
-```
-Make sure `8821cu.ko` file present on that directory
+# Building an "out-of-tree" driver on the device #
 
-### Check with **DKMS** (if installing via **DKMS**):
+Kernel headers have to be installed for building kernel modules on a device. Make sure that the xradio-chip is supported by the device tree. 
 
-``
-sudo dkms status
-``
-### ARM architecture tweak for this driver (this solves compilation problem of this driver):
+## Option 1: the quick way ##
+
+Clone the driver code directly on the device and use the provided script to compile and install the driver. 
+
 ```
-sudo cp /lib/modules/$(uname -r)/build/arch/arm/Makefile /lib/modules/$(uname -r)/build/arch/arm/Makefile.$(date +%Y%m%d%H%M)
-sudo sed -i 's/-msoft-float//' /lib/modules/$(uname -r)/build/arch/arm/Makefile
-sudo ln -s /lib/modules/$(uname -r)/build/arch/arm /lib/modules/$(uname -r)/build/arch/armv7l
+git clone https://github.com/karabek/xradio.git
+cd xradio
+sudo ./xr-install.sh
 ```
-### Monitor mode
-Use the tool 'iw', please don't use other tools like 'airmon-ng'
+
+Reboot the device.
+
 ```
-iw dev wlan0 set monitor none
+sudo reboot
 ```
+
+
+## Option 2: step-by-step ##
+
+First clone driver code:
+
+```
+git clone https://github.com/karabek/xradio.git
+cd xradio
+```
+
+Uncomment line 4 and 5 of Makefile:
+```
+	CONFIG_WLAN_VENDOR_XRADIO := m
+	ccflags-y += -DCONFIG_XRADIO_USE_EXTENSIONS
+	# ccflags-y += -DCONFIG_XRADIO_WAPI_SUPPORT
+```
+
+Compile the kernel module:
+
+```
+make  -C /lib/modules/$(uname -r)/build M=$PWD modules
+ll *.ko
+```
+
+You should see the compiled module (xradio_wlan.ko) in your source directory. 
+Now copy the module to the correct driver directory and make module dependencies available:
+
+```
+mkdir /lib/modules/$(uname -r)/kernel/drivers/net/wireless/xradio
+cp xradio_wlan.ko /lib/modules/$(uname -r)/kernel/drivers/net/wireless/xradio/
+depmod
+```
+
+Finally reboot the device.
+
+```
+sudo reboot
+```
+
+
+ :black_small_square:  :black_small_square:  :black_small_square:
+
+
+
