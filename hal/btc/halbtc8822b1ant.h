@@ -130,6 +130,7 @@ enum bt_8822b_1ant_ext_ant_switch_ctrl_type {
 	BT_8822B_1ANT_CTRL_BY_ANTDIV	= 0x2,
 	BT_8822B_1ANT_CTRL_BY_MAC	= 0x3,
 	BT_8822B_1ANT_CTRL_BY_BT	= 0x4,
+	BT_8822B_1ANT_CTRL_BY_FW	= 0x5,
 	BT_8822B_1ANT_CTRL_MAX
 };
 
@@ -153,7 +154,8 @@ enum bt_8822b_1ant_phase {
 	BT_8822B_1ANT_PHASE_2G_WL		= 0x7,
 	BT_8822B_1ANT_PHASE_2G_BT		= 0x8,
 	BT_8822B_1ANT_PHASE_MCC			= 0x9,
-	BT_8822B_1ANT_PHASE_2G_WLBT		= 0xa,
+	BT_8822B_1ANT_PHASE_2G_WLBT		= 0xa, /* GNT_BT/GNT_BT PTA */
+	BT_8822B_1ANT_PHASE_2G_FREERUN		= 0xb, /* GNT_BT/GNT_BT SW Hi*/
 	BT_8822B_1ANT_PHASE_MAX
 };
 
@@ -187,6 +189,7 @@ enum bt_8822b_1ant_RUNREASON {
 	BT_8822B_1ANT_RSN_BTINFO	= 0xe,
 	BT_8822B_1ANT_RSN_PERIODICAL	= 0xf,
 	BT_8822B_1ANT_RSN_PNP		= 0x10,
+	BT_8822B_1ANT_RSN_LPS		= 0x11,
 	BT_8822B_1ANT_RSN_MAX
 };
 
@@ -196,7 +199,8 @@ enum bt_8822b_1ant_WL_LINK_MODE {
 	BT_8822B_1ANT_WLINK_25GMPORT	= 0x2,
 	BT_8822B_1ANT_WLINK_5G		= 0x3,
 	BT_8822B_1ANT_WLINK_2GGO	= 0x4,
-	BT_8822B_1ANT_WLINK_BTMR	= 0x5,
+	BT_8822B_1ANT_WLINK_2GGC	= 0x5,
+	BT_8822B_1ANT_WLINK_BTMR	= 0x6,
 	BT_8822B_1ANT_WLINK_MAX
 };
 
@@ -261,7 +265,7 @@ struct coex_sta_8822b_1ant {
 	s8	bt_rssi;
 	u8	pre_bt_rssi_state;
 	u8	pre_wifi_rssi_state[4];
-	u8	bt_info_c2h[BT_8822B_1ANT_INFO_SRC_MAX][10];
+	u8	bt_info_c2h[BT_8822B_1ANT_INFO_SRC_MAX][BTC_BTINFO_LENGTH_MAX];
 	u32	bt_info_c2h_cnt[BT_8822B_1ANT_INFO_SRC_MAX];
 	boolean bt_whck_test;
 	boolean c2h_bt_inquiry_page;
@@ -270,8 +274,13 @@ struct coex_sta_8822b_1ant {
 	boolean	wifi_high_pri_task1;
 	boolean	wifi_high_pri_task2;
 
-	u8	bt_info_ext;
-	u8	bt_info_ext2;
+	u8	bt_info_lb2;
+	u8	bt_info_lb3;
+	u8	bt_info_hb0;
+	u8	bt_info_hb1;
+	u8	bt_info_hb2;
+	u8	bt_info_hb3;
+
 	u32	pop_event_cnt;
 	u8	scan_ap_num;
 	u8	bt_retry_cnt;
@@ -315,8 +324,6 @@ struct coex_sta_8822b_1ant {
 
 	boolean is_A2DP_3M;
 	boolean voice_over_HOGP;
-	u8	bt_info;
-	boolean is_autoslot;
 	u8	forbidden_slot;
 	u8	hid_busy_num;
 	u8	hid_pair_cnt;
@@ -359,8 +366,6 @@ struct coex_sta_8822b_1ant {
 
 	u16	score_board_WB;
 	boolean is_hid_rcu;
-	u16	legacy_forbidden_slot;
-	u16	le_forbidden_slot;
 	u8	bt_a2dp_vendor_id;
 	u32	bt_a2dp_device_name;
 	boolean is_ble_scan_en;
@@ -376,6 +381,19 @@ struct coex_sta_8822b_1ant {
 	u8	wl_coex_mode;
 
 	u8	wl_pnp_wakeup_downcnt;
+	u32	coex_run_cnt;
+	boolean is_no_wl_5ms_extend;
+
+	u16	wl_0x42a_backup;
+	u32	wl_0x430_backup;
+	u32	wl_0x434_backup;
+	u8	wl_0x455_backup;
+
+	boolean wl_tx_limit_en;
+	boolean wl_ampdu_limit_en;
+	boolean	wl_rxagg_limit_en;
+	u8	wl_rxagg_size;
+	u8	coex_run_reason;
 };
 
 struct rfe_type_8822b_1ant {

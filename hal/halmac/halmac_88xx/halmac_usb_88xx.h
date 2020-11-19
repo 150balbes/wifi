@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2016 - 2017 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2016 - 2018 Realtek Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -18,141 +18,70 @@
 
 #include "../halmac_api.h"
 
-#if HALMAC_88XX_SUPPORT
+#if (HALMAC_88XX_SUPPORT && HALMAC_USB_SUPPORT)
 
-HALMAC_RET_STATUS
-halmac_init_usb_cfg_88xx(
-	IN PHALMAC_ADAPTER pHalmac_adapter
-);
+enum halmac_ret_status
+init_usb_cfg_88xx(struct halmac_adapter *adapter);
 
-HALMAC_RET_STATUS
-halmac_deinit_usb_cfg_88xx(
-	IN PHALMAC_ADAPTER pHalmac_adapter
-);
+enum halmac_ret_status
+deinit_usb_cfg_88xx(struct halmac_adapter *adapter);
 
-
-HALMAC_RET_STATUS
-halmac_cfg_rx_aggregation_88xx_usb(
-	IN PHALMAC_ADAPTER pHalmac_adapter,
-	IN PHALMAC_RXAGG_CFG phalmac_rxagg_cfg
-);
+enum halmac_ret_status
+cfg_usb_rx_agg_88xx(struct halmac_adapter *adapter,
+		    struct halmac_rxagg_cfg *cfg);
 
 u8
-halmac_reg_read_8_usb_88xx(
-	IN PHALMAC_ADAPTER pHalmac_adapter,
-	IN u32 halmac_offset
-);
+reg_r8_usb_88xx(struct halmac_adapter *adapter, u32 offset);
 
-HALMAC_RET_STATUS
-halmac_reg_write_8_usb_88xx(
-	IN PHALMAC_ADAPTER pHalmac_adapter,
-	IN u32 halmac_offset,
-	IN u8 halmac_data
-);
+enum halmac_ret_status
+reg_w8_usb_88xx(struct halmac_adapter *adapter, u32 offset, u8 value);
 
 u16
-halmac_reg_read_16_usb_88xx(
-	IN PHALMAC_ADAPTER pHalmac_adapter,
-	IN u32 halmac_offset
-);
+reg_r16_usb_88xx(struct halmac_adapter *adapter, u32 offset);
 
-HALMAC_RET_STATUS
-halmac_reg_write_16_usb_88xx(
-	IN PHALMAC_ADAPTER pHalmac_adapter,
-	IN u32 halmac_offset,
-	IN u16 halmac_data
-);
+enum halmac_ret_status
+reg_w16_usb_88xx(struct halmac_adapter *adapter, u32 offset, u16 value);
 
 u32
-halmac_reg_read_32_usb_88xx(
-	IN PHALMAC_ADAPTER pHalmac_adapter,
-	IN u32 halmac_offset
-);
+reg_r32_usb_88xx(struct halmac_adapter *adapter, u32 offset);
 
-HALMAC_RET_STATUS
-halmac_reg_write_32_usb_88xx(
-	IN PHALMAC_ADAPTER pHalmac_adapter,
-	IN u32 halmac_offset,
-	IN u32 halmac_data
-);
+enum halmac_ret_status
+reg_w32_usb_88xx(struct halmac_adapter *adapter, u32 offset, u32 value);
 
-HALMAC_RET_STATUS
-halmac_set_bulkout_num_usb_88xx(
-	IN PHALMAC_ADAPTER pHalmac_adapter,
-	IN u8 bulkout_num
-);
+enum halmac_ret_status
+set_usb_bulkout_num_88xx(struct halmac_adapter *adapter, u8 num);
 
-HALMAC_RET_STATUS
-halmac_get_usb_bulkout_id_usb_88xx(
-	IN PHALMAC_ADAPTER pHalmac_adapter,
-	IN u8 *halmac_buf,
-	IN u32 halmac_size,
-	OUT u8 *bulkout_id
-);
+enum halmac_ret_status
+get_usb_bulkout_id_88xx(struct halmac_adapter *adapter, u8 *buf, u32 size,
+			u8 *id);
 
-HALMAC_RET_STATUS
-halmac_cfg_tx_agg_align_usb_88xx(
-	IN PHALMAC_ADAPTER	pHalmac_adapter,
-	IN u8	enable,
-	IN u16	align_size
-);
+enum halmac_ret_status
+cfg_txagg_usb_align_88xx(struct halmac_adapter *adapter, u8 enable,
+			 u16 align_size);
 
-HALMAC_RET_STATUS
-halmac_tx_allowed_usb_88xx(
-	IN PHALMAC_ADAPTER pHalmac_adapter,
-	IN u8 *pHalmac_buf,
-	IN u32 halmac_size
-);
-
-HALMAC_RET_STATUS
-halmac_tx_allowed_pcie_88xx(
-	IN PHALMAC_ADAPTER pHalmac_adapter,
-	IN u8 *pHalmac_buf,
-	IN u32 halmac_size
-);
+enum halmac_ret_status
+tx_allowed_usb_88xx(struct halmac_adapter *adapter, u8 *buf, u32 size);
 
 u32
-halmac_reg_read_indirect_32_usb_88xx(
-	IN PHALMAC_ADAPTER pHalmac_adapter,
-	IN u32 halmac_offset
-);
+usb_indirect_reg_r32_88xx(struct halmac_adapter *adapter, u32 offset);
 
-HALMAC_RET_STATUS
-halmac_reg_read_nbyte_usb_88xx(
-	IN PHALMAC_ADAPTER pHalmac_adapter,
-	IN u32 halmac_offset,
-	IN u32 halmac_size,
-	OUT u8 *halmac_data
-);
+enum halmac_ret_status
+usb_reg_rn_88xx(struct halmac_adapter *adapter, u32 offset, u32 size,
+		u8 *value);
 
-HALMAC_RET_STATUS
-halmac_get_sdio_tx_addr_usb_88xx(
-	IN PHALMAC_ADAPTER pHalmac_adapter,
-	IN u8 *halmac_buf,
-	IN u32 halmac_size,
-	OUT u32 *pcmd53_addr
-);
+enum halmac_ret_status
+get_usb_tx_addr_88xx(struct halmac_adapter *adapter, u8 *buf, u32 size,
+		     u32 *cmd53_addr);
 
-HALMAC_RET_STATUS
-halmac_set_usb_mode_88xx(
-	IN PHALMAC_ADAPTER pHalmac_adapter,
-	IN HALMAC_USB_MODE usb_mode
-);
+enum halmac_ret_status
+set_usb_mode_88xx(struct halmac_adapter *adapter, enum halmac_usb_mode mode);
 
-HALMAC_RET_STATUS
-halmac_usbphy_write_88xx(
-	IN PHALMAC_ADAPTER pHalmac_adapter,
-	IN u8 addr,
-	IN u16 data,
-	IN u8 speed
-);
+enum halmac_ret_status
+usbphy_write_88xx(struct halmac_adapter *adapter, u8 addr, u16 data, u8 speed);
 
 u16
-halmac_usbphy_read_88xx(
-	IN PHALMAC_ADAPTER pHalmac_adapter,
-	IN u8 addr,
-	IN u8 speed
-);
+usbphy_read_88xx(struct halmac_adapter *adapter, u8 addr, u8 speed);
+
 #endif /* HALMAC_88XX_SUPPORT */
 
 #endif/* _HALMAC_API_88XX_USB_H_ */

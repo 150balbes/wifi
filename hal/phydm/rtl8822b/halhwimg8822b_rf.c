@@ -23,66 +23,76 @@
  *
  *****************************************************************************/
 
-/*Image2HeaderVersion: R2 1.3.5*/
+/*Image2HeaderVersion: R3 1.4.5*/
 #include "mp_precomp.h"
 #include "../phydm_precomp.h"
 
+#define D_S_SIZE DELTA_SWINGIDX_SIZE
+
 #if (RTL8822B_SUPPORT == 1)
 static boolean
-check_positive(
-	struct PHY_DM_STRUCT *p_dm,
-	const u32	condition1,
-	const u32	condition2,
-	const u32	condition3,
-	const u32	condition4
+check_positive(struct dm_struct *dm,
+	       const u32	condition1,
+	       const u32	condition2,
+	       const u32	condition3,
+	       const u32	condition4
 )
 {
-	u32	cond1 = condition1, cond2 = condition2, cond3 = condition3, cond4 = condition4;
+	u32	cond1 = condition1, cond2 = condition2,
+		cond3 = condition3, cond4 = condition4;
 
-	u8	cut_version_for_para = (p_dm->cut_version ==  ODM_CUT_A) ? 15 : p_dm->cut_version;
-	u8	pkg_type_for_para = (p_dm->package_type == 0) ? 15 : p_dm->package_type;
+	u8	cut_version_for_para =
+		(dm->cut_version ==  ODM_CUT_A) ? 15 : dm->cut_version;
+
+	u8	pkg_type_for_para =
+		(dm->package_type == 0) ? 15 : dm->package_type;
 
 	u32	driver1 = cut_version_for_para << 24 |
-			(p_dm->support_interface & 0xF0) << 16 |
-			p_dm->support_platform << 16 |
+			(dm->support_interface & 0xF0) << 16 |
+			dm->support_platform << 16 |
 			pkg_type_for_para << 12 |
-			(p_dm->support_interface & 0x0F) << 8  |
-			p_dm->rfe_type;
+			(dm->support_interface & 0x0F) << 8  |
+			dm->rfe_type;
 
-	u32	driver2 = (p_dm->type_glna & 0xFF) <<  0 |
-			(p_dm->type_gpa & 0xFF)  <<  8 |
-			(p_dm->type_alna & 0xFF) << 16 |
-			(p_dm->type_apa & 0xFF)  << 24;
+	u32	driver2 = (dm->type_glna & 0xFF) <<  0 |
+			(dm->type_gpa & 0xFF)  <<  8 |
+			(dm->type_alna & 0xFF) << 16 |
+			(dm->type_apa & 0xFF)  << 24;
 
 	u32	driver3 = 0;
 
-	u32	driver4 = (p_dm->type_glna & 0xFF00) >>  8 |
-			(p_dm->type_gpa & 0xFF00) |
-			(p_dm->type_alna & 0xFF00) << 8 |
-			(p_dm->type_apa & 0xFF00)  << 16;
+	u32	driver4 = (dm->type_glna & 0xFF00) >>  8 |
+			(dm->type_gpa & 0xFF00) |
+			(dm->type_alna & 0xFF00) << 8 |
+			(dm->type_apa & 0xFF00)  << 16;
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT,
-	("===> check_positive (cond1, cond2, cond3, cond4) = (0x%X 0x%X 0x%X 0x%X)\n", cond1, cond2, cond3, cond4));
-	PHYDM_DBG(p_dm, ODM_COMP_INIT,
-	("===> check_positive (driver1, driver2, driver3, driver4) = (0x%X 0x%X 0x%X 0x%X)\n", driver1, driver2, driver3, driver4));
+	PHYDM_DBG(dm, ODM_COMP_INIT,
+		  "===> %s (cond1, cond2, cond3, cond4) = (0x%X 0x%X 0x%X 0x%X)\n",
+		  __func__, cond1, cond2, cond3, cond4);
+	PHYDM_DBG(dm, ODM_COMP_INIT,
+		  "===> %s (driver1, driver2, driver3, driver4) = (0x%X 0x%X 0x%X 0x%X)\n",
+		  __func__, driver1, driver2, driver3, driver4);
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT,
-	("	(Platform, Interface) = (0x%X, 0x%X)\n", p_dm->support_platform, p_dm->support_interface));
-	PHYDM_DBG(p_dm, ODM_COMP_INIT,
-	("	(RFE, Package) = (0x%X, 0x%X)\n", p_dm->rfe_type, p_dm->package_type));
-
+	PHYDM_DBG(dm, ODM_COMP_INIT,
+		  "	(Platform, Interface) = (0x%X, 0x%X)\n",
+		  dm->support_platform, dm->support_interface);
+	PHYDM_DBG(dm, ODM_COMP_INIT, "	(RFE, Package) = (0x%X, 0x%X)\n",
+		  dm->rfe_type, dm->package_type);
 
 	/*============== value Defined Check ===============*/
 	/*cut version [27:24] need to do value check*/
-	if (((cond1 & 0x0F000000) != 0) && ((cond1 & 0x0F000000) != (driver1 & 0x0F000000)))
+	if (((cond1 & 0x0F000000) != 0) &&
+	    ((cond1 & 0x0F000000) != (driver1 & 0x0F000000)))
 		return false;
 
 	/*pkg type [15:12] need to do value check*/
-	if (((cond1 & 0x0000F000) != 0) && ((cond1 & 0x0000F000) != (driver1 & 0x0000F000)))
+	if (((cond1 & 0x0000F000) != 0) &&
+	    ((cond1 & 0x0000F000) != (driver1 & 0x0000F000)))
 		return false;
 
 	/*interface [11:8] need to do value check*/
-	if (((cond1 & 0x00000F00) != 0) && ((cond1 & 0x00000F00) != (driver1 & 0x00000F00)))
+	if (((cond1 & 0x00000F00) != 0) &&
+	    ((cond1 & 0x00000F00) != (driver1 & 0x00000F00)))
 		return false;
 	/*=============== Bit Defined Check ================*/
 	/* We don't care [31:28] */
@@ -95,21 +105,21 @@ check_positive(
 	else
 		return false;
 }
+
 static boolean
-check_negative(
-	struct PHY_DM_STRUCT *p_dm,
-	const u32	condition1,
-	const u32	condition2
+check_negative(struct dm_struct *dm,
+	       const u32	condition1,
+	       const u32	condition2
 )
 {
 	return true;
 }
 
 /******************************************************************************
-*                           radioa.TXT
-******************************************************************************/
+ *                           radioa.TXT
+ ******************************************************************************/
 
-u32 array_mp_8822b_radioa[] = {
+const u32 array_mp_8822b_radioa[] = {
 		0x000, 0x00030000,
 	0x83000001,	0x00000000,	0x40000000,	0x00000000,
 		0x001, 0x0004002D,
@@ -245,7 +255,11 @@ u32 array_mp_8822b_radioa[] = {
 		0x0B0, 0x000FF0F8,
 	0xB0000000,	0x00000000,
 		0x0B1, 0x0007DBE4,
+	0x8300000c,	0x00000000,	0x40000000,	0x00000000,
+		0x0B2, 0x000215D1,
+	0xA0000000,	0x00000000,
 		0x0B2, 0x000225D1,
+	0xB0000000,	0x00000000,
 	0x83000001,	0x00000000,	0x40000000,	0x00000000,
 		0x0B3, 0x000FC760,
 	0x93000002,	0x00000000,	0x40000000,	0x00000000,
@@ -278,7 +292,11 @@ u32 array_mp_8822b_radioa[] = {
 		0x0B3, 0x000FC760,
 	0xB0000000,	0x00000000,
 		0x0B4, 0x00099DD0,
+	0x8300000c,	0x00000000,	0x40000000,	0x00000000,
+		0x0B5, 0x000100FC,
+	0xA0000000,	0x00000000,
 		0x0B5, 0x000400FC,
+	0xB0000000,	0x00000000,
 		0x0B6, 0x000187F0,
 		0x0B7, 0x00030018,
 		0x0B8, 0x00080800,
@@ -4658,19 +4676,19 @@ u32 array_mp_8822b_radioa[] = {
 };
 
 void
-odm_read_and_config_mp_8822b_radioa(
-	struct	PHY_DM_STRUCT *p_dm
-)
+odm_read_and_config_mp_8822b_radioa(struct dm_struct *dm)
 {
 	u32	i = 0;
 	u8	c_cond;
 	boolean	is_matched = true, is_skipped = false;
-	u32	array_len = sizeof(array_mp_8822b_radioa)/sizeof(u32);
-	u32	*array = array_mp_8822b_radioa;
+	u32	array_len =
+			sizeof(array_mp_8822b_radioa) / sizeof(u32);
+	u32	*array = (u32 *)array_mp_8822b_radioa;
 
 	u32	v1 = 0, v2 = 0, pre_v1 = 0, pre_v2 = 0;
+	u32	a1 = 0, a2 = 0, a3 = 0, a4 = 0;
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> odm_read_and_config_mp_8822b_radioa\n"));
+	PHYDM_DBG(dm, ODM_COMP_INIT, "===> %s\n", __func__);
 
 	while ((i + 1) < array_len) {
 		v1 = array[i];
@@ -4678,34 +4696,40 @@ odm_read_and_config_mp_8822b_radioa(
 
 		if (v1 & (BIT(31) | BIT(30))) {/*positive & negative condition*/
 			if (v1 & BIT(31)) {/* positive condition*/
-				c_cond  = (u8)((v1 & (BIT(29)|BIT(28))) >> 28);
+				c_cond  =
+					(u8)((v1 & (BIT(29) | BIT(28))) >> 28);
 				if (c_cond == COND_ENDIF) {/*end*/
 					is_matched = true;
 					is_skipped = false;
-					PHYDM_DBG(p_dm, ODM_COMP_INIT, ("ENDIF\n"));
+					PHYDM_DBG(dm, ODM_COMP_INIT, "ENDIF\n");
 				} else if (c_cond == COND_ELSE) { /*else*/
-					is_matched = is_skipped?false:true;
-					PHYDM_DBG(p_dm, ODM_COMP_INIT, ("ELSE\n"));
+					is_matched = is_skipped ? false : true;
+					PHYDM_DBG(dm, ODM_COMP_INIT, "ELSE\n");
 				} else {/*if , else if*/
 					pre_v1 = v1;
 					pre_v2 = v2;
-					PHYDM_DBG(p_dm, ODM_COMP_INIT, ("IF or ELSE IF\n"));
+					PHYDM_DBG(dm, ODM_COMP_INIT,
+						  "IF or ELSE IF\n");
 				}
 			} else if (v1 & BIT(30)) { /*negative condition*/
-				if (is_skipped == false) {
-					if (check_positive(p_dm, pre_v1, pre_v2, v1, v2)) {
+				if (!is_skipped) {
+					a1 = pre_v1; a2 = pre_v2;
+					a3 = v1; a4 = v2;
+					if (check_positive(dm,
+							   a1, a2, a3, a4)) {
 						is_matched = true;
 						is_skipped = true;
 					} else {
 						is_matched = false;
 						is_skipped = false;
 					}
-				} else
+				} else {
 					is_matched = false;
+				}
 			}
 		} else {
 			if (is_matched)
-				odm_config_rf_radio_a_8822b(p_dm, v1, v2);
+				odm_config_rf_radio_a_8822b(dm, v1, v2);
 		}
 		i = i + 2;
 	}
@@ -4714,14 +4738,14 @@ odm_read_and_config_mp_8822b_radioa(
 u32
 odm_get_version_mp_8822b_radioa(void)
 {
-		return 107;
+		return 112;
 }
 
 /******************************************************************************
-*                           radiob.TXT
-******************************************************************************/
+ *                           radiob.TXT
+ ******************************************************************************/
 
-u32 array_mp_8822b_radiob[] = {
+const u32 array_mp_8822b_radiob[] = {
 		0x000, 0x00030000,
 	0x83000001,	0x00000000,	0x40000000,	0x00000000,
 		0x001, 0x0004002D,
@@ -8809,19 +8833,19 @@ u32 array_mp_8822b_radiob[] = {
 };
 
 void
-odm_read_and_config_mp_8822b_radiob(
-	struct	PHY_DM_STRUCT *p_dm
-)
+odm_read_and_config_mp_8822b_radiob(struct dm_struct *dm)
 {
 	u32	i = 0;
 	u8	c_cond;
 	boolean	is_matched = true, is_skipped = false;
-	u32	array_len = sizeof(array_mp_8822b_radiob)/sizeof(u32);
-	u32	*array = array_mp_8822b_radiob;
+	u32	array_len =
+			sizeof(array_mp_8822b_radiob) / sizeof(u32);
+	u32	*array = (u32 *)array_mp_8822b_radiob;
 
 	u32	v1 = 0, v2 = 0, pre_v1 = 0, pre_v2 = 0;
+	u32	a1 = 0, a2 = 0, a3 = 0, a4 = 0;
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> odm_read_and_config_mp_8822b_radiob\n"));
+	PHYDM_DBG(dm, ODM_COMP_INIT, "===> %s\n", __func__);
 
 	while ((i + 1) < array_len) {
 		v1 = array[i];
@@ -8829,34 +8853,40 @@ odm_read_and_config_mp_8822b_radiob(
 
 		if (v1 & (BIT(31) | BIT(30))) {/*positive & negative condition*/
 			if (v1 & BIT(31)) {/* positive condition*/
-				c_cond  = (u8)((v1 & (BIT(29)|BIT(28))) >> 28);
+				c_cond  =
+					(u8)((v1 & (BIT(29) | BIT(28))) >> 28);
 				if (c_cond == COND_ENDIF) {/*end*/
 					is_matched = true;
 					is_skipped = false;
-					PHYDM_DBG(p_dm, ODM_COMP_INIT, ("ENDIF\n"));
+					PHYDM_DBG(dm, ODM_COMP_INIT, "ENDIF\n");
 				} else if (c_cond == COND_ELSE) { /*else*/
-					is_matched = is_skipped?false:true;
-					PHYDM_DBG(p_dm, ODM_COMP_INIT, ("ELSE\n"));
+					is_matched = is_skipped ? false : true;
+					PHYDM_DBG(dm, ODM_COMP_INIT, "ELSE\n");
 				} else {/*if , else if*/
 					pre_v1 = v1;
 					pre_v2 = v2;
-					PHYDM_DBG(p_dm, ODM_COMP_INIT, ("IF or ELSE IF\n"));
+					PHYDM_DBG(dm, ODM_COMP_INIT,
+						  "IF or ELSE IF\n");
 				}
 			} else if (v1 & BIT(30)) { /*negative condition*/
-				if (is_skipped == false) {
-					if (check_positive(p_dm, pre_v1, pre_v2, v1, v2)) {
+				if (!is_skipped) {
+					a1 = pre_v1; a2 = pre_v2;
+					a3 = v1; a4 = v2;
+					if (check_positive(dm,
+							   a1, a2, a3, a4)) {
 						is_matched = true;
 						is_skipped = true;
 					} else {
 						is_matched = false;
 						is_skipped = false;
 					}
-				} else
+				} else {
 					is_matched = false;
+				}
 			}
 		} else {
 			if (is_matched)
-				odm_config_rf_radio_b_8822b(p_dm, v1, v2);
+				odm_config_rf_radio_b_8822b(dm, v1, v2);
 		}
 		i = i + 2;
 	}
@@ -8865,1134 +8895,2237 @@ odm_read_and_config_mp_8822b_radiob(
 u32
 odm_get_version_mp_8822b_radiob(void)
 {
-		return 107;
+		return 112;
 }
 
 /******************************************************************************
-*                           txpowertrack.TXT
-******************************************************************************/
+ *                           txpowertrack.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 8, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 14, 14, 14, 14, 14},
-	{0, 1, 2, 2, 3, 3, 4, 4, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 14, 14, 14, 14, 14},
+#ifdef CONFIG_8822B
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 10, 11, 11,
+	 12, 12, 12, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 8, 9, 10, 10,
+	 11, 12, 12, 13, 13, 14, 14, 14, 14, 14, 14, 14},
+	{0, 1, 2, 2, 3, 3, 4, 4, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10,
+	 11, 12, 12, 13, 13, 14, 14, 14, 14, 14, 14, 14},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 4, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 15, 15, 16, 17, 18, 18, 19, 19, 19, 19, 19, 19},
-	{0, 1, 2, 2, 3, 4, 5, 6, 6, 7, 8, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 17, 18, 18, 18, 18, 18, 18},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 12, 13, 14, 15, 15, 16, 16, 17, 17, 17, 17, 17, 17},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 4, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13,
+	 14, 15, 15, 16, 17, 18, 18, 19, 19, 19, 19, 19, 19},
+	{0, 1, 2, 2, 3, 4, 5, 6, 6, 7, 8, 8, 9, 9, 10, 11, 12,
+	 12, 13, 14, 15, 16, 17, 17, 18, 18, 18, 18, 18, 18},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11,
+	 12, 13, 14, 15, 15, 16, 16, 17, 17, 17, 17, 17, 17},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 3, 4, 5, 6, 7, 8, 8, 9, 9, 10, 11, 11, 12, 12, 12, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14, 14, 14, 14},
-	{0, 1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 14, 14, 14, 14, 14},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 3, 4, 5, 6, 7, 8, 8, 9, 9, 10, 11, 11,
+	 12, 12, 12, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10,
+	 11, 11, 12, 12, 13, 13, 14, 14, 14, 14, 14, 14, 14},
+	{0, 1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10,
+	 11, 12, 12, 13, 13, 14, 14, 14, 14, 14, 14, 14},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 19, 20, 20, 20, 20, 20},
-	{0, 1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 7, 8, 9, 9, 10, 11, 11, 12, 13, 14, 15, 16, 16, 17, 17, 18, 18, 18, 18},
-	{0, 1, 2, 3, 3, 4, 5, 5, 6, 6, 7, 8, 8, 9, 10, 11, 12, 12, 13, 14, 15, 15, 16, 17, 17, 18, 18, 18, 18, 18},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13,
+	 14, 14, 15, 16, 17, 18, 19, 19, 20, 20, 20, 20, 20},
+	{0, 1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 7, 8, 9, 9, 10, 11,
+	 11, 12, 13, 14, 15, 16, 16, 17, 17, 18, 18, 18, 18},
+	{0, 1, 2, 3, 3, 4, 5, 5, 6, 6, 7, 8, 8, 9, 10, 11, 12,
+	 12, 13, 14, 15, 15, 16, 17, 17, 18, 18, 18, 18, 18},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_8822b[]    = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_8822b[]    = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_8822b[] = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_8822b[] = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_8822b[]    = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_8822b[] = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_8822b[] = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpowertrack_type0.TXT
-******************************************************************************/
+ *                           txpowertrack_type0.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_type0_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15},
+#ifdef CONFIG_8822B_TYPE0
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_type0_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10,
+	 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_type0_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 15, 15, 16, 16},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_type0_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9,
+	 10, 10, 11, 12, 13, 14, 14, 15, 15, 15, 16, 16},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_type0_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 13, 14, 14},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_type0_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 13, 14, 14},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_type0_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 13, 13, 14, 14, 15, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_type0_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 12, 13, 13, 14, 14, 15, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9,
+	 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_type0_8822b[]    = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_type0_8822b[]    = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_type0_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_type0_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type0_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type0_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type0_8822b[] = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type0_8822b[] = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_type0_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_type0_8822b[]    = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_type0_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_type0_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type0_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type0_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type0_8822b[] = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type0_8822b[] = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack_type0(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack_type0(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B_TYPE0
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_type0_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_type0_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_type0_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_type0_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_type0_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_type0_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_type0_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_type0_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type0_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type0_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type0_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type0_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type0_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type0_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type0_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type0_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_type0_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_type0_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_type0_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_type0_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_type0_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_type0_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_type0_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_type0_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpowertrack_type1.TXT
-******************************************************************************/
+ *                           txpowertrack_type1.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_type1_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 8, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 14, 14, 14, 14, 14},
-	{0, 1, 2, 2, 3, 3, 4, 4, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 14, 14, 14, 14, 14},
+#ifdef CONFIG_8822B_TYPE1
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_type1_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 10, 11, 11,
+	 12, 12, 12, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 8, 9, 10, 10,
+	 11, 12, 12, 13, 13, 14, 14, 14, 14, 14, 14, 14},
+	{0, 1, 2, 2, 3, 3, 4, 4, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10,
+	 11, 12, 12, 13, 13, 14, 14, 14, 14, 14, 14, 14},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_type1_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 4, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 15, 15, 16, 17, 18, 18, 19, 19, 19, 19, 19, 19},
-	{0, 1, 2, 2, 3, 4, 5, 6, 6, 7, 8, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 17, 18, 18, 18, 18, 18, 18},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 12, 13, 14, 15, 15, 16, 16, 17, 17, 17, 17, 17, 17},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_type1_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 4, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13,
+	 14, 15, 15, 16, 17, 18, 18, 19, 19, 19, 19, 19, 19},
+	{0, 1, 2, 2, 3, 4, 5, 6, 6, 7, 8, 8, 9, 9, 10, 11, 12,
+	 12, 13, 14, 15, 16, 17, 17, 18, 18, 18, 18, 18, 18},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11,
+	 12, 13, 14, 15, 15, 16, 16, 17, 17, 17, 17, 17, 17},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_type1_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 3, 4, 5, 6, 7, 8, 8, 9, 9, 10, 11, 11, 12, 12, 12, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14, 14, 14, 14},
-	{0, 1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 14, 14, 14, 14, 14},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_type1_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 3, 4, 5, 6, 7, 8, 8, 9, 9, 10, 11, 11,
+	 12, 12, 12, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10,
+	 11, 11, 12, 12, 13, 13, 14, 14, 14, 14, 14, 14, 14},
+	{0, 1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10,
+	 11, 12, 12, 13, 13, 14, 14, 14, 14, 14, 14, 14},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_type1_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 19, 20, 20, 20, 20, 20},
-	{0, 1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 7, 8, 9, 9, 10, 11, 11, 12, 13, 14, 15, 16, 16, 17, 17, 18, 18, 18, 18},
-	{0, 1, 2, 3, 3, 4, 5, 5, 6, 6, 7, 8, 8, 9, 10, 11, 12, 12, 13, 14, 15, 15, 16, 17, 17, 18, 18, 18, 18, 18},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_type1_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13,
+	 14, 14, 15, 16, 17, 18, 19, 19, 20, 20, 20, 20, 20},
+	{0, 1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 7, 8, 9, 9, 10, 11,
+	 11, 12, 13, 14, 15, 16, 16, 17, 17, 18, 18, 18, 18},
+	{0, 1, 2, 3, 3, 4, 5, 5, 6, 6, 7, 8, 8, 9, 10, 11, 12,
+	 12, 13, 14, 15, 15, 16, 17, 17, 18, 18, 18, 18, 18},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_type1_8822b[]    = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_type1_8822b[]    = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_type1_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_type1_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type1_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type1_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type1_8822b[] = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type1_8822b[] = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_type1_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_type1_8822b[]    = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_type1_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_type1_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type1_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type1_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type1_8822b[] = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type1_8822b[] = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack_type1(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack_type1(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B_TYPE1
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_type1_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_type1_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_type1_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_type1_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_type1_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_type1_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_type1_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_type1_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type1_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type1_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type1_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type1_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type1_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type1_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type1_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type1_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_type1_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_type1_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_type1_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_type1_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_type1_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_type1_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_type1_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_type1_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpowertrack_type10.TXT
-******************************************************************************/
+ *                           txpowertrack_type10.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_type10_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15},
+#ifdef CONFIG_8822B_TYPE10
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_type10_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10,
+	 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_type10_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 15, 15, 16, 16},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_type10_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9,
+	 10, 10, 11, 12, 13, 14, 14, 15, 15, 15, 16, 16},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_type10_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 13, 14, 14},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_type10_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 13, 14, 14},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_type10_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 13, 13, 14, 14, 15, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_type10_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 12, 13, 13, 14, 14, 15, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9,
+	 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_type10_8822b[]    = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_type10_8822b[]    = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_type10_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_type10_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type10_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type10_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type10_8822b[] = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type10_8822b[] = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_type10_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_type10_8822b[]    = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_type10_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_type10_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type10_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type10_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type10_8822b[] = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type10_8822b[] = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack_type10(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack_type10(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B_TYPE10
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_type10_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_type10_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_type10_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_type10_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_type10_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_type10_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_type10_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_type10_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type10_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type10_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type10_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type10_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type10_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type10_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type10_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type10_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_type10_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_type10_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_type10_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_type10_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_type10_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_type10_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_type10_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_type10_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpowertrack_type11.TXT
-******************************************************************************/
+ *                           txpowertrack_type11.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_type11_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15},
+#ifdef CONFIG_8822B_TYPE11
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_type11_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10,
+	 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_type11_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 15, 15, 16, 16},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_type11_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9,
+	 10, 10, 11, 12, 13, 14, 14, 15, 15, 15, 16, 16},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_type11_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 13, 14, 14},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_type11_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 13, 14, 14},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_type11_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 13, 13, 14, 14, 15, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_type11_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 12, 13, 13, 14, 14, 15, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9,
+	 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_type11_8822b[]    = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_type11_8822b[]    = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_type11_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_type11_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type11_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type11_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type11_8822b[] = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type11_8822b[] = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_type11_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_type11_8822b[]    = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_type11_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_type11_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type11_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type11_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type11_8822b[] = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type11_8822b[] = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack_type11(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack_type11(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B_TYPE11
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_type11_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_type11_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_type11_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_type11_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_type11_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_type11_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_type11_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_type11_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type11_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type11_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type11_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type11_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type11_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type11_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type11_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type11_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_type11_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_type11_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_type11_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_type11_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_type11_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_type11_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_type11_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_type11_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpowertrack_type12.TXT
-******************************************************************************/
+ *                           txpowertrack_type12.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_type12_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+#ifdef CONFIG_8822B_TYPE12
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_type12_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_type12_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_type12_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_type12_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_type12_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_type12_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_type12_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_type12_8822b[]    = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_type12_8822b[]    = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_type12_8822b[]    = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_type12_8822b[]    = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type12_8822b[] = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type12_8822b[] = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type12_8822b[] = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type12_8822b[] = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_type12_8822b[]    = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_type12_8822b[]    = {
+	0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7,
+	 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_type12_8822b[]    = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_type12_8822b[]    = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type12_8822b[] = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type12_8822b[] = {
+	0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7,
+	 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type12_8822b[] = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type12_8822b[] = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack_type12(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack_type12(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B_TYPE12
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_type12_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_type12_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_type12_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_type12_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_type12_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_type12_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_type12_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_type12_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type12_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type12_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type12_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type12_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type12_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type12_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type12_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type12_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_type12_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_type12_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_type12_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_type12_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_type12_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_type12_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_type12_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_type12_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpowertrack_type13.TXT
-******************************************************************************/
+ *                           txpowertrack_type13.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_type13_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15},
+#ifdef CONFIG_8822B_TYPE13
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_type13_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10,
+	 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_type13_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 15, 15, 16, 16},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_type13_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9,
+	 10, 10, 11, 12, 13, 14, 14, 15, 15, 15, 16, 16},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_type13_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 13, 14, 14},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_type13_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 13, 14, 14},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_type13_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 13, 13, 14, 14, 15, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_type13_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 12, 13, 13, 14, 14, 15, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9,
+	 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_type13_8822b[]    = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_type13_8822b[]    = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_type13_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_type13_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type13_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type13_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type13_8822b[] = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type13_8822b[] = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_type13_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_type13_8822b[]    = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_type13_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_type13_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type13_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type13_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type13_8822b[] = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type13_8822b[] = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack_type13(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack_type13(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B_TYPE13
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_type13_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_type13_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_type13_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_type13_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_type13_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_type13_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_type13_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_type13_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type13_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type13_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type13_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type13_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type13_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type13_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type13_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type13_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_type13_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_type13_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_type13_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_type13_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_type13_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_type13_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_type13_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_type13_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpowertrack_type14.TXT
-******************************************************************************/
+ *                           txpowertrack_type14.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_type14_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15},
+#ifdef CONFIG_8822B_TYPE14
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_type14_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10,
+	 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_type14_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 15, 15, 16, 16},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_type14_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9,
+	 10, 10, 11, 12, 13, 14, 14, 15, 15, 15, 16, 16},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_type14_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 13, 14, 14},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_type14_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 13, 14, 14},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_type14_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 13, 13, 14, 14, 15, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_type14_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 12, 13, 13, 14, 14, 15, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9,
+	 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_type14_8822b[]    = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_type14_8822b[]    = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_type14_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_type14_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type14_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type14_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type14_8822b[] = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type14_8822b[] = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_type14_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_type14_8822b[]    = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_type14_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_type14_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type14_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type14_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type14_8822b[] = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type14_8822b[] = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack_type14(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack_type14(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B_TYPE14
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_type14_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_type14_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_type14_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_type14_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_type14_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_type14_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_type14_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_type14_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type14_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type14_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type14_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type14_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type14_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type14_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type14_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type14_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_type14_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_type14_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_type14_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_type14_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_type14_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_type14_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_type14_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_type14_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpowertrack_type15.TXT
-******************************************************************************/
+ *                           txpowertrack_type15.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_type15_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+#ifdef CONFIG_8822B_TYPE15
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_type15_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_type15_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_type15_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_type15_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_type15_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_type15_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_type15_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_type15_8822b[]    = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_type15_8822b[]    = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_type15_8822b[]    = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_type15_8822b[]    = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type15_8822b[] = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type15_8822b[] = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type15_8822b[] = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type15_8822b[] = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_type15_8822b[]    = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_type15_8822b[]    = {
+	0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7,
+	 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_type15_8822b[]    = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_type15_8822b[]    = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type15_8822b[] = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type15_8822b[] = {
+	0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7,
+	 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type15_8822b[] = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type15_8822b[] = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack_type15(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack_type15(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B_TYPE15
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_type15_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_type15_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_type15_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_type15_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_type15_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_type15_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_type15_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_type15_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type15_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type15_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type15_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type15_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type15_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type15_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type15_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type15_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_type15_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_type15_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_type15_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_type15_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_type15_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_type15_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_type15_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_type15_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpowertrack_type16.TXT
-******************************************************************************/
+ *                           txpowertrack_type16.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_type16_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+#ifdef CONFIG_8822B_TYPE16
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_type16_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_type16_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_type16_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_type16_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_type16_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_type16_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_type16_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_type16_8822b[]    = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_type16_8822b[]    = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_type16_8822b[]    = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_type16_8822b[]    = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type16_8822b[] = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type16_8822b[] = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type16_8822b[] = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type16_8822b[] = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_type16_8822b[]    = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_type16_8822b[]    = {
+	0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7,
+	 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_type16_8822b[]    = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_type16_8822b[]    = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type16_8822b[] = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type16_8822b[] = {
+	0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7,
+	 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type16_8822b[] = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type16_8822b[] = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack_type16(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack_type16(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B_TYPE16
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_type16_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_type16_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_type16_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_type16_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_type16_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_type16_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_type16_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_type16_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type16_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type16_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type16_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type16_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type16_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type16_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type16_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type16_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_type16_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_type16_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_type16_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_type16_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_type16_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_type16_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_type16_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_type16_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpowertrack_type17.TXT
-******************************************************************************/
+ *                           txpowertrack_type17.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_type17_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+#ifdef CONFIG_8822B_TYPE17
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_type17_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_type17_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_type17_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_type17_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_type17_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_type17_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_type17_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_type17_8822b[]    = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_type17_8822b[]    = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_type17_8822b[]    = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_type17_8822b[]    = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type17_8822b[] = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type17_8822b[] = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type17_8822b[] = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type17_8822b[] = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_type17_8822b[]    = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_type17_8822b[]    = {
+	0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7,
+	 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_type17_8822b[]    = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_type17_8822b[]    = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type17_8822b[] = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type17_8822b[] = {
+	0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7,
+	 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type17_8822b[] = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type17_8822b[] = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack_type17(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack_type17(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B_TYPE17
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_type17_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_type17_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_type17_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_type17_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_type17_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_type17_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_type17_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_type17_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type17_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type17_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type17_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type17_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type17_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type17_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type17_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type17_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_type17_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_type17_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_type17_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_type17_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_type17_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_type17_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_type17_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_type17_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpowertrack_type18.TXT
-******************************************************************************/
+ *                           txpowertrack_type18.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_type18_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+#ifdef CONFIG_8822B_TYPE18
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_type18_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_type18_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_type18_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_type18_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_type18_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_type18_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_type18_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_type18_8822b[]    = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_type18_8822b[]    = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_type18_8822b[]    = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_type18_8822b[]    = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type18_8822b[] = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type18_8822b[] = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type18_8822b[] = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type18_8822b[] = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_type18_8822b[]    = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_type18_8822b[]    = {
+	0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7,
+	 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_type18_8822b[]    = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_type18_8822b[]    = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type18_8822b[] = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type18_8822b[] = {
+	0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7,
+	 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type18_8822b[] = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type18_8822b[] = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack_type18(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack_type18(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B_TYPE18
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_type18_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_type18_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_type18_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_type18_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_type18_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_type18_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_type18_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_type18_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type18_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type18_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type18_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type18_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type18_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type18_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type18_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type18_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_type18_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_type18_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_type18_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_type18_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_type18_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_type18_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_type18_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_type18_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpowertrack_type2.TXT
-******************************************************************************/
+ *                           txpowertrack_type2.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_type2_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
+#ifdef CONFIG_8822B_TYPE2
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_type2_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12,
+	 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12,
+	 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12,
+	 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_type2_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_type2_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13,
+	 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13,
+	 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13,
+	 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_type2_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_type2_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12,
+	 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12,
+	 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12,
+	 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_type2_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_type2_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13,
+	 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13,
+	 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13,
+	 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_type2_8822b[]    = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_type2_8822b[]    = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_type2_8822b[]    = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_type2_8822b[]    = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type2_8822b[] = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type2_8822b[] = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type2_8822b[] = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type2_8822b[] = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_type2_8822b[]    = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_type2_8822b[]    = {
+	0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7,
+	 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_type2_8822b[]    = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_type2_8822b[]    = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type2_8822b[] = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type2_8822b[] = {
+	0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7,
+	 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type2_8822b[] = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type2_8822b[] = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack_type2(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack_type2(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B_TYPE2
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_type2_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_type2_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_type2_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_type2_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_type2_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_type2_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_type2_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_type2_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type2_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type2_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type2_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type2_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type2_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type2_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type2_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type2_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_type2_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_type2_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_type2_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_type2_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_type2_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_type2_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_type2_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_type2_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpowertrack_type3_type5.TXT
-******************************************************************************/
+ *                           txpowertrack_type3_type5.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_type3_type5_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+#ifdef CONFIG_8822B_TYPE3_TYPE5
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_type3_type5_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_type3_type5_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_type3_type5_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_type3_type5_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_type3_type5_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_type3_type5_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_type3_type5_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_type3_type5_8822b[]    = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_type3_type5_8822b[]    = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_type3_type5_8822b[]    = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_type3_type5_8822b[]    = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type3_type5_8822b[] = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type3_type5_8822b[] = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type3_type5_8822b[] = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type3_type5_8822b[] = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_type3_type5_8822b[]    = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_type3_type5_8822b[]    = {
+	0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7,
+	 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_type3_type5_8822b[]    = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_type3_type5_8822b[]    = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type3_type5_8822b[] = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type3_type5_8822b[] = {
+	0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7,
+	 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type3_type5_8822b[] = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type3_type5_8822b[] = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack_type3_type5(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack_type3_type5(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B_TYPE3_TYPE5
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_type3_type5_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_type3_type5_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_type3_type5_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_type3_type5_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_type3_type5_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_type3_type5_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_type3_type5_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_type3_type5_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type3_type5_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type3_type5_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type3_type5_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type3_type5_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type3_type5_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type3_type5_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type3_type5_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type3_type5_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_type3_type5_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_type3_type5_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_type3_type5_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_type3_type5_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_type3_type5_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_type3_type5_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_type3_type5_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_type3_type5_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpowertrack_type4.TXT
-******************************************************************************/
+ *                           txpowertrack_type4.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_type4_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
+#ifdef CONFIG_8822B_TYPE4
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_type4_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12,
+	 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12,
+	 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12,
+	 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_type4_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_type4_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13,
+	 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13,
+	 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13,
+	 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_type4_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_type4_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12,
+	 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12,
+	 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12,
+	 13, 14, 14, 15, 16, 17, 17, 18, 19, 20, 20, 21, 22},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_type4_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_type4_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13,
+	 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13,
+	 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13,
+	 14, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 23},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_type4_8822b[]    = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_type4_8822b[]    = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_type4_8822b[]    = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_type4_8822b[]    = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type4_8822b[] = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type4_8822b[] = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type4_8822b[] = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type4_8822b[] = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_type4_8822b[]    = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_type4_8822b[]    = {
+	0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7,
+	 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_type4_8822b[]    = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_type4_8822b[]    = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type4_8822b[] = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type4_8822b[] = {
+	0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7,
+	 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type4_8822b[] = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type4_8822b[] = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack_type4(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack_type4(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B_TYPE4
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_type4_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_type4_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_type4_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_type4_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_type4_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_type4_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_type4_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_type4_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type4_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type4_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type4_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type4_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type4_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type4_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type4_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type4_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_type4_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_type4_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_type4_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_type4_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_type4_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_type4_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_type4_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_type4_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpowertrack_type6.TXT
-******************************************************************************/
+ *                           txpowertrack_type6.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_type6_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15},
-	{0, 1, 2, 3, 4, 5, 5, 6, 7, 7, 8, 9, 9, 10, 10, 11, 12, 12, 13, 14, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16},
-	{0, 1, 2, 3, 4, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 12, 13, 13, 14, 15, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17},
+#ifdef CONFIG_8822B_TYPE6
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_type6_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 10, 11, 11,
+	 12, 12, 12, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15},
+	{0, 1, 2, 3, 4, 5, 5, 6, 7, 7, 8, 9, 9, 10, 10, 11, 12,
+	 12, 13, 14, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16},
+	{0, 1, 2, 3, 4, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 12, 13,
+	 13, 14, 15, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_type6_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 4, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 15, 15, 16, 17, 18, 18, 19, 19, 19, 19, 19, 19},
-	{0, 1, 2, 2, 3, 4, 5, 6, 7, 8, 9, 9, 11, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 20, 21, 21, 21, 21, 21, 21},
-	{0, 1, 2, 3, 4, 5, 6, 6, 7, 7, 8, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 20, 20, 21, 21, 21},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_type6_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 4, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13,
+	 14, 15, 15, 16, 17, 18, 18, 19, 19, 19, 19, 19, 19},
+	{0, 1, 2, 2, 3, 4, 5, 6, 7, 8, 9, 9, 11, 11, 12, 13, 14,
+	 15, 16, 17, 18, 19, 20, 20, 21, 21, 21, 21, 21, 21},
+	{0, 1, 2, 3, 4, 5, 6, 6, 7, 7, 8, 9, 10, 11, 12, 12, 13,
+	 14, 15, 16, 17, 18, 19, 19, 20, 20, 20, 21, 21, 21},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_type6_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 12, 12, 13, 14, 14, 15, 15, 16, 16, 16, 17, 17, 17, 17, 17},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 6, 7, 8, 9, 9, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15, 15, 15, 15},
-	{0, 1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_type6_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 12, 12,
+	 13, 14, 14, 15, 15, 16, 16, 16, 17, 17, 17, 17, 17},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 6, 7, 8, 9, 9, 10, 11, 11,
+	 12, 12, 13, 13, 14, 14, 15, 15, 15, 15, 15, 15, 15},
+	{0, 1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12,
+	 12, 13, 14, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_type6_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 12, 13, 14, 15, 15, 16, 17, 18, 19, 20, 20, 21, 21, 21, 21, 21},
-	{0, 1, 2, 2, 3, 4, 4, 5, 7, 7, 8, 9, 10, 11, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 19, 19, 20, 20, 21, 21},
-	{0, 1, 2, 3, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 17, 18, 19, 19, 20, 20, 20, 20, 20},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_type6_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 12, 13, 14,
+	 15, 15, 16, 17, 18, 19, 20, 20, 21, 21, 21, 21, 21},
+	{0, 1, 2, 2, 3, 4, 4, 5, 7, 7, 8, 9, 10, 11, 11, 12, 13,
+	 13, 14, 15, 16, 17, 18, 18, 19, 19, 20, 20, 21, 21},
+	{0, 1, 2, 3, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+	 14, 15, 16, 17, 17, 18, 19, 19, 20, 20, 20, 20, 20},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_type6_8822b[]    = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_type6_8822b[]    = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_type6_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_type6_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type6_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type6_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type6_8822b[] = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type6_8822b[] = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_type6_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_type6_8822b[]    = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_type6_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_type6_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type6_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type6_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type6_8822b[] = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type6_8822b[] = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack_type6(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack_type6(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B_TYPE6
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_type6_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_type6_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_type6_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_type6_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_type6_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_type6_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_type6_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_type6_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type6_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type6_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type6_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type6_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type6_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type6_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type6_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type6_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_type6_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_type6_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_type6_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_type6_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_type6_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_type6_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_type6_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_type6_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpowertrack_type7.TXT
-******************************************************************************/
+ *                           txpowertrack_type7.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_type7_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 10, 11, 11, 12, 12, 12, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15},
-	{0, 1, 2, 3, 4, 5, 5, 6, 7, 7, 8, 9, 9, 10, 10, 11, 12, 12, 13, 14, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16},
-	{0, 1, 2, 3, 4, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 12, 13, 13, 14, 15, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17},
+#ifdef CONFIG_8822B_TYPE7
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_type7_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 10, 11, 11,
+	 12, 12, 12, 13, 13, 14, 14, 14, 15, 15, 15, 15, 15},
+	{0, 1, 2, 3, 4, 5, 5, 6, 7, 7, 8, 9, 9, 10, 10, 11, 12,
+	 12, 13, 14, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16},
+	{0, 1, 2, 3, 4, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 12, 13,
+	 13, 14, 15, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_type7_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 4, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13, 14, 15, 15, 16, 17, 18, 18, 19, 19, 19, 19, 19, 19},
-	{0, 1, 2, 2, 3, 4, 5, 6, 7, 8, 9, 9, 11, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 20, 21, 21, 21, 21, 21, 21},
-	{0, 1, 2, 3, 4, 5, 6, 6, 7, 7, 8, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 20, 20, 21, 21, 21},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_type7_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 4, 5, 6, 7, 8, 8, 9, 10, 11, 11, 12, 13,
+	 14, 15, 15, 16, 17, 18, 18, 19, 19, 19, 19, 19, 19},
+	{0, 1, 2, 2, 3, 4, 5, 6, 7, 8, 9, 9, 11, 11, 12, 13, 14,
+	 15, 16, 17, 18, 19, 20, 20, 21, 21, 21, 21, 21, 21},
+	{0, 1, 2, 3, 4, 5, 6, 6, 7, 7, 8, 9, 10, 11, 12, 12, 13,
+	 14, 15, 16, 17, 18, 19, 19, 20, 20, 20, 21, 21, 21},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_type7_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 12, 12, 13, 14, 14, 15, 15, 16, 16, 16, 17, 17, 17, 17, 17},
-	{0, 1, 2, 2, 3, 4, 5, 5, 6, 6, 7, 8, 9, 9, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15, 15, 15, 15},
-	{0, 1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_type7_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 12, 12,
+	 13, 14, 14, 15, 15, 16, 16, 16, 17, 17, 17, 17, 17},
+	{0, 1, 2, 2, 3, 4, 5, 5, 6, 6, 7, 8, 9, 9, 10, 11, 11,
+	 12, 12, 13, 13, 14, 14, 15, 15, 15, 15, 15, 15, 15},
+	{0, 1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12,
+	 12, 13, 14, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_type7_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 12, 13, 14, 15, 15, 16, 17, 18, 19, 20, 20, 21, 21, 21, 21, 21},
-	{0, 1, 2, 2, 3, 4, 4, 5, 7, 7, 8, 9, 10, 11, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 19, 19, 20, 20, 21, 21},
-	{0, 1, 2, 3, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 14, 15, 16, 17, 17, 18, 19, 19, 20, 20, 20, 20, 20},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_type7_8822b[][D_S_SIZE] = {
+	{0, 1, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 12, 13, 14,
+	 15, 15, 16, 17, 18, 19, 20, 20, 21, 21, 21, 21, 21},
+	{0, 1, 2, 2, 3, 4, 4, 5, 7, 7, 8, 9, 10, 11, 11, 12, 13,
+	 13, 14, 15, 16, 17, 18, 18, 19, 19, 20, 20, 21, 21},
+	{0, 1, 2, 3, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+	 14, 15, 16, 17, 17, 18, 19, 19, 20, 20, 20, 20, 20},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_type7_8822b[]    = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_type7_8822b[]    = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_type7_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_type7_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type7_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type7_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type7_8822b[] = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type7_8822b[] = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_type7_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_type7_8822b[]    = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_type7_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_type7_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type7_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type7_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type7_8822b[] = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type7_8822b[] = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack_type7(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack_type7(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B_TYPE7
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_type7_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_type7_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_type7_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_type7_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_type7_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_type7_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_type7_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_type7_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type7_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type7_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type7_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type7_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type7_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type7_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type7_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type7_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_type7_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_type7_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_type7_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_type7_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_type7_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_type7_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_type7_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_type7_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpowertrack_type8.TXT
-******************************************************************************/
+ *                           txpowertrack_type8.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_type8_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+#ifdef CONFIG_8822B_TYPE8
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_type8_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_type8_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_type8_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_type8_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_type8_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_type8_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_type8_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10,
+	 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16, 17},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_type8_8822b[]    = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_type8_8822b[]    = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_type8_8822b[]    = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_type8_8822b[]    = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type8_8822b[] = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type8_8822b[] = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type8_8822b[] = {0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type8_8822b[] = {0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_type8_8822b[]    = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_type8_8822b[]    = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_type8_8822b[]    = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_type8_8822b[]    = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type8_8822b[] = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type8_8822b[] = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type8_8822b[] = {
+	0, 1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6, 6, 7,
+	 7, 7, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type8_8822b[] = {
+	0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack_type8(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack_type8(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B_TYPE8
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_type8_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_type8_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_type8_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_type8_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_type8_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_type8_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_type8_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_type8_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type8_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type8_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type8_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type8_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type8_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type8_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type8_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type8_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_type8_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_type8_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_type8_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_type8_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_type8_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_type8_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_type8_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_type8_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpowertrack_type9.TXT
-******************************************************************************/
+ *                           txpowertrack_type9.TXT
+ ******************************************************************************/
 
-u8 delta_swingidx_mp_5gb_n_txpwrtrk_type9_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
-	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15},
+#ifdef CONFIG_8822B_TYPE9
+const u8 delta_swingidx_mp_5gb_n_txpwrtrk_type9_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 8, 8, 9, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
+	{0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 8, 9, 9, 10,
+	 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15},
 };
-u8 delta_swingidx_mp_5gb_p_txpwrtrk_type9_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 12, 13, 14, 14, 15, 15, 15, 16, 16},
+
+const u8 delta_swingidx_mp_5gb_p_txpwrtrk_type9_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9,
+	 10, 10, 11, 12, 13, 14, 14, 15, 15, 15, 16, 16},
 };
-u8 delta_swingidx_mp_5ga_n_txpwrtrk_type9_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 13, 14, 14},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
+
+const u8 delta_swingidx_mp_5ga_n_txpwrtrk_type9_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 13, 14, 14},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9,
+	 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 14, 14},
 };
-u8 delta_swingidx_mp_5ga_p_txpwrtrk_type9_8822b[][DELTA_SWINGIDX_SIZE] = {
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 13, 13, 14, 14, 15, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
-	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
+
+const u8 delta_swingidx_mp_5ga_p_txpwrtrk_type9_8822b[][D_S_SIZE] = {
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 12, 13, 13, 14, 14, 15, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+	 9, 9, 10, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15},
+	{0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 9,
+	 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 15, 15},
 };
-u8 delta_swingidx_mp_2gb_n_txpwrtrk_type9_8822b[]    = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2gb_p_txpwrtrk_type9_8822b[]    = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2ga_n_txpwrtrk_type9_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2ga_p_txpwrtrk_type9_8822b[]    = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type9_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
-u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type9_8822b[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
-u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type9_8822b[] = {0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type9_8822b[] = {0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+
+const u8 delta_swingidx_mp_2gb_n_txpwrtrk_type9_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2gb_p_txpwrtrk_type9_8822b[]    = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 17, 18, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2ga_n_txpwrtrk_type9_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2ga_p_txpwrtrk_type9_8822b[]    = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type9_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 16, 17, 17, 17, 17, 17, 17, 17, 17, 17};
+const u8 delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type9_8822b[] = {
+	0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+const u8 delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type9_8822b[] = {
+	0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13,
+	 14, 15, 16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+const u8 delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type9_8822b[] = {
+	0, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 12, 12,
+	 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 22, 22};
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpowertrack_type9(
-	struct PHY_DM_STRUCT	 *p_dm
-)
+odm_read_and_config_mp_8822b_txpowertrack_type9(struct dm_struct *dm)
 {
-	struct odm_rf_calibration_structure  *p_rf_calibrate_info = &p_dm->rf_calibrate_info;
+#ifdef CONFIG_8822B_TYPE9
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> ODM_ReadAndConfig_MP_mp_8822b\n"));
+struct dm_rf_calibration_struct  *cali_info = &dm->rf_calibrate_info;
 
+PHYDM_DBG(dm, ODM_COMP_INIT, "===> ODM_ReadAndConfig_MP_mp_8822b\n");
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_p, delta_swingidx_mp_2ga_p_txpwrtrk_type9_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2ga_n, delta_swingidx_mp_2ga_n_txpwrtrk_type9_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_p, delta_swingidx_mp_2gb_p_txpwrtrk_type9_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2gb_n, delta_swingidx_mp_2gb_n_txpwrtrk_type9_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_p,
+		(void *)delta_swingidx_mp_2ga_p_txpwrtrk_type9_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2ga_n,
+		(void *)delta_swingidx_mp_2ga_n_txpwrtrk_type9_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_p,
+		(void *)delta_swingidx_mp_2gb_p_txpwrtrk_type9_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2gb_n,
+		(void *)delta_swingidx_mp_2gb_n_txpwrtrk_type9_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_p, delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type9_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_a_n, delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type9_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_p, delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type9_8822b, DELTA_SWINGIDX_SIZE);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_2g_cck_b_n, delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type9_8822b, DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_p,
+		(void *)delta_swingidx_mp_2g_cck_a_p_txpwrtrk_type9_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_a_n,
+		(void *)delta_swingidx_mp_2g_cck_a_n_txpwrtrk_type9_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_p,
+		(void *)delta_swingidx_mp_2g_cck_b_p_txpwrtrk_type9_8822b,
+		DELTA_SWINGIDX_SIZE);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_2g_cck_b_n,
+		(void *)delta_swingidx_mp_2g_cck_b_n_txpwrtrk_type9_8822b,
+		DELTA_SWINGIDX_SIZE);
 
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_p, delta_swingidx_mp_5ga_p_txpwrtrk_type9_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5ga_n, delta_swingidx_mp_5ga_n_txpwrtrk_type9_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_p, delta_swingidx_mp_5gb_p_txpwrtrk_type9_8822b, DELTA_SWINGIDX_SIZE*3);
-	odm_move_memory(p_dm, p_rf_calibrate_info->delta_swing_table_idx_5gb_n, delta_swingidx_mp_5gb_n_txpwrtrk_type9_8822b, DELTA_SWINGIDX_SIZE*3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_p,
+		(void *)delta_swingidx_mp_5ga_p_txpwrtrk_type9_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5ga_n,
+		(void *)delta_swingidx_mp_5ga_n_txpwrtrk_type9_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_p,
+		(void *)delta_swingidx_mp_5gb_p_txpwrtrk_type9_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+odm_move_memory(dm, cali_info->delta_swing_table_idx_5gb_n,
+		(void *)delta_swingidx_mp_5gb_n_txpwrtrk_type9_8822b,
+		DELTA_SWINGIDX_SIZE * 3);
+#endif
 }
 
 /******************************************************************************
-*                           txpwr_lmt.TXT
-******************************************************************************/
+ *                           txpwr_lmt.TXT
+ ******************************************************************************/
 
+#ifdef CONFIG_8822B
 const char *array_mp_8822b_txpwr_lmt[] = {
 	"FCC", "2.4G", "20M", "CCK", "1T", "01", "32",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "01", "28",
@@ -10580,63 +11713,71 @@ const char *array_mp_8822b_txpwr_lmt[] = {
 	"ETSI", "5G", "80M", "VHT", "2T", "155", "63",
 	"MKK", "5G", "80M", "VHT", "2T", "155", "63"
 };
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpwr_lmt(
-	struct PHY_DM_STRUCT	*p_dm
-)
+odm_read_and_config_mp_8822b_txpwr_lmt(struct dm_struct *dm)
 {
+#ifdef CONFIG_8822B
+
 	u32	i = 0;
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt)/sizeof(u8);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt) / sizeof(u8);
 	u8	*array = (u8 *)array_mp_8822b_txpwr_lmt;
 #else
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt)/sizeof(u8 *);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt) / sizeof(u8 *);
 	u8	**array = (u8 **)array_mp_8822b_txpwr_lmt;
 #endif
 
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-	struct _ADAPTER	*adapter = p_dm->adapter;
-	HAL_DATA_TYPE	*p_hal_data = GET_HAL_DATA(adapter);
+	void	*adapter = dm->adapter;
+	HAL_DATA_TYPE	*hal_data = GET_HAL_DATA(((PADAPTER)adapter));
 
-	PlatformZeroMemory(p_hal_data->BufOfLinesPwrLmt, MAX_LINES_HWCONFIG_TXT*MAX_BYTES_LINE_HWCONFIG_TXT);
-	p_hal_data->nLinesReadPwrLmt = array_len/7;
+	odm_memory_set(dm, hal_data->BufOfLinesPwrLmt, 0,
+		       MAX_LINES_HWCONFIG_TXT *
+		       MAX_BYTES_LINE_HWCONFIG_TXT);
+	hal_data->nLinesReadPwrLmt = array_len / 7;
 #endif
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> odm_read_and_config_mp_8822b_txpwr_lmt\n"));
+	PHYDM_DBG(dm, ODM_COMP_INIT, "===> %s\n", __func__);
 
 	for (i = 0; i < array_len; i += 7) {
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
 		u8	regulation = array[i];
-		u8	band = array[i+1];
-		u8	bandwidth = array[i+2];
-		u8	rate = array[i+3];
-		u8	rf_path = array[i+4];
-		u8	chnl = array[i+5];
-		u8	val = array[i+6];
+		u8	band = array[i + 1];
+		u8	bandwidth = array[i + 2];
+		u8	rate = array[i + 3];
+		u8	rf_path = array[i + 4];
+		u8	chnl = array[i + 5];
+		u8	val = array[i + 6];
 #else
 		u8	*regulation = array[i];
-		u8	*band = array[i+1];
-		u8	*bandwidth = array[i+2];
-		u8	*rate = array[i+3];
-		u8	*rf_path = array[i+4];
-		u8	*chnl = array[i+5];
-		u8	*val = array[i+6];
+		u8	*band = array[i + 1];
+		u8	*bandwidth = array[i + 2];
+		u8	*rate = array[i + 3];
+		u8	*rf_path = array[i + 4];
+		u8	*chnl = array[i + 5];
+		u8	*val = array[i + 6];
 #endif
 
-		odm_config_bb_txpwr_lmt_8822b(p_dm, regulation, band, bandwidth, rate, rf_path, chnl, val);
+		odm_config_bb_txpwr_lmt_8822b(dm, regulation, band, bandwidth,
+					      rate, rf_path, chnl, val);
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-		rsprintf((char *)p_hal_data->BufOfLinesPwrLmt[i/7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
-		regulation, band, bandwidth, rate, rf_path, chnl, val);
+		rsprintf((char *)hal_data->BufOfLinesPwrLmt[i / 7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
+			 regulation, band, bandwidth, rate, rf_path, chnl, val);
 #endif
 	}
 
+#endif
 }
 
 /******************************************************************************
-*                           txpwr_lmt_type12.TXT
-******************************************************************************/
+ *                           txpwr_lmt_type12.TXT
+ ******************************************************************************/
 
+#ifdef CONFIG_8822B_TYPE12
 const char *array_mp_8822b_txpwr_lmt_type12[] = {
 	"FCC", "2.4G", "20M", "CCK", "1T", "01", "32",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "01", "28",
@@ -11224,63 +12365,71 @@ const char *array_mp_8822b_txpwr_lmt_type12[] = {
 	"ETSI", "5G", "80M", "VHT", "2T", "155", "63",
 	"MKK", "5G", "80M", "VHT", "2T", "155", "63"
 };
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpwr_lmt_type12(
-	struct PHY_DM_STRUCT	*p_dm
-)
+odm_read_and_config_mp_8822b_txpwr_lmt_type12(struct dm_struct *dm)
 {
+#ifdef CONFIG_8822B_TYPE12
+
 	u32	i = 0;
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt_type12)/sizeof(u8);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt_type12) / sizeof(u8);
 	u8	*array = (u8 *)array_mp_8822b_txpwr_lmt_type12;
 #else
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt_type12)/sizeof(u8 *);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt_type12) / sizeof(u8 *);
 	u8	**array = (u8 **)array_mp_8822b_txpwr_lmt_type12;
 #endif
 
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-	struct _ADAPTER	*adapter = p_dm->adapter;
-	HAL_DATA_TYPE	*p_hal_data = GET_HAL_DATA(adapter);
+	void	*adapter = dm->adapter;
+	HAL_DATA_TYPE	*hal_data = GET_HAL_DATA(((PADAPTER)adapter));
 
-	PlatformZeroMemory(p_hal_data->BufOfLinesPwrLmt, MAX_LINES_HWCONFIG_TXT*MAX_BYTES_LINE_HWCONFIG_TXT);
-	p_hal_data->nLinesReadPwrLmt = array_len/7;
+	odm_memory_set(dm, hal_data->BufOfLinesPwrLmt, 0,
+		       MAX_LINES_HWCONFIG_TXT *
+		       MAX_BYTES_LINE_HWCONFIG_TXT);
+	hal_data->nLinesReadPwrLmt = array_len / 7;
 #endif
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> odm_read_and_config_mp_8822b_txpwr_lmt_type12\n"));
+	PHYDM_DBG(dm, ODM_COMP_INIT, "===> %s\n", __func__);
 
 	for (i = 0; i < array_len; i += 7) {
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
 		u8	regulation = array[i];
-		u8	band = array[i+1];
-		u8	bandwidth = array[i+2];
-		u8	rate = array[i+3];
-		u8	rf_path = array[i+4];
-		u8	chnl = array[i+5];
-		u8	val = array[i+6];
+		u8	band = array[i + 1];
+		u8	bandwidth = array[i + 2];
+		u8	rate = array[i + 3];
+		u8	rf_path = array[i + 4];
+		u8	chnl = array[i + 5];
+		u8	val = array[i + 6];
 #else
 		u8	*regulation = array[i];
-		u8	*band = array[i+1];
-		u8	*bandwidth = array[i+2];
-		u8	*rate = array[i+3];
-		u8	*rf_path = array[i+4];
-		u8	*chnl = array[i+5];
-		u8	*val = array[i+6];
+		u8	*band = array[i + 1];
+		u8	*bandwidth = array[i + 2];
+		u8	*rate = array[i + 3];
+		u8	*rf_path = array[i + 4];
+		u8	*chnl = array[i + 5];
+		u8	*val = array[i + 6];
 #endif
 
-		odm_config_bb_txpwr_lmt_8822b(p_dm, regulation, band, bandwidth, rate, rf_path, chnl, val);
+		odm_config_bb_txpwr_lmt_8822b(dm, regulation, band, bandwidth,
+					      rate, rf_path, chnl, val);
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-		rsprintf((char *)p_hal_data->BufOfLinesPwrLmt[i/7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
-		regulation, band, bandwidth, rate, rf_path, chnl, val);
+		rsprintf((char *)hal_data->BufOfLinesPwrLmt[i / 7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
+			 regulation, band, bandwidth, rate, rf_path, chnl, val);
 #endif
 	}
 
+#endif
 }
 
 /******************************************************************************
-*                           txpwr_lmt_type15.TXT
-******************************************************************************/
+ *                           txpwr_lmt_type15.TXT
+ ******************************************************************************/
 
+#ifdef CONFIG_8822B_TYPE15
 const char *array_mp_8822b_txpwr_lmt_type15[] = {
 	"FCC", "2.4G", "20M", "CCK", "1T", "01", "32",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "01", "28",
@@ -11868,63 +13017,71 @@ const char *array_mp_8822b_txpwr_lmt_type15[] = {
 	"ETSI", "5G", "80M", "VHT", "2T", "155", "63",
 	"MKK", "5G", "80M", "VHT", "2T", "155", "63"
 };
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpwr_lmt_type15(
-	struct PHY_DM_STRUCT	*p_dm
-)
+odm_read_and_config_mp_8822b_txpwr_lmt_type15(struct dm_struct *dm)
 {
+#ifdef CONFIG_8822B_TYPE15
+
 	u32	i = 0;
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt_type15)/sizeof(u8);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt_type15) / sizeof(u8);
 	u8	*array = (u8 *)array_mp_8822b_txpwr_lmt_type15;
 #else
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt_type15)/sizeof(u8 *);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt_type15) / sizeof(u8 *);
 	u8	**array = (u8 **)array_mp_8822b_txpwr_lmt_type15;
 #endif
 
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-	struct _ADAPTER	*adapter = p_dm->adapter;
-	HAL_DATA_TYPE	*p_hal_data = GET_HAL_DATA(adapter);
+	void	*adapter = dm->adapter;
+	HAL_DATA_TYPE	*hal_data = GET_HAL_DATA(((PADAPTER)adapter));
 
-	PlatformZeroMemory(p_hal_data->BufOfLinesPwrLmt, MAX_LINES_HWCONFIG_TXT*MAX_BYTES_LINE_HWCONFIG_TXT);
-	p_hal_data->nLinesReadPwrLmt = array_len/7;
+	odm_memory_set(dm, hal_data->BufOfLinesPwrLmt, 0,
+		       MAX_LINES_HWCONFIG_TXT *
+		       MAX_BYTES_LINE_HWCONFIG_TXT);
+	hal_data->nLinesReadPwrLmt = array_len / 7;
 #endif
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> odm_read_and_config_mp_8822b_txpwr_lmt_type15\n"));
+	PHYDM_DBG(dm, ODM_COMP_INIT, "===> %s\n", __func__);
 
 	for (i = 0; i < array_len; i += 7) {
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
 		u8	regulation = array[i];
-		u8	band = array[i+1];
-		u8	bandwidth = array[i+2];
-		u8	rate = array[i+3];
-		u8	rf_path = array[i+4];
-		u8	chnl = array[i+5];
-		u8	val = array[i+6];
+		u8	band = array[i + 1];
+		u8	bandwidth = array[i + 2];
+		u8	rate = array[i + 3];
+		u8	rf_path = array[i + 4];
+		u8	chnl = array[i + 5];
+		u8	val = array[i + 6];
 #else
 		u8	*regulation = array[i];
-		u8	*band = array[i+1];
-		u8	*bandwidth = array[i+2];
-		u8	*rate = array[i+3];
-		u8	*rf_path = array[i+4];
-		u8	*chnl = array[i+5];
-		u8	*val = array[i+6];
+		u8	*band = array[i + 1];
+		u8	*bandwidth = array[i + 2];
+		u8	*rate = array[i + 3];
+		u8	*rf_path = array[i + 4];
+		u8	*chnl = array[i + 5];
+		u8	*val = array[i + 6];
 #endif
 
-		odm_config_bb_txpwr_lmt_8822b(p_dm, regulation, band, bandwidth, rate, rf_path, chnl, val);
+		odm_config_bb_txpwr_lmt_8822b(dm, regulation, band, bandwidth,
+					      rate, rf_path, chnl, val);
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-		rsprintf((char *)p_hal_data->BufOfLinesPwrLmt[i/7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
-		regulation, band, bandwidth, rate, rf_path, chnl, val);
+		rsprintf((char *)hal_data->BufOfLinesPwrLmt[i / 7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
+			 regulation, band, bandwidth, rate, rf_path, chnl, val);
 #endif
 	}
 
+#endif
 }
 
 /******************************************************************************
-*                           txpwr_lmt_type16.TXT
-******************************************************************************/
+ *                           txpwr_lmt_type16.TXT
+ ******************************************************************************/
 
+#ifdef CONFIG_8822B_TYPE16
 const char *array_mp_8822b_txpwr_lmt_type16[] = {
 	"FCC", "2.4G", "20M", "CCK", "1T", "01", "32",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "01", "28",
@@ -12512,63 +13669,71 @@ const char *array_mp_8822b_txpwr_lmt_type16[] = {
 	"ETSI", "5G", "80M", "VHT", "2T", "155", "63",
 	"MKK", "5G", "80M", "VHT", "2T", "155", "63"
 };
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpwr_lmt_type16(
-	struct PHY_DM_STRUCT	*p_dm
-)
+odm_read_and_config_mp_8822b_txpwr_lmt_type16(struct dm_struct *dm)
 {
+#ifdef CONFIG_8822B_TYPE16
+
 	u32	i = 0;
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt_type16)/sizeof(u8);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt_type16) / sizeof(u8);
 	u8	*array = (u8 *)array_mp_8822b_txpwr_lmt_type16;
 #else
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt_type16)/sizeof(u8 *);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt_type16) / sizeof(u8 *);
 	u8	**array = (u8 **)array_mp_8822b_txpwr_lmt_type16;
 #endif
 
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-	struct _ADAPTER	*adapter = p_dm->adapter;
-	HAL_DATA_TYPE	*p_hal_data = GET_HAL_DATA(adapter);
+	void	*adapter = dm->adapter;
+	HAL_DATA_TYPE	*hal_data = GET_HAL_DATA(((PADAPTER)adapter));
 
-	PlatformZeroMemory(p_hal_data->BufOfLinesPwrLmt, MAX_LINES_HWCONFIG_TXT*MAX_BYTES_LINE_HWCONFIG_TXT);
-	p_hal_data->nLinesReadPwrLmt = array_len/7;
+	odm_memory_set(dm, hal_data->BufOfLinesPwrLmt, 0,
+		       MAX_LINES_HWCONFIG_TXT *
+		       MAX_BYTES_LINE_HWCONFIG_TXT);
+	hal_data->nLinesReadPwrLmt = array_len / 7;
 #endif
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> odm_read_and_config_mp_8822b_txpwr_lmt_type16\n"));
+	PHYDM_DBG(dm, ODM_COMP_INIT, "===> %s\n", __func__);
 
 	for (i = 0; i < array_len; i += 7) {
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
 		u8	regulation = array[i];
-		u8	band = array[i+1];
-		u8	bandwidth = array[i+2];
-		u8	rate = array[i+3];
-		u8	rf_path = array[i+4];
-		u8	chnl = array[i+5];
-		u8	val = array[i+6];
+		u8	band = array[i + 1];
+		u8	bandwidth = array[i + 2];
+		u8	rate = array[i + 3];
+		u8	rf_path = array[i + 4];
+		u8	chnl = array[i + 5];
+		u8	val = array[i + 6];
 #else
 		u8	*regulation = array[i];
-		u8	*band = array[i+1];
-		u8	*bandwidth = array[i+2];
-		u8	*rate = array[i+3];
-		u8	*rf_path = array[i+4];
-		u8	*chnl = array[i+5];
-		u8	*val = array[i+6];
+		u8	*band = array[i + 1];
+		u8	*bandwidth = array[i + 2];
+		u8	*rate = array[i + 3];
+		u8	*rf_path = array[i + 4];
+		u8	*chnl = array[i + 5];
+		u8	*val = array[i + 6];
 #endif
 
-		odm_config_bb_txpwr_lmt_8822b(p_dm, regulation, band, bandwidth, rate, rf_path, chnl, val);
+		odm_config_bb_txpwr_lmt_8822b(dm, regulation, band, bandwidth,
+					      rate, rf_path, chnl, val);
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-		rsprintf((char *)p_hal_data->BufOfLinesPwrLmt[i/7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
-		regulation, band, bandwidth, rate, rf_path, chnl, val);
+		rsprintf((char *)hal_data->BufOfLinesPwrLmt[i / 7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
+			 regulation, band, bandwidth, rate, rf_path, chnl, val);
 #endif
 	}
 
+#endif
 }
 
 /******************************************************************************
-*                           txpwr_lmt_type17.TXT
-******************************************************************************/
+ *                           txpwr_lmt_type17.TXT
+ ******************************************************************************/
 
+#ifdef CONFIG_8822B_TYPE17
 const char *array_mp_8822b_txpwr_lmt_type17[] = {
 	"FCC", "2.4G", "20M", "CCK", "1T", "01", "32",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "01", "28",
@@ -13156,63 +14321,71 @@ const char *array_mp_8822b_txpwr_lmt_type17[] = {
 	"ETSI", "5G", "80M", "VHT", "2T", "155", "63",
 	"MKK", "5G", "80M", "VHT", "2T", "155", "63"
 };
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpwr_lmt_type17(
-	struct PHY_DM_STRUCT	*p_dm
-)
+odm_read_and_config_mp_8822b_txpwr_lmt_type17(struct dm_struct *dm)
 {
+#ifdef CONFIG_8822B_TYPE17
+
 	u32	i = 0;
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt_type17)/sizeof(u8);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt_type17) / sizeof(u8);
 	u8	*array = (u8 *)array_mp_8822b_txpwr_lmt_type17;
 #else
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt_type17)/sizeof(u8 *);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt_type17) / sizeof(u8 *);
 	u8	**array = (u8 **)array_mp_8822b_txpwr_lmt_type17;
 #endif
 
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-	struct _ADAPTER	*adapter = p_dm->adapter;
-	HAL_DATA_TYPE	*p_hal_data = GET_HAL_DATA(adapter);
+	void	*adapter = dm->adapter;
+	HAL_DATA_TYPE	*hal_data = GET_HAL_DATA(((PADAPTER)adapter));
 
-	PlatformZeroMemory(p_hal_data->BufOfLinesPwrLmt, MAX_LINES_HWCONFIG_TXT*MAX_BYTES_LINE_HWCONFIG_TXT);
-	p_hal_data->nLinesReadPwrLmt = array_len/7;
+	odm_memory_set(dm, hal_data->BufOfLinesPwrLmt, 0,
+		       MAX_LINES_HWCONFIG_TXT *
+		       MAX_BYTES_LINE_HWCONFIG_TXT);
+	hal_data->nLinesReadPwrLmt = array_len / 7;
 #endif
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> odm_read_and_config_mp_8822b_txpwr_lmt_type17\n"));
+	PHYDM_DBG(dm, ODM_COMP_INIT, "===> %s\n", __func__);
 
 	for (i = 0; i < array_len; i += 7) {
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
 		u8	regulation = array[i];
-		u8	band = array[i+1];
-		u8	bandwidth = array[i+2];
-		u8	rate = array[i+3];
-		u8	rf_path = array[i+4];
-		u8	chnl = array[i+5];
-		u8	val = array[i+6];
+		u8	band = array[i + 1];
+		u8	bandwidth = array[i + 2];
+		u8	rate = array[i + 3];
+		u8	rf_path = array[i + 4];
+		u8	chnl = array[i + 5];
+		u8	val = array[i + 6];
 #else
 		u8	*regulation = array[i];
-		u8	*band = array[i+1];
-		u8	*bandwidth = array[i+2];
-		u8	*rate = array[i+3];
-		u8	*rf_path = array[i+4];
-		u8	*chnl = array[i+5];
-		u8	*val = array[i+6];
+		u8	*band = array[i + 1];
+		u8	*bandwidth = array[i + 2];
+		u8	*rate = array[i + 3];
+		u8	*rf_path = array[i + 4];
+		u8	*chnl = array[i + 5];
+		u8	*val = array[i + 6];
 #endif
 
-		odm_config_bb_txpwr_lmt_8822b(p_dm, regulation, band, bandwidth, rate, rf_path, chnl, val);
+		odm_config_bb_txpwr_lmt_8822b(dm, regulation, band, bandwidth,
+					      rate, rf_path, chnl, val);
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-		rsprintf((char *)p_hal_data->BufOfLinesPwrLmt[i/7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
-		regulation, band, bandwidth, rate, rf_path, chnl, val);
+		rsprintf((char *)hal_data->BufOfLinesPwrLmt[i / 7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
+			 regulation, band, bandwidth, rate, rf_path, chnl, val);
 #endif
 	}
 
+#endif
 }
 
 /******************************************************************************
-*                           txpwr_lmt_type18.TXT
-******************************************************************************/
+ *                           txpwr_lmt_type18.TXT
+ ******************************************************************************/
 
+#ifdef CONFIG_8822B_TYPE18
 const char *array_mp_8822b_txpwr_lmt_type18[] = {
 	"FCC", "2.4G", "20M", "CCK", "1T", "01", "38",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "01", "28",
@@ -13800,63 +14973,71 @@ const char *array_mp_8822b_txpwr_lmt_type18[] = {
 	"ETSI", "5G", "80M", "VHT", "2T", "155", "63",
 	"MKK", "5G", "80M", "VHT", "2T", "155", "63"
 };
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpwr_lmt_type18(
-	struct PHY_DM_STRUCT	*p_dm
-)
+odm_read_and_config_mp_8822b_txpwr_lmt_type18(struct dm_struct *dm)
 {
+#ifdef CONFIG_8822B_TYPE18
+
 	u32	i = 0;
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt_type18)/sizeof(u8);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt_type18) / sizeof(u8);
 	u8	*array = (u8 *)array_mp_8822b_txpwr_lmt_type18;
 #else
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt_type18)/sizeof(u8 *);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt_type18) / sizeof(u8 *);
 	u8	**array = (u8 **)array_mp_8822b_txpwr_lmt_type18;
 #endif
 
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-	struct _ADAPTER	*adapter = p_dm->adapter;
-	HAL_DATA_TYPE	*p_hal_data = GET_HAL_DATA(adapter);
+	void	*adapter = dm->adapter;
+	HAL_DATA_TYPE	*hal_data = GET_HAL_DATA(((PADAPTER)adapter));
 
-	PlatformZeroMemory(p_hal_data->BufOfLinesPwrLmt, MAX_LINES_HWCONFIG_TXT*MAX_BYTES_LINE_HWCONFIG_TXT);
-	p_hal_data->nLinesReadPwrLmt = array_len/7;
+	odm_memory_set(dm, hal_data->BufOfLinesPwrLmt, 0,
+		       MAX_LINES_HWCONFIG_TXT *
+		       MAX_BYTES_LINE_HWCONFIG_TXT);
+	hal_data->nLinesReadPwrLmt = array_len / 7;
 #endif
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> odm_read_and_config_mp_8822b_txpwr_lmt_type18\n"));
+	PHYDM_DBG(dm, ODM_COMP_INIT, "===> %s\n", __func__);
 
 	for (i = 0; i < array_len; i += 7) {
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
 		u8	regulation = array[i];
-		u8	band = array[i+1];
-		u8	bandwidth = array[i+2];
-		u8	rate = array[i+3];
-		u8	rf_path = array[i+4];
-		u8	chnl = array[i+5];
-		u8	val = array[i+6];
+		u8	band = array[i + 1];
+		u8	bandwidth = array[i + 2];
+		u8	rate = array[i + 3];
+		u8	rf_path = array[i + 4];
+		u8	chnl = array[i + 5];
+		u8	val = array[i + 6];
 #else
 		u8	*regulation = array[i];
-		u8	*band = array[i+1];
-		u8	*bandwidth = array[i+2];
-		u8	*rate = array[i+3];
-		u8	*rf_path = array[i+4];
-		u8	*chnl = array[i+5];
-		u8	*val = array[i+6];
+		u8	*band = array[i + 1];
+		u8	*bandwidth = array[i + 2];
+		u8	*rate = array[i + 3];
+		u8	*rf_path = array[i + 4];
+		u8	*chnl = array[i + 5];
+		u8	*val = array[i + 6];
 #endif
 
-		odm_config_bb_txpwr_lmt_8822b(p_dm, regulation, band, bandwidth, rate, rf_path, chnl, val);
+		odm_config_bb_txpwr_lmt_8822b(dm, regulation, band, bandwidth,
+					      rate, rf_path, chnl, val);
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-		rsprintf((char *)p_hal_data->BufOfLinesPwrLmt[i/7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
-		regulation, band, bandwidth, rate, rf_path, chnl, val);
+		rsprintf((char *)hal_data->BufOfLinesPwrLmt[i / 7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
+			 regulation, band, bandwidth, rate, rf_path, chnl, val);
 #endif
 	}
 
+#endif
 }
 
 /******************************************************************************
-*                           txpwr_lmt_type2.TXT
-******************************************************************************/
+ *                           txpwr_lmt_type2.TXT
+ ******************************************************************************/
 
+#ifdef CONFIG_8822B_TYPE2
 const char *array_mp_8822b_txpwr_lmt_type2[] = {
 	"FCC", "2.4G", "20M", "CCK", "1T", "01", "32",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "01", "28",
@@ -14444,63 +15625,71 @@ const char *array_mp_8822b_txpwr_lmt_type2[] = {
 	"ETSI", "5G", "80M", "VHT", "2T", "155", "63",
 	"MKK", "5G", "80M", "VHT", "2T", "155", "63"
 };
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpwr_lmt_type2(
-	struct PHY_DM_STRUCT	*p_dm
-)
+odm_read_and_config_mp_8822b_txpwr_lmt_type2(struct dm_struct *dm)
 {
+#ifdef CONFIG_8822B_TYPE2
+
 	u32	i = 0;
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt_type2)/sizeof(u8);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt_type2) / sizeof(u8);
 	u8	*array = (u8 *)array_mp_8822b_txpwr_lmt_type2;
 #else
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt_type2)/sizeof(u8 *);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt_type2) / sizeof(u8 *);
 	u8	**array = (u8 **)array_mp_8822b_txpwr_lmt_type2;
 #endif
 
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-	struct _ADAPTER	*adapter = p_dm->adapter;
-	HAL_DATA_TYPE	*p_hal_data = GET_HAL_DATA(adapter);
+	void	*adapter = dm->adapter;
+	HAL_DATA_TYPE	*hal_data = GET_HAL_DATA(((PADAPTER)adapter));
 
-	PlatformZeroMemory(p_hal_data->BufOfLinesPwrLmt, MAX_LINES_HWCONFIG_TXT*MAX_BYTES_LINE_HWCONFIG_TXT);
-	p_hal_data->nLinesReadPwrLmt = array_len/7;
+	odm_memory_set(dm, hal_data->BufOfLinesPwrLmt, 0,
+		       MAX_LINES_HWCONFIG_TXT *
+		       MAX_BYTES_LINE_HWCONFIG_TXT);
+	hal_data->nLinesReadPwrLmt = array_len / 7;
 #endif
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> odm_read_and_config_mp_8822b_txpwr_lmt_type2\n"));
+	PHYDM_DBG(dm, ODM_COMP_INIT, "===> %s\n", __func__);
 
 	for (i = 0; i < array_len; i += 7) {
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
 		u8	regulation = array[i];
-		u8	band = array[i+1];
-		u8	bandwidth = array[i+2];
-		u8	rate = array[i+3];
-		u8	rf_path = array[i+4];
-		u8	chnl = array[i+5];
-		u8	val = array[i+6];
+		u8	band = array[i + 1];
+		u8	bandwidth = array[i + 2];
+		u8	rate = array[i + 3];
+		u8	rf_path = array[i + 4];
+		u8	chnl = array[i + 5];
+		u8	val = array[i + 6];
 #else
 		u8	*regulation = array[i];
-		u8	*band = array[i+1];
-		u8	*bandwidth = array[i+2];
-		u8	*rate = array[i+3];
-		u8	*rf_path = array[i+4];
-		u8	*chnl = array[i+5];
-		u8	*val = array[i+6];
+		u8	*band = array[i + 1];
+		u8	*bandwidth = array[i + 2];
+		u8	*rate = array[i + 3];
+		u8	*rf_path = array[i + 4];
+		u8	*chnl = array[i + 5];
+		u8	*val = array[i + 6];
 #endif
 
-		odm_config_bb_txpwr_lmt_8822b(p_dm, regulation, band, bandwidth, rate, rf_path, chnl, val);
+		odm_config_bb_txpwr_lmt_8822b(dm, regulation, band, bandwidth,
+					      rate, rf_path, chnl, val);
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-		rsprintf((char *)p_hal_data->BufOfLinesPwrLmt[i/7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
-		regulation, band, bandwidth, rate, rf_path, chnl, val);
+		rsprintf((char *)hal_data->BufOfLinesPwrLmt[i / 7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
+			 regulation, band, bandwidth, rate, rf_path, chnl, val);
 #endif
 	}
 
+#endif
 }
 
 /******************************************************************************
-*                           txpwr_lmt_type3.TXT
-******************************************************************************/
+ *                           txpwr_lmt_type3.TXT
+ ******************************************************************************/
 
+#ifdef CONFIG_8822B_TYPE3
 const char *array_mp_8822b_txpwr_lmt_type3[] = {
 	"FCC", "2.4G", "20M", "CCK", "1T", "01", "32",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "01", "28",
@@ -15088,63 +16277,71 @@ const char *array_mp_8822b_txpwr_lmt_type3[] = {
 	"ETSI", "5G", "80M", "VHT", "2T", "155", "63",
 	"MKK", "5G", "80M", "VHT", "2T", "155", "63"
 };
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpwr_lmt_type3(
-	struct PHY_DM_STRUCT	*p_dm
-)
+odm_read_and_config_mp_8822b_txpwr_lmt_type3(struct dm_struct *dm)
 {
+#ifdef CONFIG_8822B_TYPE3
+
 	u32	i = 0;
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt_type3)/sizeof(u8);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt_type3) / sizeof(u8);
 	u8	*array = (u8 *)array_mp_8822b_txpwr_lmt_type3;
 #else
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt_type3)/sizeof(u8 *);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt_type3) / sizeof(u8 *);
 	u8	**array = (u8 **)array_mp_8822b_txpwr_lmt_type3;
 #endif
 
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-	struct _ADAPTER	*adapter = p_dm->adapter;
-	HAL_DATA_TYPE	*p_hal_data = GET_HAL_DATA(adapter);
+	void	*adapter = dm->adapter;
+	HAL_DATA_TYPE	*hal_data = GET_HAL_DATA(((PADAPTER)adapter));
 
-	PlatformZeroMemory(p_hal_data->BufOfLinesPwrLmt, MAX_LINES_HWCONFIG_TXT*MAX_BYTES_LINE_HWCONFIG_TXT);
-	p_hal_data->nLinesReadPwrLmt = array_len/7;
+	odm_memory_set(dm, hal_data->BufOfLinesPwrLmt, 0,
+		       MAX_LINES_HWCONFIG_TXT *
+		       MAX_BYTES_LINE_HWCONFIG_TXT);
+	hal_data->nLinesReadPwrLmt = array_len / 7;
 #endif
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> odm_read_and_config_mp_8822b_txpwr_lmt_type3\n"));
+	PHYDM_DBG(dm, ODM_COMP_INIT, "===> %s\n", __func__);
 
 	for (i = 0; i < array_len; i += 7) {
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
 		u8	regulation = array[i];
-		u8	band = array[i+1];
-		u8	bandwidth = array[i+2];
-		u8	rate = array[i+3];
-		u8	rf_path = array[i+4];
-		u8	chnl = array[i+5];
-		u8	val = array[i+6];
+		u8	band = array[i + 1];
+		u8	bandwidth = array[i + 2];
+		u8	rate = array[i + 3];
+		u8	rf_path = array[i + 4];
+		u8	chnl = array[i + 5];
+		u8	val = array[i + 6];
 #else
 		u8	*regulation = array[i];
-		u8	*band = array[i+1];
-		u8	*bandwidth = array[i+2];
-		u8	*rate = array[i+3];
-		u8	*rf_path = array[i+4];
-		u8	*chnl = array[i+5];
-		u8	*val = array[i+6];
+		u8	*band = array[i + 1];
+		u8	*bandwidth = array[i + 2];
+		u8	*rate = array[i + 3];
+		u8	*rf_path = array[i + 4];
+		u8	*chnl = array[i + 5];
+		u8	*val = array[i + 6];
 #endif
 
-		odm_config_bb_txpwr_lmt_8822b(p_dm, regulation, band, bandwidth, rate, rf_path, chnl, val);
+		odm_config_bb_txpwr_lmt_8822b(dm, regulation, band, bandwidth,
+					      rate, rf_path, chnl, val);
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-		rsprintf((char *)p_hal_data->BufOfLinesPwrLmt[i/7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
-		regulation, band, bandwidth, rate, rf_path, chnl, val);
+		rsprintf((char *)hal_data->BufOfLinesPwrLmt[i / 7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
+			 regulation, band, bandwidth, rate, rf_path, chnl, val);
 #endif
 	}
 
+#endif
 }
 
 /******************************************************************************
-*                           txpwr_lmt_type4.TXT
-******************************************************************************/
+ *                           txpwr_lmt_type4.TXT
+ ******************************************************************************/
 
+#ifdef CONFIG_8822B_TYPE4
 const char *array_mp_8822b_txpwr_lmt_type4[] = {
 	"FCC", "2.4G", "20M", "CCK", "1T", "01", "38",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "01", "28",
@@ -15732,63 +16929,71 @@ const char *array_mp_8822b_txpwr_lmt_type4[] = {
 	"ETSI", "5G", "80M", "VHT", "2T", "155", "63",
 	"MKK", "5G", "80M", "VHT", "2T", "155", "63"
 };
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpwr_lmt_type4(
-	struct PHY_DM_STRUCT	*p_dm
-)
+odm_read_and_config_mp_8822b_txpwr_lmt_type4(struct dm_struct *dm)
 {
+#ifdef CONFIG_8822B_TYPE4
+
 	u32	i = 0;
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt_type4)/sizeof(u8);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt_type4) / sizeof(u8);
 	u8	*array = (u8 *)array_mp_8822b_txpwr_lmt_type4;
 #else
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt_type4)/sizeof(u8 *);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt_type4) / sizeof(u8 *);
 	u8	**array = (u8 **)array_mp_8822b_txpwr_lmt_type4;
 #endif
 
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-	struct _ADAPTER	*adapter = p_dm->adapter;
-	HAL_DATA_TYPE	*p_hal_data = GET_HAL_DATA(adapter);
+	void	*adapter = dm->adapter;
+	HAL_DATA_TYPE	*hal_data = GET_HAL_DATA(((PADAPTER)adapter));
 
-	PlatformZeroMemory(p_hal_data->BufOfLinesPwrLmt, MAX_LINES_HWCONFIG_TXT*MAX_BYTES_LINE_HWCONFIG_TXT);
-	p_hal_data->nLinesReadPwrLmt = array_len/7;
+	odm_memory_set(dm, hal_data->BufOfLinesPwrLmt, 0,
+		       MAX_LINES_HWCONFIG_TXT *
+		       MAX_BYTES_LINE_HWCONFIG_TXT);
+	hal_data->nLinesReadPwrLmt = array_len / 7;
 #endif
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> odm_read_and_config_mp_8822b_txpwr_lmt_type4\n"));
+	PHYDM_DBG(dm, ODM_COMP_INIT, "===> %s\n", __func__);
 
 	for (i = 0; i < array_len; i += 7) {
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
 		u8	regulation = array[i];
-		u8	band = array[i+1];
-		u8	bandwidth = array[i+2];
-		u8	rate = array[i+3];
-		u8	rf_path = array[i+4];
-		u8	chnl = array[i+5];
-		u8	val = array[i+6];
+		u8	band = array[i + 1];
+		u8	bandwidth = array[i + 2];
+		u8	rate = array[i + 3];
+		u8	rf_path = array[i + 4];
+		u8	chnl = array[i + 5];
+		u8	val = array[i + 6];
 #else
 		u8	*regulation = array[i];
-		u8	*band = array[i+1];
-		u8	*bandwidth = array[i+2];
-		u8	*rate = array[i+3];
-		u8	*rf_path = array[i+4];
-		u8	*chnl = array[i+5];
-		u8	*val = array[i+6];
+		u8	*band = array[i + 1];
+		u8	*bandwidth = array[i + 2];
+		u8	*rate = array[i + 3];
+		u8	*rf_path = array[i + 4];
+		u8	*chnl = array[i + 5];
+		u8	*val = array[i + 6];
 #endif
 
-		odm_config_bb_txpwr_lmt_8822b(p_dm, regulation, band, bandwidth, rate, rf_path, chnl, val);
+		odm_config_bb_txpwr_lmt_8822b(dm, regulation, band, bandwidth,
+					      rate, rf_path, chnl, val);
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-		rsprintf((char *)p_hal_data->BufOfLinesPwrLmt[i/7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
-		regulation, band, bandwidth, rate, rf_path, chnl, val);
+		rsprintf((char *)hal_data->BufOfLinesPwrLmt[i / 7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
+			 regulation, band, bandwidth, rate, rf_path, chnl, val);
 #endif
 	}
 
+#endif
 }
 
 /******************************************************************************
-*                           txpwr_lmt_type5.TXT
-******************************************************************************/
+ *                           txpwr_lmt_type5.TXT
+ ******************************************************************************/
 
+#ifdef CONFIG_8822B_TYPE5
 const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"FCC", "2.4G", "20M", "CCK", "1T", "01", "32",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "01", "28",
@@ -15797,6 +17002,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "CCK", "1T", "01", "34",
 	"ACMA", "2.4G", "20M", "CCK", "1T", "01", "28",
 	"CHILE", "2.4G", "20M", "CCK", "1T", "01", "32",
+	"UKRAINE", "2.4G", "20M", "CCK", "1T", "01", "30",
 	"FCC", "2.4G", "20M", "CCK", "1T", "02", "32",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "02", "28",
 	"MKK", "2.4G", "20M", "CCK", "1T", "02", "30",
@@ -15804,6 +17010,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "CCK", "1T", "02", "34",
 	"ACMA", "2.4G", "20M", "CCK", "1T", "02", "28",
 	"CHILE", "2.4G", "20M", "CCK", "1T", "02", "32",
+	"UKRAINE", "2.4G", "20M", "CCK", "1T", "02", "30",
 	"FCC", "2.4G", "20M", "CCK", "1T", "03", "32",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "03", "28",
 	"MKK", "2.4G", "20M", "CCK", "1T", "03", "30",
@@ -15811,6 +17018,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "CCK", "1T", "03", "34",
 	"ACMA", "2.4G", "20M", "CCK", "1T", "03", "28",
 	"CHILE", "2.4G", "20M", "CCK", "1T", "03", "32",
+	"UKRAINE", "2.4G", "20M", "CCK", "1T", "03", "30",
 	"FCC", "2.4G", "20M", "CCK", "1T", "04", "32",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "04", "28",
 	"MKK", "2.4G", "20M", "CCK", "1T", "04", "30",
@@ -15818,6 +17026,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "CCK", "1T", "04", "34",
 	"ACMA", "2.4G", "20M", "CCK", "1T", "04", "28",
 	"CHILE", "2.4G", "20M", "CCK", "1T", "04", "32",
+	"UKRAINE", "2.4G", "20M", "CCK", "1T", "04", "30",
 	"FCC", "2.4G", "20M", "CCK", "1T", "05", "32",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "05", "28",
 	"MKK", "2.4G", "20M", "CCK", "1T", "05", "30",
@@ -15825,6 +17034,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "CCK", "1T", "05", "34",
 	"ACMA", "2.4G", "20M", "CCK", "1T", "05", "28",
 	"CHILE", "2.4G", "20M", "CCK", "1T", "05", "32",
+	"UKRAINE", "2.4G", "20M", "CCK", "1T", "05", "30",
 	"FCC", "2.4G", "20M", "CCK", "1T", "06", "32",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "06", "28",
 	"MKK", "2.4G", "20M", "CCK", "1T", "06", "30",
@@ -15832,6 +17042,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "CCK", "1T", "06", "34",
 	"ACMA", "2.4G", "20M", "CCK", "1T", "06", "28",
 	"CHILE", "2.4G", "20M", "CCK", "1T", "06", "32",
+	"UKRAINE", "2.4G", "20M", "CCK", "1T", "06", "30",
 	"FCC", "2.4G", "20M", "CCK", "1T", "07", "32",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "07", "28",
 	"MKK", "2.4G", "20M", "CCK", "1T", "07", "30",
@@ -15839,6 +17050,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "CCK", "1T", "07", "34",
 	"ACMA", "2.4G", "20M", "CCK", "1T", "07", "28",
 	"CHILE", "2.4G", "20M", "CCK", "1T", "07", "32",
+	"UKRAINE", "2.4G", "20M", "CCK", "1T", "07", "30",
 	"FCC", "2.4G", "20M", "CCK", "1T", "08", "32",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "08", "28",
 	"MKK", "2.4G", "20M", "CCK", "1T", "08", "30",
@@ -15846,6 +17058,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "CCK", "1T", "08", "34",
 	"ACMA", "2.4G", "20M", "CCK", "1T", "08", "28",
 	"CHILE", "2.4G", "20M", "CCK", "1T", "08", "32",
+	"UKRAINE", "2.4G", "20M", "CCK", "1T", "08", "30",
 	"FCC", "2.4G", "20M", "CCK", "1T", "09", "32",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "09", "28",
 	"MKK", "2.4G", "20M", "CCK", "1T", "09", "30",
@@ -15853,6 +17066,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "CCK", "1T", "09", "34",
 	"ACMA", "2.4G", "20M", "CCK", "1T", "09", "28",
 	"CHILE", "2.4G", "20M", "CCK", "1T", "09", "32",
+	"UKRAINE", "2.4G", "20M", "CCK", "1T", "09", "30",
 	"FCC", "2.4G", "20M", "CCK", "1T", "10", "32",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "10", "28",
 	"MKK", "2.4G", "20M", "CCK", "1T", "10", "30",
@@ -15860,6 +17074,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "CCK", "1T", "10", "34",
 	"ACMA", "2.4G", "20M", "CCK", "1T", "10", "28",
 	"CHILE", "2.4G", "20M", "CCK", "1T", "10", "32",
+	"UKRAINE", "2.4G", "20M", "CCK", "1T", "10", "30",
 	"FCC", "2.4G", "20M", "CCK", "1T", "11", "32",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "11", "28",
 	"MKK", "2.4G", "20M", "CCK", "1T", "11", "30",
@@ -15867,6 +17082,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "CCK", "1T", "11", "34",
 	"ACMA", "2.4G", "20M", "CCK", "1T", "11", "28",
 	"CHILE", "2.4G", "20M", "CCK", "1T", "11", "32",
+	"UKRAINE", "2.4G", "20M", "CCK", "1T", "11", "30",
 	"FCC", "2.4G", "20M", "CCK", "1T", "12", "26",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "12", "28",
 	"MKK", "2.4G", "20M", "CCK", "1T", "12", "30",
@@ -15874,6 +17090,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "CCK", "1T", "12", "34",
 	"ACMA", "2.4G", "20M", "CCK", "1T", "12", "28",
 	"CHILE", "2.4G", "20M", "CCK", "1T", "12", "26",
+	"UKRAINE", "2.4G", "20M", "CCK", "1T", "12", "30",
 	"FCC", "2.4G", "20M", "CCK", "1T", "13", "20",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "13", "28",
 	"MKK", "2.4G", "20M", "CCK", "1T", "13", "28",
@@ -15881,6 +17098,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "CCK", "1T", "13", "34",
 	"ACMA", "2.4G", "20M", "CCK", "1T", "13", "28",
 	"CHILE", "2.4G", "20M", "CCK", "1T", "13", "20",
+	"UKRAINE", "2.4G", "20M", "CCK", "1T", "13", "30",
 	"FCC", "2.4G", "20M", "CCK", "1T", "14", "63",
 	"ETSI", "2.4G", "20M", "CCK", "1T", "14", "63",
 	"MKK", "2.4G", "20M", "CCK", "1T", "14", "32",
@@ -15888,6 +17106,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "CCK", "1T", "14", "63",
 	"ACMA", "2.4G", "20M", "CCK", "1T", "14", "63",
 	"CHILE", "2.4G", "20M", "CCK", "1T", "14", "63",
+	"UKRAINE", "2.4G", "20M", "CCK", "1T", "14", "63",
 	"FCC", "2.4G", "20M", "OFDM", "1T", "01", "26",
 	"ETSI", "2.4G", "20M", "OFDM", "1T", "01", "30",
 	"MKK", "2.4G", "20M", "OFDM", "1T", "01", "34",
@@ -15895,6 +17114,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "OFDM", "1T", "01", "34",
 	"ACMA", "2.4G", "20M", "OFDM", "1T", "01", "30",
 	"CHILE", "2.4G", "20M", "OFDM", "1T", "01", "26",
+	"UKRAINE", "2.4G", "20M", "OFDM", "1T", "01", "30",
 	"FCC", "2.4G", "20M", "OFDM", "1T", "02", "30",
 	"ETSI", "2.4G", "20M", "OFDM", "1T", "02", "30",
 	"MKK", "2.4G", "20M", "OFDM", "1T", "02", "34",
@@ -15902,6 +17122,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "OFDM", "1T", "02", "34",
 	"ACMA", "2.4G", "20M", "OFDM", "1T", "02", "30",
 	"CHILE", "2.4G", "20M", "OFDM", "1T", "02", "30",
+	"UKRAINE", "2.4G", "20M", "OFDM", "1T", "02", "30",
 	"FCC", "2.4G", "20M", "OFDM", "1T", "03", "32",
 	"ETSI", "2.4G", "20M", "OFDM", "1T", "03", "30",
 	"MKK", "2.4G", "20M", "OFDM", "1T", "03", "34",
@@ -15909,6 +17130,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "OFDM", "1T", "03", "34",
 	"ACMA", "2.4G", "20M", "OFDM", "1T", "03", "30",
 	"CHILE", "2.4G", "20M", "OFDM", "1T", "03", "32",
+	"UKRAINE", "2.4G", "20M", "OFDM", "1T", "03", "30",
 	"FCC", "2.4G", "20M", "OFDM", "1T", "04", "34",
 	"ETSI", "2.4G", "20M", "OFDM", "1T", "04", "30",
 	"MKK", "2.4G", "20M", "OFDM", "1T", "04", "34",
@@ -15916,6 +17138,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "OFDM", "1T", "04", "34",
 	"ACMA", "2.4G", "20M", "OFDM", "1T", "04", "30",
 	"CHILE", "2.4G", "20M", "OFDM", "1T", "04", "34",
+	"UKRAINE", "2.4G", "20M", "OFDM", "1T", "04", "30",
 	"FCC", "2.4G", "20M", "OFDM", "1T", "05", "34",
 	"ETSI", "2.4G", "20M", "OFDM", "1T", "05", "30",
 	"MKK", "2.4G", "20M", "OFDM", "1T", "05", "34",
@@ -15923,6 +17146,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "OFDM", "1T", "05", "34",
 	"ACMA", "2.4G", "20M", "OFDM", "1T", "05", "30",
 	"CHILE", "2.4G", "20M", "OFDM", "1T", "05", "34",
+	"UKRAINE", "2.4G", "20M", "OFDM", "1T", "05", "30",
 	"FCC", "2.4G", "20M", "OFDM", "1T", "06", "34",
 	"ETSI", "2.4G", "20M", "OFDM", "1T", "06", "30",
 	"MKK", "2.4G", "20M", "OFDM", "1T", "06", "34",
@@ -15930,6 +17154,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "OFDM", "1T", "06", "34",
 	"ACMA", "2.4G", "20M", "OFDM", "1T", "06", "30",
 	"CHILE", "2.4G", "20M", "OFDM", "1T", "06", "34",
+	"UKRAINE", "2.4G", "20M", "OFDM", "1T", "06", "30",
 	"FCC", "2.4G", "20M", "OFDM", "1T", "07", "34",
 	"ETSI", "2.4G", "20M", "OFDM", "1T", "07", "30",
 	"MKK", "2.4G", "20M", "OFDM", "1T", "07", "34",
@@ -15937,6 +17162,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "OFDM", "1T", "07", "34",
 	"ACMA", "2.4G", "20M", "OFDM", "1T", "07", "30",
 	"CHILE", "2.4G", "20M", "OFDM", "1T", "07", "34",
+	"UKRAINE", "2.4G", "20M", "OFDM", "1T", "07", "30",
 	"FCC", "2.4G", "20M", "OFDM", "1T", "08", "34",
 	"ETSI", "2.4G", "20M", "OFDM", "1T", "08", "30",
 	"MKK", "2.4G", "20M", "OFDM", "1T", "08", "34",
@@ -15944,6 +17170,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "OFDM", "1T", "08", "34",
 	"ACMA", "2.4G", "20M", "OFDM", "1T", "08", "30",
 	"CHILE", "2.4G", "20M", "OFDM", "1T", "08", "34",
+	"UKRAINE", "2.4G", "20M", "OFDM", "1T", "08", "30",
 	"FCC", "2.4G", "20M", "OFDM", "1T", "09", "32",
 	"ETSI", "2.4G", "20M", "OFDM", "1T", "09", "30",
 	"MKK", "2.4G", "20M", "OFDM", "1T", "09", "34",
@@ -15951,6 +17178,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "OFDM", "1T", "09", "34",
 	"ACMA", "2.4G", "20M", "OFDM", "1T", "09", "30",
 	"CHILE", "2.4G", "20M", "OFDM", "1T", "09", "32",
+	"UKRAINE", "2.4G", "20M", "OFDM", "1T", "09", "30",
 	"FCC", "2.4G", "20M", "OFDM", "1T", "10", "30",
 	"ETSI", "2.4G", "20M", "OFDM", "1T", "10", "30",
 	"MKK", "2.4G", "20M", "OFDM", "1T", "10", "34",
@@ -15958,6 +17186,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "OFDM", "1T", "10", "34",
 	"ACMA", "2.4G", "20M", "OFDM", "1T", "10", "30",
 	"CHILE", "2.4G", "20M", "OFDM", "1T", "10", "30",
+	"UKRAINE", "2.4G", "20M", "OFDM", "1T", "10", "30",
 	"FCC", "2.4G", "20M", "OFDM", "1T", "11", "28",
 	"ETSI", "2.4G", "20M", "OFDM", "1T", "11", "30",
 	"MKK", "2.4G", "20M", "OFDM", "1T", "11", "34",
@@ -15965,6 +17194,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "OFDM", "1T", "11", "34",
 	"ACMA", "2.4G", "20M", "OFDM", "1T", "11", "30",
 	"CHILE", "2.4G", "20M", "OFDM", "1T", "11", "28",
+	"UKRAINE", "2.4G", "20M", "OFDM", "1T", "11", "30",
 	"FCC", "2.4G", "20M", "OFDM", "1T", "12", "22",
 	"ETSI", "2.4G", "20M", "OFDM", "1T", "12", "30",
 	"MKK", "2.4G", "20M", "OFDM", "1T", "12", "34",
@@ -15972,6 +17202,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "OFDM", "1T", "12", "34",
 	"ACMA", "2.4G", "20M", "OFDM", "1T", "12", "30",
 	"CHILE", "2.4G", "20M", "OFDM", "1T", "12", "22",
+	"UKRAINE", "2.4G", "20M", "OFDM", "1T", "12", "30",
 	"FCC", "2.4G", "20M", "OFDM", "1T", "13", "14",
 	"ETSI", "2.4G", "20M", "OFDM", "1T", "13", "30",
 	"MKK", "2.4G", "20M", "OFDM", "1T", "13", "34",
@@ -15979,6 +17210,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "OFDM", "1T", "13", "34",
 	"ACMA", "2.4G", "20M", "OFDM", "1T", "13", "30",
 	"CHILE", "2.4G", "20M", "OFDM", "1T", "13", "14",
+	"UKRAINE", "2.4G", "20M", "OFDM", "1T", "13", "30",
 	"FCC", "2.4G", "20M", "OFDM", "1T", "14", "63",
 	"ETSI", "2.4G", "20M", "OFDM", "1T", "14", "63",
 	"MKK", "2.4G", "20M", "OFDM", "1T", "14", "63",
@@ -15986,6 +17218,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "OFDM", "1T", "14", "63",
 	"ACMA", "2.4G", "20M", "OFDM", "1T", "14", "63",
 	"CHILE", "2.4G", "20M", "OFDM", "1T", "14", "63",
+	"UKRAINE", "2.4G", "20M", "OFDM", "1T", "14", "63",
 	"FCC", "2.4G", "20M", "HT", "1T", "01", "26",
 	"ETSI", "2.4G", "20M", "HT", "1T", "01", "30",
 	"MKK", "2.4G", "20M", "HT", "1T", "01", "34",
@@ -15993,6 +17226,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "1T", "01", "34",
 	"ACMA", "2.4G", "20M", "HT", "1T", "01", "30",
 	"CHILE", "2.4G", "20M", "HT", "1T", "01", "26",
+	"UKRAINE", "2.4G", "20M", "HT", "1T", "01", "30",
 	"FCC", "2.4G", "20M", "HT", "1T", "02", "30",
 	"ETSI", "2.4G", "20M", "HT", "1T", "02", "30",
 	"MKK", "2.4G", "20M", "HT", "1T", "02", "34",
@@ -16000,6 +17234,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "1T", "02", "34",
 	"ACMA", "2.4G", "20M", "HT", "1T", "02", "30",
 	"CHILE", "2.4G", "20M", "HT", "1T", "02", "30",
+	"UKRAINE", "2.4G", "20M", "HT", "1T", "02", "30",
 	"FCC", "2.4G", "20M", "HT", "1T", "03", "32",
 	"ETSI", "2.4G", "20M", "HT", "1T", "03", "30",
 	"MKK", "2.4G", "20M", "HT", "1T", "03", "34",
@@ -16007,6 +17242,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "1T", "03", "34",
 	"ACMA", "2.4G", "20M", "HT", "1T", "03", "30",
 	"CHILE", "2.4G", "20M", "HT", "1T", "03", "32",
+	"UKRAINE", "2.4G", "20M", "HT", "1T", "03", "30",
 	"FCC", "2.4G", "20M", "HT", "1T", "04", "34",
 	"ETSI", "2.4G", "20M", "HT", "1T", "04", "30",
 	"MKK", "2.4G", "20M", "HT", "1T", "04", "34",
@@ -16014,6 +17250,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "1T", "04", "34",
 	"ACMA", "2.4G", "20M", "HT", "1T", "04", "30",
 	"CHILE", "2.4G", "20M", "HT", "1T", "04", "34",
+	"UKRAINE", "2.4G", "20M", "HT", "1T", "04", "30",
 	"FCC", "2.4G", "20M", "HT", "1T", "05", "34",
 	"ETSI", "2.4G", "20M", "HT", "1T", "05", "30",
 	"MKK", "2.4G", "20M", "HT", "1T", "05", "34",
@@ -16021,6 +17258,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "1T", "05", "34",
 	"ACMA", "2.4G", "20M", "HT", "1T", "05", "30",
 	"CHILE", "2.4G", "20M", "HT", "1T", "05", "34",
+	"UKRAINE", "2.4G", "20M", "HT", "1T", "05", "30",
 	"FCC", "2.4G", "20M", "HT", "1T", "06", "34",
 	"ETSI", "2.4G", "20M", "HT", "1T", "06", "30",
 	"MKK", "2.4G", "20M", "HT", "1T", "06", "34",
@@ -16028,6 +17266,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "1T", "06", "34",
 	"ACMA", "2.4G", "20M", "HT", "1T", "06", "30",
 	"CHILE", "2.4G", "20M", "HT", "1T", "06", "34",
+	"UKRAINE", "2.4G", "20M", "HT", "1T", "06", "30",
 	"FCC", "2.4G", "20M", "HT", "1T", "07", "34",
 	"ETSI", "2.4G", "20M", "HT", "1T", "07", "30",
 	"MKK", "2.4G", "20M", "HT", "1T", "07", "34",
@@ -16035,6 +17274,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "1T", "07", "34",
 	"ACMA", "2.4G", "20M", "HT", "1T", "07", "30",
 	"CHILE", "2.4G", "20M", "HT", "1T", "07", "34",
+	"UKRAINE", "2.4G", "20M", "HT", "1T", "07", "30",
 	"FCC", "2.4G", "20M", "HT", "1T", "08", "34",
 	"ETSI", "2.4G", "20M", "HT", "1T", "08", "30",
 	"MKK", "2.4G", "20M", "HT", "1T", "08", "34",
@@ -16042,6 +17282,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "1T", "08", "34",
 	"ACMA", "2.4G", "20M", "HT", "1T", "08", "30",
 	"CHILE", "2.4G", "20M", "HT", "1T", "08", "34",
+	"UKRAINE", "2.4G", "20M", "HT", "1T", "08", "30",
 	"FCC", "2.4G", "20M", "HT", "1T", "09", "32",
 	"ETSI", "2.4G", "20M", "HT", "1T", "09", "30",
 	"MKK", "2.4G", "20M", "HT", "1T", "09", "34",
@@ -16049,6 +17290,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "1T", "09", "34",
 	"ACMA", "2.4G", "20M", "HT", "1T", "09", "30",
 	"CHILE", "2.4G", "20M", "HT", "1T", "09", "32",
+	"UKRAINE", "2.4G", "20M", "HT", "1T", "09", "30",
 	"FCC", "2.4G", "20M", "HT", "1T", "10", "30",
 	"ETSI", "2.4G", "20M", "HT", "1T", "10", "30",
 	"MKK", "2.4G", "20M", "HT", "1T", "10", "34",
@@ -16056,6 +17298,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "1T", "10", "34",
 	"ACMA", "2.4G", "20M", "HT", "1T", "10", "30",
 	"CHILE", "2.4G", "20M", "HT", "1T", "10", "30",
+	"UKRAINE", "2.4G", "20M", "HT", "1T", "10", "30",
 	"FCC", "2.4G", "20M", "HT", "1T", "11", "26",
 	"ETSI", "2.4G", "20M", "HT", "1T", "11", "30",
 	"MKK", "2.4G", "20M", "HT", "1T", "11", "34",
@@ -16063,6 +17306,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "1T", "11", "34",
 	"ACMA", "2.4G", "20M", "HT", "1T", "11", "30",
 	"CHILE", "2.4G", "20M", "HT", "1T", "11", "26",
+	"UKRAINE", "2.4G", "20M", "HT", "1T", "11", "30",
 	"FCC", "2.4G", "20M", "HT", "1T", "12", "20",
 	"ETSI", "2.4G", "20M", "HT", "1T", "12", "30",
 	"MKK", "2.4G", "20M", "HT", "1T", "12", "34",
@@ -16070,6 +17314,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "1T", "12", "34",
 	"ACMA", "2.4G", "20M", "HT", "1T", "12", "30",
 	"CHILE", "2.4G", "20M", "HT", "1T", "12", "20",
+	"UKRAINE", "2.4G", "20M", "HT", "1T", "12", "30",
 	"FCC", "2.4G", "20M", "HT", "1T", "13", "14",
 	"ETSI", "2.4G", "20M", "HT", "1T", "13", "30",
 	"MKK", "2.4G", "20M", "HT", "1T", "13", "34",
@@ -16077,6 +17322,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "1T", "13", "34",
 	"ACMA", "2.4G", "20M", "HT", "1T", "13", "30",
 	"CHILE", "2.4G", "20M", "HT", "1T", "13", "14",
+	"UKRAINE", "2.4G", "20M", "HT", "1T", "13", "30",
 	"FCC", "2.4G", "20M", "HT", "1T", "14", "63",
 	"ETSI", "2.4G", "20M", "HT", "1T", "14", "63",
 	"MKK", "2.4G", "20M", "HT", "1T", "14", "63",
@@ -16084,6 +17330,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "1T", "14", "63",
 	"ACMA", "2.4G", "20M", "HT", "1T", "14", "63",
 	"CHILE", "2.4G", "20M", "HT", "1T", "14", "63",
+	"UKRAINE", "2.4G", "20M", "HT", "1T", "14", "63",
 	"FCC", "2.4G", "20M", "HT", "2T", "01", "26",
 	"ETSI", "2.4G", "20M", "HT", "2T", "01", "18",
 	"MKK", "2.4G", "20M", "HT", "2T", "01", "30",
@@ -16091,6 +17338,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "2T", "01", "34",
 	"ACMA", "2.4G", "20M", "HT", "2T", "01", "18",
 	"CHILE", "2.4G", "20M", "HT", "2T", "01", "26",
+	"UKRAINE", "2.4G", "20M", "HT", "2T", "01", "18",
 	"FCC", "2.4G", "20M", "HT", "2T", "02", "28",
 	"ETSI", "2.4G", "20M", "HT", "2T", "02", "18",
 	"MKK", "2.4G", "20M", "HT", "2T", "02", "30",
@@ -16098,6 +17346,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "2T", "02", "34",
 	"ACMA", "2.4G", "20M", "HT", "2T", "02", "18",
 	"CHILE", "2.4G", "20M", "HT", "2T", "02", "28",
+	"UKRAINE", "2.4G", "20M", "HT", "2T", "02", "18",
 	"FCC", "2.4G", "20M", "HT", "2T", "03", "30",
 	"ETSI", "2.4G", "20M", "HT", "2T", "03", "18",
 	"MKK", "2.4G", "20M", "HT", "2T", "03", "30",
@@ -16105,6 +17354,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "2T", "03", "34",
 	"ACMA", "2.4G", "20M", "HT", "2T", "03", "18",
 	"CHILE", "2.4G", "20M", "HT", "2T", "03", "30",
+	"UKRAINE", "2.4G", "20M", "HT", "2T", "03", "18",
 	"FCC", "2.4G", "20M", "HT", "2T", "04", "30",
 	"ETSI", "2.4G", "20M", "HT", "2T", "04", "18",
 	"MKK", "2.4G", "20M", "HT", "2T", "04", "30",
@@ -16112,6 +17362,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "2T", "04", "34",
 	"ACMA", "2.4G", "20M", "HT", "2T", "04", "18",
 	"CHILE", "2.4G", "20M", "HT", "2T", "04", "30",
+	"UKRAINE", "2.4G", "20M", "HT", "2T", "04", "18",
 	"FCC", "2.4G", "20M", "HT", "2T", "05", "32",
 	"ETSI", "2.4G", "20M", "HT", "2T", "05", "18",
 	"MKK", "2.4G", "20M", "HT", "2T", "05", "30",
@@ -16119,6 +17370,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "2T", "05", "34",
 	"ACMA", "2.4G", "20M", "HT", "2T", "05", "18",
 	"CHILE", "2.4G", "20M", "HT", "2T", "05", "32",
+	"UKRAINE", "2.4G", "20M", "HT", "2T", "05", "18",
 	"FCC", "2.4G", "20M", "HT", "2T", "06", "32",
 	"ETSI", "2.4G", "20M", "HT", "2T", "06", "18",
 	"MKK", "2.4G", "20M", "HT", "2T", "06", "30",
@@ -16126,6 +17378,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "2T", "06", "34",
 	"ACMA", "2.4G", "20M", "HT", "2T", "06", "18",
 	"CHILE", "2.4G", "20M", "HT", "2T", "06", "32",
+	"UKRAINE", "2.4G", "20M", "HT", "2T", "06", "18",
 	"FCC", "2.4G", "20M", "HT", "2T", "07", "32",
 	"ETSI", "2.4G", "20M", "HT", "2T", "07", "18",
 	"MKK", "2.4G", "20M", "HT", "2T", "07", "30",
@@ -16133,6 +17386,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "2T", "07", "34",
 	"ACMA", "2.4G", "20M", "HT", "2T", "07", "18",
 	"CHILE", "2.4G", "20M", "HT", "2T", "07", "32",
+	"UKRAINE", "2.4G", "20M", "HT", "2T", "07", "18",
 	"FCC", "2.4G", "20M", "HT", "2T", "08", "30",
 	"ETSI", "2.4G", "20M", "HT", "2T", "08", "18",
 	"MKK", "2.4G", "20M", "HT", "2T", "08", "30",
@@ -16140,6 +17394,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "2T", "08", "34",
 	"ACMA", "2.4G", "20M", "HT", "2T", "08", "18",
 	"CHILE", "2.4G", "20M", "HT", "2T", "08", "30",
+	"UKRAINE", "2.4G", "20M", "HT", "2T", "08", "18",
 	"FCC", "2.4G", "20M", "HT", "2T", "09", "30",
 	"ETSI", "2.4G", "20M", "HT", "2T", "09", "18",
 	"MKK", "2.4G", "20M", "HT", "2T", "09", "30",
@@ -16147,6 +17402,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "2T", "09", "34",
 	"ACMA", "2.4G", "20M", "HT", "2T", "09", "18",
 	"CHILE", "2.4G", "20M", "HT", "2T", "09", "30",
+	"UKRAINE", "2.4G", "20M", "HT", "2T", "09", "18",
 	"FCC", "2.4G", "20M", "HT", "2T", "10", "28",
 	"ETSI", "2.4G", "20M", "HT", "2T", "10", "18",
 	"MKK", "2.4G", "20M", "HT", "2T", "10", "30",
@@ -16154,6 +17410,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "2T", "10", "34",
 	"ACMA", "2.4G", "20M", "HT", "2T", "10", "18",
 	"CHILE", "2.4G", "20M", "HT", "2T", "10", "28",
+	"UKRAINE", "2.4G", "20M", "HT", "2T", "10", "18",
 	"FCC", "2.4G", "20M", "HT", "2T", "11", "26",
 	"ETSI", "2.4G", "20M", "HT", "2T", "11", "18",
 	"MKK", "2.4G", "20M", "HT", "2T", "11", "30",
@@ -16161,6 +17418,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "2T", "11", "34",
 	"ACMA", "2.4G", "20M", "HT", "2T", "11", "18",
 	"CHILE", "2.4G", "20M", "HT", "2T", "11", "26",
+	"UKRAINE", "2.4G", "20M", "HT", "2T", "11", "18",
 	"FCC", "2.4G", "20M", "HT", "2T", "12", "20",
 	"ETSI", "2.4G", "20M", "HT", "2T", "12", "18",
 	"MKK", "2.4G", "20M", "HT", "2T", "12", "30",
@@ -16168,6 +17426,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "2T", "12", "34",
 	"ACMA", "2.4G", "20M", "HT", "2T", "12", "18",
 	"CHILE", "2.4G", "20M", "HT", "2T", "12", "20",
+	"UKRAINE", "2.4G", "20M", "HT", "2T", "12", "18",
 	"FCC", "2.4G", "20M", "HT", "2T", "13", "14",
 	"ETSI", "2.4G", "20M", "HT", "2T", "13", "18",
 	"MKK", "2.4G", "20M", "HT", "2T", "13", "30",
@@ -16175,6 +17434,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "2T", "13", "34",
 	"ACMA", "2.4G", "20M", "HT", "2T", "13", "18",
 	"CHILE", "2.4G", "20M", "HT", "2T", "13", "14",
+	"UKRAINE", "2.4G", "20M", "HT", "2T", "13", "18",
 	"FCC", "2.4G", "20M", "HT", "2T", "14", "63",
 	"ETSI", "2.4G", "20M", "HT", "2T", "14", "63",
 	"MKK", "2.4G", "20M", "HT", "2T", "14", "63",
@@ -16182,6 +17442,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "20M", "HT", "2T", "14", "63",
 	"ACMA", "2.4G", "20M", "HT", "2T", "14", "63",
 	"CHILE", "2.4G", "20M", "HT", "2T", "14", "63",
+	"UKRAINE", "2.4G", "20M", "HT", "2T", "14", "63",
 	"FCC", "2.4G", "40M", "HT", "1T", "01", "63",
 	"ETSI", "2.4G", "40M", "HT", "1T", "01", "63",
 	"MKK", "2.4G", "40M", "HT", "1T", "01", "63",
@@ -16189,6 +17450,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "1T", "01", "63",
 	"ACMA", "2.4G", "40M", "HT", "1T", "01", "63",
 	"CHILE", "2.4G", "40M", "HT", "1T", "01", "63",
+	"UKRAINE", "2.4G", "40M", "HT", "1T", "01", "63",
 	"FCC", "2.4G", "40M", "HT", "1T", "02", "63",
 	"ETSI", "2.4G", "40M", "HT", "1T", "02", "63",
 	"MKK", "2.4G", "40M", "HT", "1T", "02", "63",
@@ -16196,6 +17458,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "1T", "02", "63",
 	"ACMA", "2.4G", "40M", "HT", "1T", "02", "63",
 	"CHILE", "2.4G", "40M", "HT", "1T", "02", "63",
+	"UKRAINE", "2.4G", "40M", "HT", "1T", "02", "63",
 	"FCC", "2.4G", "40M", "HT", "1T", "03", "26",
 	"ETSI", "2.4G", "40M", "HT", "1T", "03", "30",
 	"MKK", "2.4G", "40M", "HT", "1T", "03", "34",
@@ -16203,6 +17466,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "1T", "03", "34",
 	"ACMA", "2.4G", "40M", "HT", "1T", "03", "30",
 	"CHILE", "2.4G", "40M", "HT", "1T", "03", "26",
+	"UKRAINE", "2.4G", "40M", "HT", "1T", "03", "30",
 	"FCC", "2.4G", "40M", "HT", "1T", "04", "26",
 	"ETSI", "2.4G", "40M", "HT", "1T", "04", "30",
 	"MKK", "2.4G", "40M", "HT", "1T", "04", "34",
@@ -16210,6 +17474,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "1T", "04", "34",
 	"ACMA", "2.4G", "40M", "HT", "1T", "04", "30",
 	"CHILE", "2.4G", "40M", "HT", "1T", "04", "26",
+	"UKRAINE", "2.4G", "40M", "HT", "1T", "04", "30",
 	"FCC", "2.4G", "40M", "HT", "1T", "05", "30",
 	"ETSI", "2.4G", "40M", "HT", "1T", "05", "30",
 	"MKK", "2.4G", "40M", "HT", "1T", "05", "34",
@@ -16217,6 +17482,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "1T", "05", "34",
 	"ACMA", "2.4G", "40M", "HT", "1T", "05", "30",
 	"CHILE", "2.4G", "40M", "HT", "1T", "05", "30",
+	"UKRAINE", "2.4G", "40M", "HT", "1T", "05", "30",
 	"FCC", "2.4G", "40M", "HT", "1T", "06", "32",
 	"ETSI", "2.4G", "40M", "HT", "1T", "06", "30",
 	"MKK", "2.4G", "40M", "HT", "1T", "06", "34",
@@ -16224,6 +17490,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "1T", "06", "34",
 	"ACMA", "2.4G", "40M", "HT", "1T", "06", "30",
 	"CHILE", "2.4G", "40M", "HT", "1T", "06", "32",
+	"UKRAINE", "2.4G", "40M", "HT", "1T", "06", "30",
 	"FCC", "2.4G", "40M", "HT", "1T", "07", "30",
 	"ETSI", "2.4G", "40M", "HT", "1T", "07", "30",
 	"MKK", "2.4G", "40M", "HT", "1T", "07", "34",
@@ -16231,6 +17498,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "1T", "07", "34",
 	"ACMA", "2.4G", "40M", "HT", "1T", "07", "30",
 	"CHILE", "2.4G", "40M", "HT", "1T", "07", "30",
+	"UKRAINE", "2.4G", "40M", "HT", "1T", "07", "30",
 	"FCC", "2.4G", "40M", "HT", "1T", "08", "26",
 	"ETSI", "2.4G", "40M", "HT", "1T", "08", "30",
 	"MKK", "2.4G", "40M", "HT", "1T", "08", "34",
@@ -16238,6 +17506,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "1T", "08", "34",
 	"ACMA", "2.4G", "40M", "HT", "1T", "08", "30",
 	"CHILE", "2.4G", "40M", "HT", "1T", "08", "26",
+	"UKRAINE", "2.4G", "40M", "HT", "1T", "08", "30",
 	"FCC", "2.4G", "40M", "HT", "1T", "09", "26",
 	"ETSI", "2.4G", "40M", "HT", "1T", "09", "30",
 	"MKK", "2.4G", "40M", "HT", "1T", "09", "34",
@@ -16245,6 +17514,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "1T", "09", "34",
 	"ACMA", "2.4G", "40M", "HT", "1T", "09", "30",
 	"CHILE", "2.4G", "40M", "HT", "1T", "09", "26",
+	"UKRAINE", "2.4G", "40M", "HT", "1T", "09", "30",
 	"FCC", "2.4G", "40M", "HT", "1T", "10", "20",
 	"ETSI", "2.4G", "40M", "HT", "1T", "10", "30",
 	"MKK", "2.4G", "40M", "HT", "1T", "10", "34",
@@ -16252,6 +17522,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "1T", "10", "34",
 	"ACMA", "2.4G", "40M", "HT", "1T", "10", "30",
 	"CHILE", "2.4G", "40M", "HT", "1T", "10", "20",
+	"UKRAINE", "2.4G", "40M", "HT", "1T", "10", "30",
 	"FCC", "2.4G", "40M", "HT", "1T", "11", "14",
 	"ETSI", "2.4G", "40M", "HT", "1T", "11", "30",
 	"MKK", "2.4G", "40M", "HT", "1T", "11", "34",
@@ -16259,6 +17530,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "1T", "11", "34",
 	"ACMA", "2.4G", "40M", "HT", "1T", "11", "30",
 	"CHILE", "2.4G", "40M", "HT", "1T", "11", "14",
+	"UKRAINE", "2.4G", "40M", "HT", "1T", "11", "30",
 	"FCC", "2.4G", "40M", "HT", "1T", "12", "63",
 	"ETSI", "2.4G", "40M", "HT", "1T", "12", "63",
 	"MKK", "2.4G", "40M", "HT", "1T", "12", "63",
@@ -16266,6 +17538,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "1T", "12", "63",
 	"ACMA", "2.4G", "40M", "HT", "1T", "12", "63",
 	"CHILE", "2.4G", "40M", "HT", "1T", "12", "63",
+	"UKRAINE", "2.4G", "40M", "HT", "1T", "12", "63",
 	"FCC", "2.4G", "40M", "HT", "1T", "13", "63",
 	"ETSI", "2.4G", "40M", "HT", "1T", "13", "63",
 	"MKK", "2.4G", "40M", "HT", "1T", "13", "63",
@@ -16273,6 +17546,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "1T", "13", "63",
 	"ACMA", "2.4G", "40M", "HT", "1T", "13", "63",
 	"CHILE", "2.4G", "40M", "HT", "1T", "13", "63",
+	"UKRAINE", "2.4G", "40M", "HT", "1T", "13", "63",
 	"FCC", "2.4G", "40M", "HT", "1T", "14", "63",
 	"ETSI", "2.4G", "40M", "HT", "1T", "14", "63",
 	"MKK", "2.4G", "40M", "HT", "1T", "14", "63",
@@ -16280,6 +17554,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "1T", "14", "63",
 	"ACMA", "2.4G", "40M", "HT", "1T", "14", "63",
 	"CHILE", "2.4G", "40M", "HT", "1T", "14", "63",
+	"UKRAINE", "2.4G", "40M", "HT", "1T", "14", "63",
 	"FCC", "2.4G", "40M", "HT", "2T", "01", "63",
 	"ETSI", "2.4G", "40M", "HT", "2T", "01", "63",
 	"MKK", "2.4G", "40M", "HT", "2T", "01", "63",
@@ -16287,6 +17562,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "2T", "01", "63",
 	"ACMA", "2.4G", "40M", "HT", "2T", "01", "63",
 	"CHILE", "2.4G", "40M", "HT", "2T", "01", "63",
+	"UKRAINE", "2.4G", "40M", "HT", "2T", "01", "63",
 	"FCC", "2.4G", "40M", "HT", "2T", "02", "63",
 	"ETSI", "2.4G", "40M", "HT", "2T", "02", "63",
 	"MKK", "2.4G", "40M", "HT", "2T", "02", "63",
@@ -16294,6 +17570,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "2T", "02", "63",
 	"ACMA", "2.4G", "40M", "HT", "2T", "02", "63",
 	"CHILE", "2.4G", "40M", "HT", "2T", "02", "63",
+	"UKRAINE", "2.4G", "40M", "HT", "2T", "02", "63",
 	"FCC", "2.4G", "40M", "HT", "2T", "03", "24",
 	"ETSI", "2.4G", "40M", "HT", "2T", "03", "18",
 	"MKK", "2.4G", "40M", "HT", "2T", "03", "30",
@@ -16301,6 +17578,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "2T", "03", "34",
 	"ACMA", "2.4G", "40M", "HT", "2T", "03", "18",
 	"CHILE", "2.4G", "40M", "HT", "2T", "03", "24",
+	"UKRAINE", "2.4G", "40M", "HT", "2T", "03", "18",
 	"FCC", "2.4G", "40M", "HT", "2T", "04", "24",
 	"ETSI", "2.4G", "40M", "HT", "2T", "04", "18",
 	"MKK", "2.4G", "40M", "HT", "2T", "04", "30",
@@ -16308,6 +17586,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "2T", "04", "34",
 	"ACMA", "2.4G", "40M", "HT", "2T", "04", "18",
 	"CHILE", "2.4G", "40M", "HT", "2T", "04", "24",
+	"UKRAINE", "2.4G", "40M", "HT", "2T", "04", "18",
 	"FCC", "2.4G", "40M", "HT", "2T", "05", "26",
 	"ETSI", "2.4G", "40M", "HT", "2T", "05", "18",
 	"MKK", "2.4G", "40M", "HT", "2T", "05", "30",
@@ -16315,6 +17594,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "2T", "05", "34",
 	"ACMA", "2.4G", "40M", "HT", "2T", "05", "18",
 	"CHILE", "2.4G", "40M", "HT", "2T", "05", "26",
+	"UKRAINE", "2.4G", "40M", "HT", "2T", "05", "18",
 	"FCC", "2.4G", "40M", "HT", "2T", "06", "28",
 	"ETSI", "2.4G", "40M", "HT", "2T", "06", "18",
 	"MKK", "2.4G", "40M", "HT", "2T", "06", "30",
@@ -16322,6 +17602,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "2T", "06", "34",
 	"ACMA", "2.4G", "40M", "HT", "2T", "06", "18",
 	"CHILE", "2.4G", "40M", "HT", "2T", "06", "28",
+	"UKRAINE", "2.4G", "40M", "HT", "2T", "06", "18",
 	"FCC", "2.4G", "40M", "HT", "2T", "07", "26",
 	"ETSI", "2.4G", "40M", "HT", "2T", "07", "18",
 	"MKK", "2.4G", "40M", "HT", "2T", "07", "30",
@@ -16329,6 +17610,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "2T", "07", "34",
 	"ACMA", "2.4G", "40M", "HT", "2T", "07", "18",
 	"CHILE", "2.4G", "40M", "HT", "2T", "07", "26",
+	"UKRAINE", "2.4G", "40M", "HT", "2T", "07", "18",
 	"FCC", "2.4G", "40M", "HT", "2T", "08", "26",
 	"ETSI", "2.4G", "40M", "HT", "2T", "08", "18",
 	"MKK", "2.4G", "40M", "HT", "2T", "08", "30",
@@ -16336,6 +17618,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "2T", "08", "34",
 	"ACMA", "2.4G", "40M", "HT", "2T", "08", "18",
 	"CHILE", "2.4G", "40M", "HT", "2T", "08", "26",
+	"UKRAINE", "2.4G", "40M", "HT", "2T", "08", "18",
 	"FCC", "2.4G", "40M", "HT", "2T", "09", "26",
 	"ETSI", "2.4G", "40M", "HT", "2T", "09", "18",
 	"MKK", "2.4G", "40M", "HT", "2T", "09", "30",
@@ -16343,6 +17626,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "2T", "09", "34",
 	"ACMA", "2.4G", "40M", "HT", "2T", "09", "18",
 	"CHILE", "2.4G", "40M", "HT", "2T", "09", "26",
+	"UKRAINE", "2.4G", "40M", "HT", "2T", "09", "18",
 	"FCC", "2.4G", "40M", "HT", "2T", "10", "20",
 	"ETSI", "2.4G", "40M", "HT", "2T", "10", "18",
 	"MKK", "2.4G", "40M", "HT", "2T", "10", "30",
@@ -16350,6 +17634,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "2T", "10", "34",
 	"ACMA", "2.4G", "40M", "HT", "2T", "10", "18",
 	"CHILE", "2.4G", "40M", "HT", "2T", "10", "20",
+	"UKRAINE", "2.4G", "40M", "HT", "2T", "10", "18",
 	"FCC", "2.4G", "40M", "HT", "2T", "11", "14",
 	"ETSI", "2.4G", "40M", "HT", "2T", "11", "18",
 	"MKK", "2.4G", "40M", "HT", "2T", "11", "30",
@@ -16357,6 +17642,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "2T", "11", "34",
 	"ACMA", "2.4G", "40M", "HT", "2T", "11", "18",
 	"CHILE", "2.4G", "40M", "HT", "2T", "11", "14",
+	"UKRAINE", "2.4G", "40M", "HT", "2T", "11", "18",
 	"FCC", "2.4G", "40M", "HT", "2T", "12", "63",
 	"ETSI", "2.4G", "40M", "HT", "2T", "12", "63",
 	"MKK", "2.4G", "40M", "HT", "2T", "12", "63",
@@ -16364,6 +17650,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "2T", "12", "63",
 	"ACMA", "2.4G", "40M", "HT", "2T", "12", "63",
 	"CHILE", "2.4G", "40M", "HT", "2T", "12", "63",
+	"UKRAINE", "2.4G", "40M", "HT", "2T", "12", "63",
 	"FCC", "2.4G", "40M", "HT", "2T", "13", "63",
 	"ETSI", "2.4G", "40M", "HT", "2T", "13", "63",
 	"MKK", "2.4G", "40M", "HT", "2T", "13", "63",
@@ -16371,6 +17658,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "2T", "13", "63",
 	"ACMA", "2.4G", "40M", "HT", "2T", "13", "63",
 	"CHILE", "2.4G", "40M", "HT", "2T", "13", "63",
+	"UKRAINE", "2.4G", "40M", "HT", "2T", "13", "63",
 	"FCC", "2.4G", "40M", "HT", "2T", "14", "63",
 	"ETSI", "2.4G", "40M", "HT", "2T", "14", "63",
 	"MKK", "2.4G", "40M", "HT", "2T", "14", "63",
@@ -16378,6 +17666,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "2.4G", "40M", "HT", "2T", "14", "63",
 	"ACMA", "2.4G", "40M", "HT", "2T", "14", "63",
 	"CHILE", "2.4G", "40M", "HT", "2T", "14", "63",
+	"UKRAINE", "2.4G", "40M", "HT", "2T", "14", "63",
 	"FCC", "5G", "20M", "OFDM", "1T", "36", "30",
 	"ETSI", "5G", "20M", "OFDM", "1T", "36", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "36", "30",
@@ -16385,6 +17674,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "36", "18",
 	"ACMA", "5G", "20M", "OFDM", "1T", "36", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "36", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "36", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "40", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "40", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "40", "30",
@@ -16392,6 +17682,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "40", "24",
 	"ACMA", "5G", "20M", "OFDM", "1T", "40", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "40", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "40", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "44", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "44", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "44", "30",
@@ -16399,6 +17690,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "44", "24",
 	"ACMA", "5G", "20M", "OFDM", "1T", "44", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "44", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "44", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "48", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "48", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "48", "30",
@@ -16406,6 +17698,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "48", "18",
 	"ACMA", "5G", "20M", "OFDM", "1T", "48", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "48", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "48", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "52", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "52", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "52", "28",
@@ -16413,6 +17706,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "52", "10",
 	"ACMA", "5G", "20M", "OFDM", "1T", "52", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "52", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "52", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "56", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "56", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "56", "28",
@@ -16420,6 +17714,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "56", "32",
 	"ACMA", "5G", "20M", "OFDM", "1T", "56", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "56", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "56", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "60", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "60", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "60", "28",
@@ -16427,6 +17722,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "60", "32",
 	"ACMA", "5G", "20M", "OFDM", "1T", "60", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "60", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "60", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "64", "28",
 	"ETSI", "5G", "20M", "OFDM", "1T", "64", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "64", "28",
@@ -16434,6 +17730,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "64", "32",
 	"ACMA", "5G", "20M", "OFDM", "1T", "64", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "64", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "64", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "100", "26",
 	"ETSI", "5G", "20M", "OFDM", "1T", "100", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "100", "32",
@@ -16441,6 +17738,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "100", "32",
 	"ACMA", "5G", "20M", "OFDM", "1T", "100", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "100", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "100", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "104", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "104", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "104", "32",
@@ -16448,6 +17746,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "104", "32",
 	"ACMA", "5G", "20M", "OFDM", "1T", "104", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "104", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "104", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "108", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "108", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "108", "32",
@@ -16455,6 +17754,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "108", "32",
 	"ACMA", "5G", "20M", "OFDM", "1T", "108", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "108", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "108", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "112", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "112", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "112", "32",
@@ -16462,6 +17762,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "112", "32",
 	"ACMA", "5G", "20M", "OFDM", "1T", "112", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "112", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "112", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "116", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "116", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "116", "32",
@@ -16469,6 +17770,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "116", "32",
 	"ACMA", "5G", "20M", "OFDM", "1T", "116", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "116", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "116", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "120", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "120", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "120", "32",
@@ -16476,6 +17778,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "120", "32",
 	"ACMA", "5G", "20M", "OFDM", "1T", "120", "-63",
 	"CHILE", "5G", "20M", "OFDM", "1T", "120", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "120", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "124", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "124", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "124", "32",
@@ -16483,6 +17786,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "124", "32",
 	"ACMA", "5G", "20M", "OFDM", "1T", "124", "-63",
 	"CHILE", "5G", "20M", "OFDM", "1T", "124", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "124", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "128", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "128", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "128", "32",
@@ -16490,6 +17794,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "128", "-63",
 	"ACMA", "5G", "20M", "OFDM", "1T", "128", "-63",
 	"CHILE", "5G", "20M", "OFDM", "1T", "128", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "128", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "132", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "132", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "132", "32",
@@ -16497,6 +17802,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "132", "-63",
 	"ACMA", "5G", "20M", "OFDM", "1T", "132", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "132", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "132", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "136", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "136", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "136", "32",
@@ -16504,6 +17810,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "136", "-63",
 	"ACMA", "5G", "20M", "OFDM", "1T", "136", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "136", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "136", "63",
 	"FCC", "5G", "20M", "OFDM", "1T", "140", "28",
 	"ETSI", "5G", "20M", "OFDM", "1T", "140", "32",
 	"MKK", "5G", "20M", "OFDM", "1T", "140", "32",
@@ -16511,6 +17818,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "140", "-63",
 	"ACMA", "5G", "20M", "OFDM", "1T", "140", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "140", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "140", "63",
 	"FCC", "5G", "20M", "OFDM", "1T", "144", "28",
 	"ETSI", "5G", "20M", "OFDM", "1T", "144", "63",
 	"MKK", "5G", "20M", "OFDM", "1T", "144", "63",
@@ -16518,6 +17826,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "144", "-63",
 	"ACMA", "5G", "20M", "OFDM", "1T", "144", "-63",
 	"CHILE", "5G", "20M", "OFDM", "1T", "144", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "144", "63",
 	"FCC", "5G", "20M", "OFDM", "1T", "149", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "149", "63",
 	"MKK", "5G", "20M", "OFDM", "1T", "149", "63",
@@ -16525,6 +17834,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "149", "26",
 	"ACMA", "5G", "20M", "OFDM", "1T", "149", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "149", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "149", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "153", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "153", "63",
 	"MKK", "5G", "20M", "OFDM", "1T", "153", "63",
@@ -16532,6 +17842,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "153", "32",
 	"ACMA", "5G", "20M", "OFDM", "1T", "153", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "153", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "153", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "157", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "157", "63",
 	"MKK", "5G", "20M", "OFDM", "1T", "157", "63",
@@ -16539,6 +17850,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "157", "32",
 	"ACMA", "5G", "20M", "OFDM", "1T", "157", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "157", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "157", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "161", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "161", "63",
 	"MKK", "5G", "20M", "OFDM", "1T", "161", "63",
@@ -16546,6 +17858,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "161", "30",
 	"ACMA", "5G", "20M", "OFDM", "1T", "161", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "161", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "161", "27",
 	"FCC", "5G", "20M", "OFDM", "1T", "165", "32",
 	"ETSI", "5G", "20M", "OFDM", "1T", "165", "63",
 	"MKK", "5G", "20M", "OFDM", "1T", "165", "63",
@@ -16553,6 +17866,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "OFDM", "1T", "165", "-63",
 	"ACMA", "5G", "20M", "OFDM", "1T", "165", "32",
 	"CHILE", "5G", "20M", "OFDM", "1T", "165", "30",
+	"UKRAINE", "5G", "20M", "OFDM", "1T", "165", "27",
 	"FCC", "5G", "20M", "HT", "1T", "36", "30",
 	"ETSI", "5G", "20M", "HT", "1T", "36", "32",
 	"MKK", "5G", "20M", "HT", "1T", "36", "28",
@@ -16560,6 +17874,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "36", "18",
 	"ACMA", "5G", "20M", "HT", "1T", "36", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "36", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "36", "27",
 	"FCC", "5G", "20M", "HT", "1T", "40", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "40", "32",
 	"MKK", "5G", "20M", "HT", "1T", "40", "28",
@@ -16567,6 +17882,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "40", "24",
 	"ACMA", "5G", "20M", "HT", "1T", "40", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "40", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "40", "27",
 	"FCC", "5G", "20M", "HT", "1T", "44", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "44", "32",
 	"MKK", "5G", "20M", "HT", "1T", "44", "28",
@@ -16574,6 +17890,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "44", "24",
 	"ACMA", "5G", "20M", "HT", "1T", "44", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "44", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "44", "27",
 	"FCC", "5G", "20M", "HT", "1T", "48", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "48", "32",
 	"MKK", "5G", "20M", "HT", "1T", "48", "28",
@@ -16581,6 +17898,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "48", "18",
 	"ACMA", "5G", "20M", "HT", "1T", "48", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "48", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "48", "27",
 	"FCC", "5G", "20M", "HT", "1T", "52", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "52", "32",
 	"MKK", "5G", "20M", "HT", "1T", "52", "28",
@@ -16588,6 +17906,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "52", "4",
 	"ACMA", "5G", "20M", "HT", "1T", "52", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "52", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "52", "27",
 	"FCC", "5G", "20M", "HT", "1T", "56", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "56", "32",
 	"MKK", "5G", "20M", "HT", "1T", "56", "28",
@@ -16595,6 +17914,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "56", "32",
 	"ACMA", "5G", "20M", "HT", "1T", "56", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "56", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "56", "27",
 	"FCC", "5G", "20M", "HT", "1T", "60", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "60", "32",
 	"MKK", "5G", "20M", "HT", "1T", "60", "28",
@@ -16602,6 +17922,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "60", "32",
 	"ACMA", "5G", "20M", "HT", "1T", "60", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "60", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "60", "27",
 	"FCC", "5G", "20M", "HT", "1T", "64", "28",
 	"ETSI", "5G", "20M", "HT", "1T", "64", "32",
 	"MKK", "5G", "20M", "HT", "1T", "64", "28",
@@ -16609,6 +17930,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "64", "32",
 	"ACMA", "5G", "20M", "HT", "1T", "64", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "64", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "64", "27",
 	"FCC", "5G", "20M", "HT", "1T", "100", "26",
 	"ETSI", "5G", "20M", "HT", "1T", "100", "32",
 	"MKK", "5G", "20M", "HT", "1T", "100", "32",
@@ -16616,6 +17938,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "100", "32",
 	"ACMA", "5G", "20M", "HT", "1T", "100", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "100", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "100", "27",
 	"FCC", "5G", "20M", "HT", "1T", "104", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "104", "32",
 	"MKK", "5G", "20M", "HT", "1T", "104", "32",
@@ -16623,6 +17946,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "104", "32",
 	"ACMA", "5G", "20M", "HT", "1T", "104", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "104", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "104", "27",
 	"FCC", "5G", "20M", "HT", "1T", "108", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "108", "32",
 	"MKK", "5G", "20M", "HT", "1T", "108", "32",
@@ -16630,6 +17954,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "108", "32",
 	"ACMA", "5G", "20M", "HT", "1T", "108", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "108", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "108", "27",
 	"FCC", "5G", "20M", "HT", "1T", "112", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "112", "32",
 	"MKK", "5G", "20M", "HT", "1T", "112", "32",
@@ -16637,6 +17962,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "112", "32",
 	"ACMA", "5G", "20M", "HT", "1T", "112", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "112", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "112", "27",
 	"FCC", "5G", "20M", "HT", "1T", "116", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "116", "32",
 	"MKK", "5G", "20M", "HT", "1T", "116", "32",
@@ -16644,6 +17970,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "116", "32",
 	"ACMA", "5G", "20M", "HT", "1T", "116", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "116", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "116", "27",
 	"FCC", "5G", "20M", "HT", "1T", "120", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "120", "32",
 	"MKK", "5G", "20M", "HT", "1T", "120", "32",
@@ -16651,6 +17978,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "120", "32",
 	"ACMA", "5G", "20M", "HT", "1T", "120", "-63",
 	"CHILE", "5G", "20M", "HT", "1T", "120", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "120", "27",
 	"FCC", "5G", "20M", "HT", "1T", "124", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "124", "32",
 	"MKK", "5G", "20M", "HT", "1T", "124", "32",
@@ -16658,6 +17986,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "124", "32",
 	"ACMA", "5G", "20M", "HT", "1T", "124", "-63",
 	"CHILE", "5G", "20M", "HT", "1T", "124", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "124", "27",
 	"FCC", "5G", "20M", "HT", "1T", "128", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "128", "32",
 	"MKK", "5G", "20M", "HT", "1T", "128", "32",
@@ -16665,6 +17994,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "128", "-63",
 	"ACMA", "5G", "20M", "HT", "1T", "128", "-63",
 	"CHILE", "5G", "20M", "HT", "1T", "128", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "128", "27",
 	"FCC", "5G", "20M", "HT", "1T", "132", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "132", "32",
 	"MKK", "5G", "20M", "HT", "1T", "132", "32",
@@ -16672,6 +18002,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "132", "-63",
 	"ACMA", "5G", "20M", "HT", "1T", "132", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "132", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "132", "27",
 	"FCC", "5G", "20M", "HT", "1T", "136", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "136", "32",
 	"MKK", "5G", "20M", "HT", "1T", "136", "32",
@@ -16679,6 +18010,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "136", "-63",
 	"ACMA", "5G", "20M", "HT", "1T", "136", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "136", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "136", "63",
 	"FCC", "5G", "20M", "HT", "1T", "140", "26",
 	"ETSI", "5G", "20M", "HT", "1T", "140", "32",
 	"MKK", "5G", "20M", "HT", "1T", "140", "32",
@@ -16686,6 +18018,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "140", "-63",
 	"ACMA", "5G", "20M", "HT", "1T", "140", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "140", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "140", "63",
 	"FCC", "5G", "20M", "HT", "1T", "144", "26",
 	"ETSI", "5G", "20M", "HT", "1T", "144", "63",
 	"MKK", "5G", "20M", "HT", "1T", "144", "63",
@@ -16693,6 +18026,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "144", "-63",
 	"ACMA", "5G", "20M", "HT", "1T", "144", "-63",
 	"CHILE", "5G", "20M", "HT", "1T", "144", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "144", "63",
 	"FCC", "5G", "20M", "HT", "1T", "149", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "149", "63",
 	"MKK", "5G", "20M", "HT", "1T", "149", "63",
@@ -16700,6 +18034,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "149", "24",
 	"ACMA", "5G", "20M", "HT", "1T", "149", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "149", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "149", "27",
 	"FCC", "5G", "20M", "HT", "1T", "153", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "153", "63",
 	"MKK", "5G", "20M", "HT", "1T", "153", "63",
@@ -16707,6 +18042,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "153", "32",
 	"ACMA", "5G", "20M", "HT", "1T", "153", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "153", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "153", "27",
 	"FCC", "5G", "20M", "HT", "1T", "157", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "157", "63",
 	"MKK", "5G", "20M", "HT", "1T", "157", "63",
@@ -16714,6 +18050,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "157", "32",
 	"ACMA", "5G", "20M", "HT", "1T", "157", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "157", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "157", "27",
 	"FCC", "5G", "20M", "HT", "1T", "161", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "161", "63",
 	"MKK", "5G", "20M", "HT", "1T", "161", "63",
@@ -16721,6 +18058,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "161", "30",
 	"ACMA", "5G", "20M", "HT", "1T", "161", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "161", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "161", "27",
 	"FCC", "5G", "20M", "HT", "1T", "165", "32",
 	"ETSI", "5G", "20M", "HT", "1T", "165", "63",
 	"MKK", "5G", "20M", "HT", "1T", "165", "63",
@@ -16728,6 +18066,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "1T", "165", "-63",
 	"ACMA", "5G", "20M", "HT", "1T", "165", "32",
 	"CHILE", "5G", "20M", "HT", "1T", "165", "30",
+	"UKRAINE", "5G", "20M", "HT", "1T", "165", "27",
 	"FCC", "5G", "20M", "HT", "2T", "36", "28",
 	"ETSI", "5G", "20M", "HT", "2T", "36", "20",
 	"MKK", "5G", "20M", "HT", "2T", "36", "22",
@@ -16735,6 +18074,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "36", "18",
 	"ACMA", "5G", "20M", "HT", "2T", "36", "20",
 	"CHILE", "5G", "20M", "HT", "2T", "36", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "36", "15",
 	"FCC", "5G", "20M", "HT", "2T", "40", "30",
 	"ETSI", "5G", "20M", "HT", "2T", "40", "20",
 	"MKK", "5G", "20M", "HT", "2T", "40", "22",
@@ -16742,6 +18082,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "40", "18",
 	"ACMA", "5G", "20M", "HT", "2T", "40", "20",
 	"CHILE", "5G", "20M", "HT", "2T", "40", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "40", "15",
 	"FCC", "5G", "20M", "HT", "2T", "44", "30",
 	"ETSI", "5G", "20M", "HT", "2T", "44", "20",
 	"MKK", "5G", "20M", "HT", "2T", "44", "22",
@@ -16749,6 +18090,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "44", "18",
 	"ACMA", "5G", "20M", "HT", "2T", "44", "20",
 	"CHILE", "5G", "20M", "HT", "2T", "44", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "44", "15",
 	"FCC", "5G", "20M", "HT", "2T", "48", "30",
 	"ETSI", "5G", "20M", "HT", "2T", "48", "20",
 	"MKK", "5G", "20M", "HT", "2T", "48", "22",
@@ -16756,6 +18098,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "48", "18",
 	"ACMA", "5G", "20M", "HT", "2T", "48", "20",
 	"CHILE", "5G", "20M", "HT", "2T", "48", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "48", "15",
 	"FCC", "5G", "20M", "HT", "2T", "52", "30",
 	"ETSI", "5G", "20M", "HT", "2T", "52", "20",
 	"MKK", "5G", "20M", "HT", "2T", "52", "22",
@@ -16763,6 +18106,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "52", "4",
 	"ACMA", "5G", "20M", "HT", "2T", "52", "20",
 	"CHILE", "5G", "20M", "HT", "2T", "52", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "52", "15",
 	"FCC", "5G", "20M", "HT", "2T", "56", "30",
 	"ETSI", "5G", "20M", "HT", "2T", "56", "20",
 	"MKK", "5G", "20M", "HT", "2T", "56", "22",
@@ -16770,6 +18114,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "56", "32",
 	"ACMA", "5G", "20M", "HT", "2T", "56", "20",
 	"CHILE", "5G", "20M", "HT", "2T", "56", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "56", "15",
 	"FCC", "5G", "20M", "HT", "2T", "60", "30",
 	"ETSI", "5G", "20M", "HT", "2T", "60", "20",
 	"MKK", "5G", "20M", "HT", "2T", "60", "22",
@@ -16777,6 +18122,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "60", "32",
 	"ACMA", "5G", "20M", "HT", "2T", "60", "20",
 	"CHILE", "5G", "20M", "HT", "2T", "60", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "60", "15",
 	"FCC", "5G", "20M", "HT", "2T", "64", "28",
 	"ETSI", "5G", "20M", "HT", "2T", "64", "20",
 	"MKK", "5G", "20M", "HT", "2T", "64", "22",
@@ -16784,6 +18130,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "64", "32",
 	"ACMA", "5G", "20M", "HT", "2T", "64", "20",
 	"CHILE", "5G", "20M", "HT", "2T", "64", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "64", "15",
 	"FCC", "5G", "20M", "HT", "2T", "100", "26",
 	"ETSI", "5G", "20M", "HT", "2T", "100", "20",
 	"MKK", "5G", "20M", "HT", "2T", "100", "30",
@@ -16791,6 +18138,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "100", "32",
 	"ACMA", "5G", "20M", "HT", "2T", "100", "20",
 	"CHILE", "5G", "20M", "HT", "2T", "100", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "100", "15",
 	"FCC", "5G", "20M", "HT", "2T", "104", "30",
 	"ETSI", "5G", "20M", "HT", "2T", "104", "20",
 	"MKK", "5G", "20M", "HT", "2T", "104", "30",
@@ -16798,6 +18146,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "104", "32",
 	"ACMA", "5G", "20M", "HT", "2T", "104", "20",
 	"CHILE", "5G", "20M", "HT", "2T", "104", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "104", "15",
 	"FCC", "5G", "20M", "HT", "2T", "108", "32",
 	"ETSI", "5G", "20M", "HT", "2T", "108", "20",
 	"MKK", "5G", "20M", "HT", "2T", "108", "30",
@@ -16805,6 +18154,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "108", "32",
 	"ACMA", "5G", "20M", "HT", "2T", "108", "20",
 	"CHILE", "5G", "20M", "HT", "2T", "108", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "108", "15",
 	"FCC", "5G", "20M", "HT", "2T", "112", "32",
 	"ETSI", "5G", "20M", "HT", "2T", "112", "20",
 	"MKK", "5G", "20M", "HT", "2T", "112", "30",
@@ -16812,6 +18162,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "112", "32",
 	"ACMA", "5G", "20M", "HT", "2T", "112", "20",
 	"CHILE", "5G", "20M", "HT", "2T", "112", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "112", "15",
 	"FCC", "5G", "20M", "HT", "2T", "116", "32",
 	"ETSI", "5G", "20M", "HT", "2T", "116", "20",
 	"MKK", "5G", "20M", "HT", "2T", "116", "30",
@@ -16819,6 +18170,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "116", "32",
 	"ACMA", "5G", "20M", "HT", "2T", "116", "20",
 	"CHILE", "5G", "20M", "HT", "2T", "116", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "116", "15",
 	"FCC", "5G", "20M", "HT", "2T", "120", "32",
 	"ETSI", "5G", "20M", "HT", "2T", "120", "20",
 	"MKK", "5G", "20M", "HT", "2T", "120", "30",
@@ -16826,6 +18178,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "120", "32",
 	"ACMA", "5G", "20M", "HT", "2T", "120", "-63",
 	"CHILE", "5G", "20M", "HT", "2T", "120", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "120", "15",
 	"FCC", "5G", "20M", "HT", "2T", "124", "32",
 	"ETSI", "5G", "20M", "HT", "2T", "124", "20",
 	"MKK", "5G", "20M", "HT", "2T", "124", "30",
@@ -16833,6 +18186,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "124", "32",
 	"ACMA", "5G", "20M", "HT", "2T", "124", "-63",
 	"CHILE", "5G", "20M", "HT", "2T", "124", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "124", "15",
 	"FCC", "5G", "20M", "HT", "2T", "128", "32",
 	"ETSI", "5G", "20M", "HT", "2T", "128", "20",
 	"MKK", "5G", "20M", "HT", "2T", "128", "30",
@@ -16840,6 +18194,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "128", "-63",
 	"ACMA", "5G", "20M", "HT", "2T", "128", "-63",
 	"CHILE", "5G", "20M", "HT", "2T", "128", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "128", "15",
 	"FCC", "5G", "20M", "HT", "2T", "132", "32",
 	"ETSI", "5G", "20M", "HT", "2T", "132", "20",
 	"MKK", "5G", "20M", "HT", "2T", "132", "30",
@@ -16847,6 +18202,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "132", "-63",
 	"ACMA", "5G", "20M", "HT", "2T", "132", "20",
 	"CHILE", "5G", "20M", "HT", "2T", "132", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "132", "15",
 	"FCC", "5G", "20M", "HT", "2T", "136", "30",
 	"ETSI", "5G", "20M", "HT", "2T", "136", "20",
 	"MKK", "5G", "20M", "HT", "2T", "136", "30",
@@ -16854,6 +18210,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "136", "-63",
 	"ACMA", "5G", "20M", "HT", "2T", "136", "20",
 	"CHILE", "5G", "20M", "HT", "2T", "136", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "136", "63",
 	"FCC", "5G", "20M", "HT", "2T", "140", "26",
 	"ETSI", "5G", "20M", "HT", "2T", "140", "20",
 	"MKK", "5G", "20M", "HT", "2T", "140", "30",
@@ -16861,6 +18218,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "140", "-63",
 	"ACMA", "5G", "20M", "HT", "2T", "140", "20",
 	"CHILE", "5G", "20M", "HT", "2T", "140", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "140", "63",
 	"FCC", "5G", "20M", "HT", "2T", "144", "26",
 	"ETSI", "5G", "20M", "HT", "2T", "144", "63",
 	"MKK", "5G", "20M", "HT", "2T", "144", "63",
@@ -16868,6 +18226,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "144", "-63",
 	"ACMA", "5G", "20M", "HT", "2T", "144", "-63",
 	"CHILE", "5G", "20M", "HT", "2T", "144", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "144", "63",
 	"FCC", "5G", "20M", "HT", "2T", "149", "32",
 	"ETSI", "5G", "20M", "HT", "2T", "149", "63",
 	"MKK", "5G", "20M", "HT", "2T", "149", "63",
@@ -16875,6 +18234,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "149", "24",
 	"ACMA", "5G", "20M", "HT", "2T", "149", "32",
 	"CHILE", "5G", "20M", "HT", "2T", "149", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "149", "15",
 	"FCC", "5G", "20M", "HT", "2T", "153", "32",
 	"ETSI", "5G", "20M", "HT", "2T", "153", "63",
 	"MKK", "5G", "20M", "HT", "2T", "153", "63",
@@ -16882,6 +18242,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "153", "30",
 	"ACMA", "5G", "20M", "HT", "2T", "153", "32",
 	"CHILE", "5G", "20M", "HT", "2T", "153", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "153", "15",
 	"FCC", "5G", "20M", "HT", "2T", "157", "32",
 	"ETSI", "5G", "20M", "HT", "2T", "157", "63",
 	"MKK", "5G", "20M", "HT", "2T", "157", "63",
@@ -16889,6 +18250,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "157", "30",
 	"ACMA", "5G", "20M", "HT", "2T", "157", "32",
 	"CHILE", "5G", "20M", "HT", "2T", "157", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "157", "15",
 	"FCC", "5G", "20M", "HT", "2T", "161", "32",
 	"ETSI", "5G", "20M", "HT", "2T", "161", "63",
 	"MKK", "5G", "20M", "HT", "2T", "161", "63",
@@ -16896,6 +18258,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "161", "30",
 	"ACMA", "5G", "20M", "HT", "2T", "161", "32",
 	"CHILE", "5G", "20M", "HT", "2T", "161", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "161", "15",
 	"FCC", "5G", "20M", "HT", "2T", "165", "32",
 	"ETSI", "5G", "20M", "HT", "2T", "165", "63",
 	"MKK", "5G", "20M", "HT", "2T", "165", "63",
@@ -16903,6 +18266,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "20M", "HT", "2T", "165", "-63",
 	"ACMA", "5G", "20M", "HT", "2T", "165", "32",
 	"CHILE", "5G", "20M", "HT", "2T", "165", "18",
+	"UKRAINE", "5G", "20M", "HT", "2T", "165", "15",
 	"FCC", "5G", "40M", "HT", "1T", "38", "22",
 	"ETSI", "5G", "40M", "HT", "1T", "38", "30",
 	"MKK", "5G", "40M", "HT", "1T", "38", "30",
@@ -16910,6 +18274,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "1T", "38", "18",
 	"ACMA", "5G", "40M", "HT", "1T", "38", "30",
 	"CHILE", "5G", "40M", "HT", "1T", "38", "22",
+	"UKRAINE", "5G", "40M", "HT", "1T", "38", "27",
 	"FCC", "5G", "40M", "HT", "1T", "46", "30",
 	"ETSI", "5G", "40M", "HT", "1T", "46", "30",
 	"MKK", "5G", "40M", "HT", "1T", "46", "30",
@@ -16917,6 +18282,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "1T", "46", "18",
 	"ACMA", "5G", "40M", "HT", "1T", "46", "30",
 	"CHILE", "5G", "40M", "HT", "1T", "46", "30",
+	"UKRAINE", "5G", "40M", "HT", "1T", "46", "27",
 	"FCC", "5G", "40M", "HT", "1T", "54", "30",
 	"ETSI", "5G", "40M", "HT", "1T", "54", "30",
 	"MKK", "5G", "40M", "HT", "1T", "54", "30",
@@ -16924,6 +18290,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "1T", "54", "16",
 	"ACMA", "5G", "40M", "HT", "1T", "54", "30",
 	"CHILE", "5G", "40M", "HT", "1T", "54", "30",
+	"UKRAINE", "5G", "40M", "HT", "1T", "54", "27",
 	"FCC", "5G", "40M", "HT", "1T", "62", "24",
 	"ETSI", "5G", "40M", "HT", "1T", "62", "30",
 	"MKK", "5G", "40M", "HT", "1T", "62", "30",
@@ -16931,6 +18298,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "1T", "62", "30",
 	"ACMA", "5G", "40M", "HT", "1T", "62", "30",
 	"CHILE", "5G", "40M", "HT", "1T", "62", "22",
+	"UKRAINE", "5G", "40M", "HT", "1T", "62", "27",
 	"FCC", "5G", "40M", "HT", "1T", "102", "24",
 	"ETSI", "5G", "40M", "HT", "1T", "102", "30",
 	"MKK", "5G", "40M", "HT", "1T", "102", "30",
@@ -16938,6 +18306,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "1T", "102", "26",
 	"ACMA", "5G", "40M", "HT", "1T", "102", "30",
 	"CHILE", "5G", "40M", "HT", "1T", "102", "30",
+	"UKRAINE", "5G", "40M", "HT", "1T", "102", "27",
 	"FCC", "5G", "40M", "HT", "1T", "110", "30",
 	"ETSI", "5G", "40M", "HT", "1T", "110", "30",
 	"MKK", "5G", "40M", "HT", "1T", "110", "30",
@@ -16945,6 +18314,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "1T", "110", "30",
 	"ACMA", "5G", "40M", "HT", "1T", "110", "30",
 	"CHILE", "5G", "40M", "HT", "1T", "110", "30",
+	"UKRAINE", "5G", "40M", "HT", "1T", "110", "27",
 	"FCC", "5G", "40M", "HT", "1T", "118", "30",
 	"ETSI", "5G", "40M", "HT", "1T", "118", "30",
 	"MKK", "5G", "40M", "HT", "1T", "118", "30",
@@ -16952,6 +18322,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "1T", "118", "30",
 	"ACMA", "5G", "40M", "HT", "1T", "118", "-63",
 	"CHILE", "5G", "40M", "HT", "1T", "118", "30",
+	"UKRAINE", "5G", "40M", "HT", "1T", "118", "27",
 	"FCC", "5G", "40M", "HT", "1T", "126", "30",
 	"ETSI", "5G", "40M", "HT", "1T", "126", "30",
 	"MKK", "5G", "40M", "HT", "1T", "126", "30",
@@ -16959,6 +18330,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "1T", "126", "-63",
 	"ACMA", "5G", "40M", "HT", "1T", "126", "-63",
 	"CHILE", "5G", "40M", "HT", "1T", "126", "30",
+	"UKRAINE", "5G", "40M", "HT", "1T", "126", "27",
 	"FCC", "5G", "40M", "HT", "1T", "134", "30",
 	"ETSI", "5G", "40M", "HT", "1T", "134", "30",
 	"MKK", "5G", "40M", "HT", "1T", "134", "30",
@@ -16966,6 +18338,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "1T", "134", "-63",
 	"ACMA", "5G", "40M", "HT", "1T", "134", "30",
 	"CHILE", "5G", "40M", "HT", "1T", "134", "30",
+	"UKRAINE", "5G", "40M", "HT", "1T", "134", "63",
 	"FCC", "5G", "40M", "HT", "1T", "142", "30",
 	"ETSI", "5G", "40M", "HT", "1T", "142", "63",
 	"MKK", "5G", "40M", "HT", "1T", "142", "63",
@@ -16973,6 +18346,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "1T", "142", "-63",
 	"ACMA", "5G", "40M", "HT", "1T", "142", "-63",
 	"CHILE", "5G", "40M", "HT", "1T", "142", "30",
+	"UKRAINE", "5G", "40M", "HT", "1T", "142", "63",
 	"FCC", "5G", "40M", "HT", "1T", "151", "30",
 	"ETSI", "5G", "40M", "HT", "1T", "151", "63",
 	"MKK", "5G", "40M", "HT", "1T", "151", "63",
@@ -16980,6 +18354,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "1T", "151", "20",
 	"ACMA", "5G", "40M", "HT", "1T", "151", "30",
 	"CHILE", "5G", "40M", "HT", "1T", "151", "30",
+	"UKRAINE", "5G", "40M", "HT", "1T", "151", "27",
 	"FCC", "5G", "40M", "HT", "1T", "159", "30",
 	"ETSI", "5G", "40M", "HT", "1T", "159", "63",
 	"MKK", "5G", "40M", "HT", "1T", "159", "63",
@@ -16987,6 +18362,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "1T", "159", "24",
 	"ACMA", "5G", "40M", "HT", "1T", "159", "30",
 	"CHILE", "5G", "40M", "HT", "1T", "159", "30",
+	"UKRAINE", "5G", "40M", "HT", "1T", "159", "27",
 	"FCC", "5G", "40M", "HT", "2T", "38", "20",
 	"ETSI", "5G", "40M", "HT", "2T", "38", "20",
 	"MKK", "5G", "40M", "HT", "2T", "38", "22",
@@ -16994,6 +18370,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "2T", "38", "18",
 	"ACMA", "5G", "40M", "HT", "2T", "38", "20",
 	"CHILE", "5G", "40M", "HT", "2T", "38", "18",
+	"UKRAINE", "5G", "40M", "HT", "2T", "38", "15",
 	"FCC", "5G", "40M", "HT", "2T", "46", "30",
 	"ETSI", "5G", "40M", "HT", "2T", "46", "20",
 	"MKK", "5G", "40M", "HT", "2T", "46", "22",
@@ -17001,6 +18378,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "2T", "46", "18",
 	"ACMA", "5G", "40M", "HT", "2T", "46", "20",
 	"CHILE", "5G", "40M", "HT", "2T", "46", "18",
+	"UKRAINE", "5G", "40M", "HT", "2T", "46", "15",
 	"FCC", "5G", "40M", "HT", "2T", "54", "30",
 	"ETSI", "5G", "40M", "HT", "2T", "54", "20",
 	"MKK", "5G", "40M", "HT", "2T", "54", "22",
@@ -17008,6 +18386,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "2T", "54", "16",
 	"ACMA", "5G", "40M", "HT", "2T", "54", "20",
 	"CHILE", "5G", "40M", "HT", "2T", "54", "18",
+	"UKRAINE", "5G", "40M", "HT", "2T", "54", "15",
 	"FCC", "5G", "40M", "HT", "2T", "62", "22",
 	"ETSI", "5G", "40M", "HT", "2T", "62", "20",
 	"MKK", "5G", "40M", "HT", "2T", "62", "22",
@@ -17015,6 +18394,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "2T", "62", "30",
 	"ACMA", "5G", "40M", "HT", "2T", "62", "20",
 	"CHILE", "5G", "40M", "HT", "2T", "62", "18",
+	"UKRAINE", "5G", "40M", "HT", "2T", "62", "15",
 	"FCC", "5G", "40M", "HT", "2T", "102", "22",
 	"ETSI", "5G", "40M", "HT", "2T", "102", "20",
 	"MKK", "5G", "40M", "HT", "2T", "102", "30",
@@ -17022,6 +18402,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "2T", "102", "26",
 	"ACMA", "5G", "40M", "HT", "2T", "102", "20",
 	"CHILE", "5G", "40M", "HT", "2T", "102", "18",
+	"UKRAINE", "5G", "40M", "HT", "2T", "102", "15",
 	"FCC", "5G", "40M", "HT", "2T", "110", "30",
 	"ETSI", "5G", "40M", "HT", "2T", "110", "20",
 	"MKK", "5G", "40M", "HT", "2T", "110", "30",
@@ -17029,6 +18410,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "2T", "110", "30",
 	"ACMA", "5G", "40M", "HT", "2T", "110", "20",
 	"CHILE", "5G", "40M", "HT", "2T", "110", "18",
+	"UKRAINE", "5G", "40M", "HT", "2T", "110", "15",
 	"FCC", "5G", "40M", "HT", "2T", "118", "30",
 	"ETSI", "5G", "40M", "HT", "2T", "118", "20",
 	"MKK", "5G", "40M", "HT", "2T", "118", "30",
@@ -17036,6 +18418,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "2T", "118", "30",
 	"ACMA", "5G", "40M", "HT", "2T", "118", "-63",
 	"CHILE", "5G", "40M", "HT", "2T", "118", "18",
+	"UKRAINE", "5G", "40M", "HT", "2T", "118", "15",
 	"FCC", "5G", "40M", "HT", "2T", "126", "30",
 	"ETSI", "5G", "40M", "HT", "2T", "126", "20",
 	"MKK", "5G", "40M", "HT", "2T", "126", "30",
@@ -17043,6 +18426,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "2T", "126", "-63",
 	"ACMA", "5G", "40M", "HT", "2T", "126", "-63",
 	"CHILE", "5G", "40M", "HT", "2T", "126", "18",
+	"UKRAINE", "5G", "40M", "HT", "2T", "126", "15",
 	"FCC", "5G", "40M", "HT", "2T", "134", "30",
 	"ETSI", "5G", "40M", "HT", "2T", "134", "20",
 	"MKK", "5G", "40M", "HT", "2T", "134", "30",
@@ -17050,6 +18434,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "2T", "134", "-63",
 	"ACMA", "5G", "40M", "HT", "2T", "134", "20",
 	"CHILE", "5G", "40M", "HT", "2T", "134", "18",
+	"UKRAINE", "5G", "40M", "HT", "2T", "134", "63",
 	"FCC", "5G", "40M", "HT", "2T", "142", "30",
 	"ETSI", "5G", "40M", "HT", "2T", "142", "63",
 	"MKK", "5G", "40M", "HT", "2T", "142", "63",
@@ -17057,6 +18442,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "2T", "142", "-63",
 	"ACMA", "5G", "40M", "HT", "2T", "142", "-63",
 	"CHILE", "5G", "40M", "HT", "2T", "142", "18",
+	"UKRAINE", "5G", "40M", "HT", "2T", "142", "63",
 	"FCC", "5G", "40M", "HT", "2T", "151", "30",
 	"ETSI", "5G", "40M", "HT", "2T", "151", "63",
 	"MKK", "5G", "40M", "HT", "2T", "151", "63",
@@ -17064,6 +18450,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "2T", "151", "20",
 	"ACMA", "5G", "40M", "HT", "2T", "151", "30",
 	"CHILE", "5G", "40M", "HT", "2T", "151", "18",
+	"UKRAINE", "5G", "40M", "HT", "2T", "151", "15",
 	"FCC", "5G", "40M", "HT", "2T", "159", "30",
 	"ETSI", "5G", "40M", "HT", "2T", "159", "63",
 	"MKK", "5G", "40M", "HT", "2T", "159", "63",
@@ -17071,6 +18458,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "40M", "HT", "2T", "159", "24",
 	"ACMA", "5G", "40M", "HT", "2T", "159", "30",
 	"CHILE", "5G", "40M", "HT", "2T", "159", "18",
+	"UKRAINE", "5G", "40M", "HT", "2T", "159", "15",
 	"FCC", "5G", "80M", "VHT", "1T", "42", "20",
 	"ETSI", "5G", "80M", "VHT", "1T", "42", "30",
 	"MKK", "5G", "80M", "VHT", "1T", "42", "28",
@@ -17078,6 +18466,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "80M", "VHT", "1T", "42", "14",
 	"ACMA", "5G", "80M", "VHT", "1T", "42", "30",
 	"CHILE", "5G", "80M", "VHT", "1T", "42", "20",
+	"UKRAINE", "5G", "80M", "VHT", "1T", "42", "27",
 	"FCC", "5G", "80M", "VHT", "1T", "58", "20",
 	"ETSI", "5G", "80M", "VHT", "1T", "58", "30",
 	"MKK", "5G", "80M", "VHT", "1T", "58", "28",
@@ -17085,6 +18474,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "80M", "VHT", "1T", "58", "28",
 	"ACMA", "5G", "80M", "VHT", "1T", "58", "30",
 	"CHILE", "5G", "80M", "VHT", "1T", "58", "20",
+	"UKRAINE", "5G", "80M", "VHT", "1T", "58", "27",
 	"FCC", "5G", "80M", "VHT", "1T", "106", "20",
 	"ETSI", "5G", "80M", "VHT", "1T", "106", "30",
 	"MKK", "5G", "80M", "VHT", "1T", "106", "30",
@@ -17092,6 +18482,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "80M", "VHT", "1T", "106", "28",
 	"ACMA", "5G", "80M", "VHT", "1T", "106", "30",
 	"CHILE", "5G", "80M", "VHT", "1T", "106", "30",
+	"UKRAINE", "5G", "80M", "VHT", "1T", "106", "27",
 	"FCC", "5G", "80M", "VHT", "1T", "122", "30",
 	"ETSI", "5G", "80M", "VHT", "1T", "122", "30",
 	"MKK", "5G", "80M", "VHT", "1T", "122", "30",
@@ -17099,6 +18490,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "80M", "VHT", "1T", "122", "28",
 	"ACMA", "5G", "80M", "VHT", "1T", "122", "-63",
 	"CHILE", "5G", "80M", "VHT", "1T", "122", "30",
+	"UKRAINE", "5G", "80M", "VHT", "1T", "122", "27",
 	"FCC", "5G", "80M", "VHT", "1T", "138", "30",
 	"ETSI", "5G", "80M", "VHT", "1T", "138", "63",
 	"MKK", "5G", "80M", "VHT", "1T", "138", "63",
@@ -17106,6 +18498,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "80M", "VHT", "1T", "138", "-63",
 	"ACMA", "5G", "80M", "VHT", "1T", "138", "-63",
 	"CHILE", "5G", "80M", "VHT", "1T", "138", "30",
+	"UKRAINE", "5G", "80M", "VHT", "1T", "138", "63",
 	"FCC", "5G", "80M", "VHT", "1T", "155", "30",
 	"ETSI", "5G", "80M", "VHT", "1T", "155", "63",
 	"MKK", "5G", "80M", "VHT", "1T", "155", "63",
@@ -17113,6 +18506,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "80M", "VHT", "1T", "155", "22",
 	"ACMA", "5G", "80M", "VHT", "1T", "155", "30",
 	"CHILE", "5G", "80M", "VHT", "1T", "155", "30",
+	"UKRAINE", "5G", "80M", "VHT", "1T", "155", "27",
 	"FCC", "5G", "80M", "VHT", "2T", "42", "18",
 	"ETSI", "5G", "80M", "VHT", "2T", "42", "20",
 	"MKK", "5G", "80M", "VHT", "2T", "42", "22",
@@ -17120,6 +18514,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "80M", "VHT", "2T", "42", "14",
 	"ACMA", "5G", "80M", "VHT", "2T", "42", "20",
 	"CHILE", "5G", "80M", "VHT", "2T", "42", "18",
+	"UKRAINE", "5G", "80M", "VHT", "2T", "42", "15",
 	"FCC", "5G", "80M", "VHT", "2T", "58", "18",
 	"ETSI", "5G", "80M", "VHT", "2T", "58", "20",
 	"MKK", "5G", "80M", "VHT", "2T", "58", "22",
@@ -17127,6 +18522,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "80M", "VHT", "2T", "58", "28",
 	"ACMA", "5G", "80M", "VHT", "2T", "58", "20",
 	"CHILE", "5G", "80M", "VHT", "2T", "58", "18",
+	"UKRAINE", "5G", "80M", "VHT", "2T", "58", "15",
 	"FCC", "5G", "80M", "VHT", "2T", "106", "20",
 	"ETSI", "5G", "80M", "VHT", "2T", "106", "20",
 	"MKK", "5G", "80M", "VHT", "2T", "106", "30",
@@ -17134,6 +18530,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "80M", "VHT", "2T", "106", "28",
 	"ACMA", "5G", "80M", "VHT", "2T", "106", "20",
 	"CHILE", "5G", "80M", "VHT", "2T", "106", "18",
+	"UKRAINE", "5G", "80M", "VHT", "2T", "106", "15",
 	"FCC", "5G", "80M", "VHT", "2T", "122", "30",
 	"ETSI", "5G", "80M", "VHT", "2T", "122", "20",
 	"MKK", "5G", "80M", "VHT", "2T", "122", "30",
@@ -17141,6 +18538,7 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "80M", "VHT", "2T", "122", "28",
 	"ACMA", "5G", "80M", "VHT", "2T", "122", "-63",
 	"CHILE", "5G", "80M", "VHT", "2T", "122", "18",
+	"UKRAINE", "5G", "80M", "VHT", "2T", "122", "15",
 	"FCC", "5G", "80M", "VHT", "2T", "138", "30",
 	"ETSI", "5G", "80M", "VHT", "2T", "138", "63",
 	"MKK", "5G", "80M", "VHT", "2T", "138", "63",
@@ -17148,65 +18546,74 @@ const char *array_mp_8822b_txpwr_lmt_type5[] = {
 	"KCC", "5G", "80M", "VHT", "2T", "138", "-63",
 	"ACMA", "5G", "80M", "VHT", "2T", "138", "-63",
 	"CHILE", "5G", "80M", "VHT", "2T", "138", "18",
+	"UKRAINE", "5G", "80M", "VHT", "2T", "138", "63",
 	"FCC", "5G", "80M", "VHT", "2T", "155", "30",
 	"ETSI", "5G", "80M", "VHT", "2T", "155", "63",
 	"MKK", "5G", "80M", "VHT", "2T", "155", "63",
 	"IC", "5G", "80M", "VHT", "2T", "155", "30",
 	"KCC", "5G", "80M", "VHT", "2T", "155", "22",
 	"ACMA", "5G", "80M", "VHT", "2T", "155", "30",
-	"CHILE", "5G", "80M", "VHT", "2T", "155", "18"
+	"CHILE", "5G", "80M", "VHT", "2T", "155", "18",
+	"UKRAINE", "5G", "80M", "VHT", "2T", "155", "15"
 };
+#endif
 
 void
-odm_read_and_config_mp_8822b_txpwr_lmt_type5(
-	struct PHY_DM_STRUCT	*p_dm
-)
+odm_read_and_config_mp_8822b_txpwr_lmt_type5(struct dm_struct *dm)
 {
+#ifdef CONFIG_8822B_TYPE5
+
 	u32	i = 0;
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt_type5)/sizeof(u8);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt_type5) / sizeof(u8);
 	u8	*array = (u8 *)array_mp_8822b_txpwr_lmt_type5;
 #else
-	u32	array_len = sizeof(array_mp_8822b_txpwr_lmt_type5)/sizeof(u8 *);
+	u32	array_len =
+			sizeof(array_mp_8822b_txpwr_lmt_type5) / sizeof(u8 *);
 	u8	**array = (u8 **)array_mp_8822b_txpwr_lmt_type5;
 #endif
 
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-	struct _ADAPTER	*adapter = p_dm->adapter;
-	HAL_DATA_TYPE	*p_hal_data = GET_HAL_DATA(adapter);
+	void	*adapter = dm->adapter;
+	HAL_DATA_TYPE	*hal_data = GET_HAL_DATA(((PADAPTER)adapter));
 
-	PlatformZeroMemory(p_hal_data->BufOfLinesPwrLmt, MAX_LINES_HWCONFIG_TXT*MAX_BYTES_LINE_HWCONFIG_TXT);
-	p_hal_data->nLinesReadPwrLmt = array_len/7;
+	odm_memory_set(dm, hal_data->BufOfLinesPwrLmt, 0,
+		       MAX_LINES_HWCONFIG_TXT *
+		       MAX_BYTES_LINE_HWCONFIG_TXT);
+	hal_data->nLinesReadPwrLmt = array_len / 7;
 #endif
 
-	PHYDM_DBG(p_dm, ODM_COMP_INIT, ("===> odm_read_and_config_mp_8822b_txpwr_lmt_type5\n"));
+	PHYDM_DBG(dm, ODM_COMP_INIT, "===> %s\n", __func__);
 
 	for (i = 0; i < array_len; i += 7) {
 #if (DM_ODM_SUPPORT_TYPE == ODM_IOT)
 		u8	regulation = array[i];
-		u8	band = array[i+1];
-		u8	bandwidth = array[i+2];
-		u8	rate = array[i+3];
-		u8	rf_path = array[i+4];
-		u8	chnl = array[i+5];
-		u8	val = array[i+6];
+		u8	band = array[i + 1];
+		u8	bandwidth = array[i + 2];
+		u8	rate = array[i + 3];
+		u8	rf_path = array[i + 4];
+		u8	chnl = array[i + 5];
+		u8	val = array[i + 6];
 #else
 		u8	*regulation = array[i];
-		u8	*band = array[i+1];
-		u8	*bandwidth = array[i+2];
-		u8	*rate = array[i+3];
-		u8	*rf_path = array[i+4];
-		u8	*chnl = array[i+5];
-		u8	*val = array[i+6];
+		u8	*band = array[i + 1];
+		u8	*bandwidth = array[i + 2];
+		u8	*rate = array[i + 3];
+		u8	*rf_path = array[i + 4];
+		u8	*chnl = array[i + 5];
+		u8	*val = array[i + 6];
 #endif
 
-		odm_config_bb_txpwr_lmt_8822b(p_dm, regulation, band, bandwidth, rate, rf_path, chnl, val);
+		odm_config_bb_txpwr_lmt_8822b(dm, regulation, band, bandwidth,
+					      rate, rf_path, chnl, val);
 #if (DM_ODM_SUPPORT_TYPE == ODM_WIN)
-		rsprintf((char *)p_hal_data->BufOfLinesPwrLmt[i/7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
-		regulation, band, bandwidth, rate, rf_path, chnl, val);
+		rsprintf((char *)hal_data->BufOfLinesPwrLmt[i / 7], 100, "\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\",",
+			 regulation, band, bandwidth, rate, rf_path, chnl, val);
 #endif
 	}
 
+#endif
 }
 
 #endif /* end of HWIMG_SUPPORT*/

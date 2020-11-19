@@ -660,6 +660,8 @@ struct btc_wifi_link_info halbtcoutsrc_getwifilinkinfo(PBTC_COEXIST pBtCoexist)
 		} else if (MLME_IS_AP(iface)) {
 			wifi_link_info.link_mode = BTC_LINK_ONLY_AP;
 			ap_iface = iface;
+			wifi_link_info.p2p_center_channel =
+				rtw_get_center_ch(mlmeext->cur_channel, mlmeext->cur_bwmode, mlmeext->cur_ch_offset);
 		} else if (MLME_IS_STA(iface) && rtw_linked_check(iface)) {
 			wifi_link_info.link_mode = BTC_LINK_ONLY_STA;
 			wifi_link_info.sta_center_channel =
@@ -712,7 +714,8 @@ struct btc_wifi_link_info halbtcoutsrc_getwifilinkinfo(PBTC_COEXIST pBtCoexist)
 			}
 		}
 	} else {
-		RTW_INFO("%s do not support n_assoc_iface > 2", __func__);
+		if (pBtCoexist->board_info.btdm_ant_num == 1)
+			RTW_ERR("%s do not support n_assoc_iface > 2 (ant_num == 1)", __func__);
 	}
 
 	return wifi_link_info;
@@ -2548,6 +2551,10 @@ u32 halbtcoutsrc_GetPhydmVersion(void *pBtcContext)
 #ifdef CONFIG_RTL8821C
 	return RELEASE_VERSION_8821C;
 #endif
+
+#ifdef CONFIG_RTL8192F
+	return RELEASE_VERSION_8192F;
+#endif
 }
 
 u32 halbtcoutsrc_SetAtomic (void *btc_ctx, u32 *target, u32 val)
@@ -2577,7 +2584,7 @@ u32 halbtcoutsrc_phydm_query_PHY_counter(void *pBtcContext, u8 info_type)
 
 /* switch to #if 0 in case the phydm version does not provide the function */
 #if 1
-	return phydm_cmn_info_query((struct PHY_DM_STRUCT *)pBtCoexist->odm_priv, (enum phydm_info_query_e)info_type);
+	return phydm_cmn_info_query((struct dm_struct *)pBtCoexist->odm_priv, (enum phydm_info_query)info_type);
 #else
 	return 0;
 #endif
@@ -2814,7 +2821,7 @@ u8 EXhalbtcoutsrc_InitlizeVariables(void *padapter)
 	pBtCoexist->btc_set_atomic= halbtcoutsrc_SetAtomic;
 	pBtCoexist->btc_phydm_modify_RA_PCR_threshold = halbtcoutsrc_phydm_modify_RA_PCR_threshold;
 	pBtCoexist->btc_phydm_query_PHY_counter = halbtcoutsrc_phydm_query_PHY_counter;
-	pBtCoexist->btc_phydm_modify_ANTDIV_HwSw = halbtcoutsrc_phydm_modify_AntDiv_HwSw;
+	pBtCoexist->btc_phydm_modify_antdiv_hwsw = halbtcoutsrc_phydm_modify_AntDiv_HwSw;
 
 	pBtCoexist->cli_buf = &GLBtcDbgBuf[0];
 
@@ -4523,15 +4530,6 @@ void EXhalbtcoutsrc_DisplayAntDetection(PBTC_COEXIST pBtCoexist)
 			ex_halbtc8723b1ant_display_ant_detection(pBtCoexist);
 #endif
 	}
-
-#ifdef CONFIG_RTL8821C
-	else if (IS_HARDWARE_TYPE_8821C(pBtCoexist->Adapter)) {
-		if (pBtCoexist->board_info.btdm_ant_num == 2)
-			ex_halbtc8821c2ant_display_ant_detection(pBtCoexist);
-		else if (pBtCoexist->board_info.btdm_ant_num == 1)
-			ex_halbtc8821c1ant_display_ant_detection(pBtCoexist);
-	}
-#endif
 
 	halbtcoutsrc_NormalLowPower(pBtCoexist);
 }

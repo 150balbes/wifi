@@ -64,6 +64,7 @@ extern u4Byte GLBtcDbgType[];
 #include "hal_btcoex_wifionly.h"
 
 #ifdef CONFIG_BT_COEXIST
+#define BTC_BTINFO_LENGTH_MAX 10
 
 struct wifi_only_cfg;
 struct btc_coexist;

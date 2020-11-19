@@ -682,7 +682,7 @@ typedef enum _BTC_MULTI_PORT_TDMA_MODE {
 	BTC_MULTI_PORT_TDMA_MODE_2G_HOTSPOT_GO
 } BTC_MULTI_PORT_TDMA_MODE, *PBTC_MULTI_PORT_TDMA_MODE;
 
-typedef struct _BTC_MULTI_PORT_TDMA_INFO {
+typedef struct btc_multi_port_tdma_info {
 	BTC_MULTI_PORT_TDMA_MODE btc_multi_port_tdma_mode;
 	u1Byte start_time_from_bcn;
 	u1Byte bt_time;
@@ -1045,7 +1045,7 @@ struct btc_coexist {
 	BFP_BTC_SET_ATOMIC			btc_set_atomic;
 	BTC_PHYDM_MODIFY_RA_PCR_THRESHLOD	btc_phydm_modify_RA_PCR_threshold;
 	BTC_PHYDM_CMNINFOQUERY				btc_phydm_query_PHY_counter;
-	BTC_PHYDM_MODIFY_ANTDIV_HWSW		btc_phydm_modify_ANTDIV_HwSw;
+	BTC_PHYDM_MODIFY_ANTDIV_HWSW		btc_phydm_modify_antdiv_hwsw;
 	BFP_BTC_GET_ANT_DET_VAL_FROM_BT		btc_get_ant_det_val_from_bt;
 	BFP_BTC_GET_BLE_SCAN_TYPE_FROM_BT	btc_get_ble_scan_type_from_bt;
 	BFP_BTC_GET_BLE_SCAN_PARA_FROM_BT	btc_get_ble_scan_para_from_bt;
@@ -1056,6 +1056,14 @@ struct btc_coexist {
 		struct coex_dm_8822b_1ant	coex_dm_8822b_1ant;
 		struct coex_dm_8822b_2ant	coex_dm_8822b_2ant;
 		#endif /* 8822B */
+		#ifdef CONFIG_RTL8821C
+		struct coex_dm_8821c_1ant	coex_dm_8821c_1ant;
+		struct coex_dm_8821c_2ant	coex_dm_8821c_2ant;
+		#endif /* 8821C */
+        #ifdef CONFIG_RTL8723D
+        struct coex_dm_8723d_1ant   coex_dm_8723d_1ant;
+        struct coex_dm_8723d_2ant   coex_dm_8723d_2ant;
+        #endif /* 8723D */
 	};
 
 	union {
@@ -1063,6 +1071,14 @@ struct btc_coexist {
 		struct coex_sta_8822b_1ant	coex_sta_8822b_1ant;
 		struct coex_sta_8822b_2ant	coex_sta_8822b_2ant;
 		#endif /* 8822B */
+		#ifdef CONFIG_RTL8821C
+		struct coex_sta_8821c_1ant	coex_sta_8821c_1ant;
+		struct coex_sta_8821c_2ant	coex_sta_8821c_2ant;
+		#endif /* 8821C */
+        #ifdef CONFIG_RTL8723D
+        struct coex_sta_8723d_1ant  coex_sta_8723d_1ant;
+        struct coex_sta_8723d_2ant  coex_sta_8723d_2ant;
+        #endif /* 8723D */
 	};
 
 	union {
@@ -1070,6 +1086,10 @@ struct btc_coexist {
 		struct rfe_type_8822b_1ant	rfe_type_8822b_1ant;
 		struct rfe_type_8822b_2ant	rfe_type_8822b_2ant;
 		#endif /* 8822B */
+		#ifdef CONFIG_RTL8821C
+		struct rfe_type_8821c_1ant	rfe_type_8821c_1ant;
+		struct rfe_type_8821c_2ant	rfe_type_8821c_2ant;
+		#endif /* 8821C */
 	};
 
 	union {
@@ -1077,6 +1097,10 @@ struct btc_coexist {
 		struct wifi_link_info_8822b_1ant	wifi_link_info_8822b_1ant;
 		struct wifi_link_info_8822b_2ant	wifi_link_info_8822b_2ant;
 		#endif /* 8822B */
+		#ifdef CONFIG_RTL8821C
+		struct wifi_link_info_8821c_1ant	wifi_link_info_8821c_1ant;
+		struct wifi_link_info_8821c_2ant	wifi_link_info_8821c_2ant;
+		#endif /* 8821C */
 	};
 
 };

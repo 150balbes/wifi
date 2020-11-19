@@ -308,6 +308,7 @@ enum {
 	MP_PWRBYRATE,
 	BT_EFUSE_FILE,
 	MP_SetBT,
+	MP_SWRFPath,
 	MP_NULL,
 #ifdef CONFIG_APPEND_VENDOR_IE_ENABLE
 	VENDOR_IE_SET ,
@@ -351,6 +352,7 @@ struct mp_priv {
 	u32 rx_pktloss;
 	BOOLEAN  rx_bindicatePkt;
 	struct recv_stat rxstat;
+	BOOLEAN brx_filter_beacon;
 
 	/* RF/BB relative */
 	u8 channel;
@@ -374,6 +376,9 @@ struct mp_priv {
 	u8 mp_dm;
 	u8 mac_filter[ETH_ALEN];
 	u8 bmac_filter;
+
+	/* RF PATH Setting for WLG WLA BTG BT */
+	u8 rf_path_cfg;
 
 	struct wlan_network mp_network;
 	NDIS_802_11_MAC_ADDRESS network_macaddr;
@@ -750,6 +755,7 @@ void hal_mpt_SetSingleToneTx(PADAPTER pAdapter, u8 bStart);
 void hal_mpt_SetCarrierSuppressionTx(PADAPTER pAdapter, u8 bStart);
 void mpt_ProSetPMacTx(PADAPTER	Adapter);
 void MP_PHY_SetRFPathSwitch(PADAPTER pAdapter , BOOLEAN bMain);
+void mp_phy_switch_rf_path_set(PADAPTER pAdapter , u8 *pstate);
 u8 MP_PHY_QueryRFPathSwitch(PADAPTER pAdapter);
 ULONG mpt_ProQueryCalTxPower(PADAPTER	pAdapter, u8 RfPath);
 void MPT_PwrCtlDM(PADAPTER padapter, u32 bstart);
@@ -879,6 +885,9 @@ int rtw_mp_phypara(struct net_device *dev,
 int rtw_mp_SetRFPath(struct net_device *dev,
 		struct iw_request_info *info,
 		struct iw_point *wrqu, char *extra);
+int rtw_mp_switch_rf_path(struct net_device *dev,
+			struct iw_request_info *info,
+			struct iw_point *wrqu, char *extra);
 int rtw_mp_QueryDrv(struct net_device *dev,
 		struct iw_request_info *info,
 		union iwreq_data *wrqu, char *extra);
