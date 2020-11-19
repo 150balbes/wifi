@@ -1,167 +1,111 @@
-# Administrative Note
+[![Build Status](https://travis-ci.org/pvaret/rtl8192cu-fixes.svg?branch=master)](https://travis-ci.org/pvaret/rtl8192cu-fixes)
 
-As of upstream version 5.6.1, I'm moving away from individual repositories for each upstream version in favor of a single repository with version-based branches.  Hopefully, this will help with clutter and URL consistency moving forward.  The archived repositories are available here:
-* [rtl88x2BU_WiFi_linux_v5.3.1_27678.20180430_COEX20180427-5959](https://github.com/cilynx/rtl88x2BU_WiFi_linux_v5.3.1_27678.20180430_COEX20180427-5959)
-* [rtl88x2BU_WiFi_linux_v5.2.4.4_26334.20180126_COEX20171012-5044](https://github.com/cilynx/rtl88x2BU_WiFi_linux_v5.2.4.4_26334.20180126_COEX20171012-5044)
-* [rtl88x2BU_WiFi_linux_v5.2.4.4_25643.20171212_COEX20171012-5044](https://github.com/cilynx/rtl88x2BU_WiFi_linux_v5.2.4.4_25643.20171212_COEX20171012-5044)
-* [rtl88x2BU_WiFi_linux_v5.2.4.1_22719_COEX20170518-4444.20170613](https://github.com/cilynx/rtl88x2BU_WiFi_linux_v5.2.4.1_22719_COEX20170518-4444.20170613)
+This is a repackaging of Realtek's own 8192CU USB WiFi driver for Ubuntu 13.10 and later.
 
-# Driver for rtl88x2bu wifi adaptors
+!! This driver is DEPRECATED !!
+===============================
 
-Updated driver for rtl88x2bu wifi adaptors based on Realtek's source distributed with myriad adapters.
+This driver is not explicitly maintained.
 
-Realtek's 5.6.1 source was found bundled with the [Cudy WU1200 AC1200 High Gain USB Wi-Fi Adapter](https://amzn.to/351ADVq) and can be downloaded from [Cudy's website](http://www.cudytech.com/productinfo/517558.html).
+The new `rtl8xxxu` driver initially introduced in kernel 4.4 works mostly well these days, and you should give it a try before trying this repository.
 
-Build confirmed on:
+If `rtl8xxxu` gives you problems, try troubleshooting it first. Known things to look for are:
+  - Make sure to blacklist the older `rtl8192cu` driver, which some distros seem to load by default otherwise.
+  - Some devices require that power management be disabled in NetworkManager. Follow the instructions further down to disable power management in NetworkManager. Typical symptoms would be that the device works fine for a moment, and then becomes very slow or outright drops the connection.
+  - If your device is not detected, make sure that your kernel enables [CONFIG\_RTL8XXXU\_UNTESTED](https://elixir.bootlin.com/linux/latest/source/drivers/net/wireless/realtek/rtl8xxxu/Kconfig#L26)
+  - Be sure to set the options for DMA aggregation and dual-band 2.4 GHz:
 
-```
-Linux 5.6.0-gentoo #1 SMP Tue Mar 31 09:56:02 JST 2020 GenuineIntel GNU/Linux gcc (Gentoo 9.3.0 p1) 9.3.0
-```
-```
-Linux DELL_XPS_UBUNTU_20.04 5.4.0-42-generic #46-Ubuntu SMP Fri Jul 10 00:24:02 UTC 2020 x86_64 x86_64 x86_64 GNU/Linux
-```
-```
-Linux ThinkPad-P52 5.4.0-9-generic #12-Ubuntu SMP Mon Dec 16 22:34:19 UTC 2019 x86_64 x86_64 x86_64 GNU/Linux
-```
-```
-Linux version 5.3.0-050300-generic (kernel@sita) (gcc version 9.2.1 20190909 (Ubuntu 9.2.1-8ubuntu1)) #201909152230 SMP Sun Sep 15 22:32:54 UTC 2019
-```
-```
-Linux version 5.2.0-2-amd64 (debian-kernel@lists.debian.org) (gcc version 8.3.0 (Debian 8.3.0-21)) #1 SMP Debian 5.2.9-2 (2019-08-21)
-```
-```
-Linux version 5.8.0-3-amd64 (debian-kernel@lists.debian.org) (gcc-10 (Debian 10.2.0-13) 10.2.0, GNU ld (GNU Binutils for Debian) 2.35.1) #1 SMP Debian 5.8.14-1 (2020-10-10)
-```
+        echo options rtl8xxxu ht40_2g=1 dma_aggregation=1 | sudo tee /etc/modprobe.d/rtl8xxxu.conf
 
+    then reboot.
 
-## DKMS installation
+In some cases, though, this driver has been known to work fine where `rtl8xxxu` doesn't. If `rtl8xxxu` doesn't work for you even after the troubleshooting steps listed above, follow the instructions below to install this one instead.
 
-```bash
-cd rtl88x2bu
-VER=$(sed -n 's/\PACKAGE_VERSION="\(.*\)"/\1/p' dkms.conf)
-sudo rsync -rvhP ./ /usr/src/rtl88x2bu-${VER}
-sudo dkms add -m rtl88x2bu -v ${VER}
-sudo dkms build -m rtl88x2bu -v ${VER}
-sudo dkms install -m rtl88x2bu -v ${VER}
-sudo modprobe 88x2bu
-```
+Compatibility
+=============
 
-## Raspberry Pi Access Point
+These devices are known to work with this driver:
+- ASUSTek USB-N13 **rev. B1** (0b05:17ab)
+- Belkin N300 (050d:2103)
+- D-Link DWA-121 802.11n Wireless N 150 Pico Adapter [RTL8188CUS]
+- Edimax EW-7811Un (7392:7811)
+- Kootek KT-RPWF (0bda:8176)
+- OurLink 150M 802.11n (0bda:8176)
+- Plugable USB 2.0 Wireless N 802.11n (0bda:8176)
+- TP-Link TL-WN725N (0bda:8176)
+- TP-Link TL-WN821N**v4** (0bda:8178)
+- TP-Link TL-WN822N (0bda:8178)
+- TP-Link TL-WN823N (only models that use the rtl8192cu chip)
+- TRENDnet TEW-648UBM N150
 
-```bash
-# Update all packages per normal
-sudo apt update
-sudo apt upgrade
+These devices are known not to be supported:
+- Alfa AWUS036NHR
+- TP-Link WN8200ND
 
-# Install prereqs
-sudo apt install git dnsmasq hostapd bc build-essential dkms raspberrypi-kernel-headers
+As a rule of thumb, this driver generally works with devices that use the RTL8192CU chipset, and some devices that use the RTL8188CUS, RTL8188CE-VAU and RTL8188RU chipsets too, though it's more hit and miss.
 
-# Reboot just in case there were any kernel updates
-sudo reboot
+Devices that use dual antennas are known not to work well. This appears to be an issue in the upstream Realtek driver.
 
-# Pull down the driver source
-git clone https://github.com/cilynx/rtl88x2bu
-cd rtl88x2bu/
+Installation
+============
 
-# Configure for RasPi
-sed -i 's/I386_PC = y/I386_PC = n/' Makefile
-sed -i 's/ARM_RPI = n/ARM_RPI = y/' Makefile
+Ensure you have the necessary prerequisites installed:
 
-# DKMS as above
-VER=$(sed -n 's/\PACKAGE_VERSION="\(.*\)"/\1/p' dkms.conf)
-sudo rsync -rvhP ./ /usr/src/rtl88x2bu-${VER}
-sudo dkms add -m rtl88x2bu -v ${VER}
-sudo dkms build -m rtl88x2bu -v ${VER} # Takes ~3-minutes on a 3B+
-sudo dkms install -m rtl88x2bu -v ${VER}
+    sudo apt-get update
+    sudo apt-get install git linux-headers-generic build-essential dkms
 
-# Plug in your adapter then confirm your new interface name
-ip addr
+Clone this repository:
 
-# Set a static IP for the new interface (adjust if you have a different interface name or preferred IP)
-sudo tee -a /etc/dhcpcd.conf <<EOF
-interface wlan1
-    static ip_address=192.168.4.1/24
-    nohook wpa_supplicant
-EOF
+    git clone https://github.com/pvaret/rtl8192cu-fixes.git
 
-# Clobber the default dnsmasq config
-sudo tee /etc/dnsmasq.conf <<EOF
-interface=wlan1
-  dhcp-range=192.168.4.100,192.168.4.199,255.255.255.0,24h
-EOF
+Set it up as a DKMS module:
 
-# Configure hostapd
-sudo tee /etc/hostapd/hostapd.conf <<EOF
-interface=wlan1
-driver=nl80211
-ssid=pinet
-hw_mode=g
-channel=7
-wmm_enabled=0
-macaddr_acl=0
-auth_algs=1
-ignore_broadcast_ssid=0
-wpa=2
-wpa_passphrase=CorrectHorseBatteryStaple
-wpa_key_mgmt=WPA-PSK
-wpa_pairwise=TKIP
-rsn_pairwise=CCMP
-EOF
+    sudo dkms add ./rtl8192cu-fixes
 
-sudo sed -i 's|#DAEMON_CONF=""|DAEMON_CONF="/etc/hostapd/hostapd.conf"|' /etc/default/hostapd
+Build and install it:
 
-# Enable hostapd
-sudo systemctl unmask hostapd
-sudo systemctl enable hostapd
+    sudo dkms install 8192cu/1.11
 
-# Reboot to pick up the config changes
-sudo reboot
-```
+Refresh the module list:
 
-If you want 802.11an speeds 144Mbps you could use this config below:
-```
-# Configure hostapd
-sudo tee /etc/hostapd/hostapd.conf <<EOF
-interface=wlx74ee2ae24062
-driver=nl80211
-ssid=borg
+    sudo depmod -a
 
-macaddr_acl=0
-auth_algs=1
-ignore_broadcast_ssid=0
-wpa=2
-wpa_passphrase=toe54321
-wpa_key_mgmt=WPA-PSK
-wpa_pairwise=TKIP
-rsn_pairwise=CCMP
+Ensure the native (and broken) kernel driver is blacklisted:
 
-hw_mode=a
-channel=36
-wmm_enabled=1
+    sudo cp ./rtl8192cu-fixes/blacklist-native-rtl8192.conf /etc/modprobe.d/
 
-country_code=US
+And reboot. You're done.
 
-require_ht=1
-ieee80211ac=1
-require_vht=1
+Other distributions
+===================
 
-#This below is supposed to get us 867Mbps and works on rtl8814au doesn't work on this driver yet
-#vht_oper_chwidth=1
-#vht_oper_centr_freq_seg0_idx=157
+The instructions above should work in every Debian-based distribution. So long as you can install the prerequisites on your own, everything after the line that contains `apt-get` should work in other distributions as well.
 
-ieee80211n=1
-ieee80211ac=1
-EOF
+On Gentoo, you can disregard the instructions above and just install the following ebuild: https://gitweb.gentoo.org/dev/maksbotan.git/tree/sys-kernel/rtl8192cu-fixes/rtl8192cu-fixes-9999.ebuild
 
-$ iwconfig 
-wlx74ee2ae24062  IEEE 802.11an  ESSID:"borg"  Nickname:"<WIFI@REALTEK>"
-          Mode:Master  Frequency:5.18 GHz  Access Point: 74:EE:2A:E2:40:62   
-          Bit Rate:144.4 Mb/s   Sensitivity:0/0  
-          Retry:off   RTS thr:off   Fragment thr:off
-          Power Management:off
-          Link Quality=0/100  Signal level=-100 dBm  Noise level=0 dBm
-          Rx invalid nwid:0  Rx invalid crypt:0  Rx invalid frag:0
-          Tx excessive retries:0  Invalid misc:0   Missed beacon:0
+Troubleshooting
+===============
 
-```
-If you want to setup masquerading or bridging, check out [the official Raspberry Pi docs](https://www.raspberrypi.org/documentation/configuration/wireless/access-point.md).
+There is a known issue with power management on some hardware. If your WiFi connection drops after a few minutes, install the following module setting file to disable power management in your WiFi interface:
+
+    sudo cp ./rtl8192cu-fixes/8192cu-disable-power-management.conf /etc/modprobe.d/
+
+And then reboot.
+
+Sometimes Network Manager also sets a device in a power-saving mode where it doesn't use enough power to connect. You can fix it by editing `/etc/NetworkManager/conf.d/default-wifi-powersave-on.conf` and setting `wifi.powersave` to 2. And then reboot.
+
+Current status
+==============
+
+As it currently stands, the driver doesn't populate /proc with informational data from the driver. The API for /proc has changed in recent kernels, and the driver has not been ported to the new API.
+
+Credits
+=======
+
+This repository was initially based on Timothy Phillips's work as published here: https://code.google.com/p/realtek-8188cus-wireless-drivers-3444749-ubuntu-1304/, though no longer.
+
+Thanks go to Saqib Razaq (@s-razaq) for the power management workaround.
+
+Thanks to @CGarces for the Travis configuration.
+
+Thanks to @rburcham for the kernel 4.15 fixes.

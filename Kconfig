@@ -1,6 +1,5 @@
-config RTL8822BU
-	tristate "Realtek 8822B USB WiFi"
+config RTL8192CU
+	tristate "Realtek 8192C USB WiFi"
 	depends on USB
 	help
-	  RTL88X2BU driver updated for current kernels.
-
+	  Help message of RTL8192CU
