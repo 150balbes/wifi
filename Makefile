@@ -81,7 +81,7 @@ CONFIG_RTW_IPCAM_APPLICATION = n
 CONFIG_RTW_REPEATER_SON = n
 CONFIG_RTW_WIFI_HAL = n
 ########################## Debug ###########################
-CONFIG_RTW_DEBUG = y
+CONFIG_RTW_DEBUG = n
 # default log level is _DRV_INFO_ = 4,
 # please refer to "How_to_set_driver_debug_log_level.doc" to set the available level.
 CONFIG_RTW_LOG_LEVEL = 3
@@ -99,7 +99,7 @@ CONFIG_AP_WOWLAN = n
 ######### Notify SDIO Host Keep Power During Syspend ##########
 CONFIG_RTW_SDIO_PM_KEEP_POWER = y
 ###################### MP HW TX MODE FOR VHT #######################
-CONFIG_MP_VHT_HW_TX_MODE = y
+CONFIG_MP_VHT_HW_TX_MODE = n
 ###################### Platform Related #######################
 CONFIG_PLATFORM_I386_PC = y
 CONFIG_PLATFORM_ARM_RPI = n
@@ -527,7 +527,7 @@ endif
 ifeq ($(CONFIG_RTL8814A), y)
 ## ADD NEW VHT MP HW TX MODE ##
 #EXTRA_CFLAGS += -DCONFIG_MP_VHT_HW_TX_MODE
-#CONFIG_MP_VHT_HW_TX_MODE = y
+#CONFIG_MP_VHT_HW_TX_MODE = n
 ##########################################
 RTL871X = rtl8814a
 ifeq ($(CONFIG_USB_HCI), y)
@@ -1171,13 +1171,6 @@ endif
 
 ifeq ($(CONFIG_MP_VHT_HW_TX_MODE), y)
 EXTRA_CFLAGS += -DCONFIG_MP_VHT_HW_TX_MODE
-ifeq ($(CONFIG_PLATFORM_I386_PC), y)
-## For I386 X86 ToolChain use Hardware FLOATING
-EXTRA_CFLAGS += -mhard-float
-else
-## For ARM ToolChain use Hardware FLOATING
-EXTRA_CFLAGS += -mfloat-abi=hard
-endif
 endif
 
 ####START RASPBERRY PI SUPPORT
@@ -2104,6 +2097,14 @@ USER_MODULE_NAME := 8822bs
 endif
 endif
 
+endif
+
+ifeq ($(ARCH), i386)
+EXTRA_CFLAGS += -mhard-float
+else ifeq ($(ARCH), x86_64)
+EXTRA_CFLAGS += -mhard-float
+else ifeq ($(ARCH), arm)
+EXTRA_CFLAGS += -mfloat-abi=hard
 endif
 
 ifeq ($(CONFIG_MULTIDRV), y)
