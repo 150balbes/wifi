@@ -25,7 +25,7 @@ CONFIG_WAKEUP_TYPE = 0x7 #bit2: deauth, bit1: unicast, bit0: magic pkt.
 
 CONFIG_DRVEXT_MODULE = n
 
-export TopDIR ?= $(shell pwd)
+export TopDIR ?= $(src)
 
 ########### COMMON  #################################
 HCI_NAME = usb
@@ -134,7 +134,7 @@ EXTRA_CFLAGS += -DRTW_LOG_LEVEL=$(CONFIG_RTW_LOG_LEVEL)
 
 EXTRA_CFLAGS += -DDM_ODM_SUPPORT_TYPE=0x04
 
-SUBARCH := $(shell uname -m | sed -e s/i.86/i386/ | sed -e s/ppc/powerpc/ | sed -e s/armv.l/arm/)
+SUBARCH := $(shell uname -m | sed -e s/i.86/i386/)
 ARCH ?= $(SUBARCH)
 CROSS_COMPILE ?=
 KVER  := $(shell uname -r)
