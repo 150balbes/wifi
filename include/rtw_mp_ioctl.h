@@ -1,158 +1,193 @@
-/* SPDX-License-Identifier: GPL-2.0 */
-/* Copyright(c) 2007 - 2017 Realtek Corporation */
-
+/******************************************************************************
+ *
+ * Copyright(c) 2007 - 2017 Realtek Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ *****************************************************************************/
 #ifndef _RTW_MP_IOCTL_H_
 #define _RTW_MP_IOCTL_H_
 
 #include <mp_custom_oid.h>
 #include <rtw_mp.h>
 
+#if 0
+#define TESTFWCMDNUMBER			1000000
+#define TEST_H2CINT_WAIT_TIME		500
+#define TEST_C2HINT_WAIT_TIME		500
+#define HCI_TEST_SYSCFG_HWMASK		1
+#define _BUSCLK_40M			(4 << 2)
+#endif
 /* ------------------------------------------------------------------------------ */
-struct cfg_dbg_msg_struct {
+typedef struct CFG_DBG_MSG_STRUCT {
 	u32 DebugLevel;
 	u32 DebugComponent_H32;
 	u32 DebugComponent_L32;
-};
+} CFG_DBG_MSG_STRUCT, *PCFG_DBG_MSG_STRUCT;
 
-struct mp_rw_reg {
+typedef struct _RW_REG {
 	u32 offset;
 	u32 width;
 	u32 value;
-};
+} mp_rw_reg, RW_Reg, *pRW_Reg;
 
 /* for OID_RT_PRO_READ16_EEPROM & OID_RT_PRO_WRITE16_EEPROM */
-struct eeprom_rw_param {
+typedef struct _EEPROM_RW_PARAM {
 	u32 offset;
 	u16 value;
-};
+} eeprom_rw_param, EEPROM_RWParam, *pEEPROM_RWParam;
 
-struct efuse_access_struct {
+typedef struct _EFUSE_ACCESS_STRUCT_ {
 	u16	start_addr;
 	u16	cnts;
 	u8	data[0];
-};
+} EFUSE_ACCESS_STRUCT, *PEFUSE_ACCESS_STRUCT;
 
-struct burst_rw_reg {
+typedef struct _BURST_RW_REG {
 	u32 offset;
 	u32 len;
 	u8 Data[256];
-};
+} burst_rw_reg, Burst_RW_Reg, *pBurst_RW_Reg;
 
-struct usb_vendor_req {
+typedef struct _USB_VendorReq {
 	u8	bRequest;
 	u16	wValue;
 	u16	wIndex;
 	u16	wLength;
-	u8	u8Dir;
+	u8	u8Dir;/* 0:OUT, 1:IN */
 	u8	u8InData;
-};
+} usb_vendor_req, USB_VendorReq, *pUSB_VendorReq;
 
-struct dr_variable_struct {
+typedef struct _DR_VARIABLE_STRUCT_ {
 	u8 offset;
 	u32 variable;
-};
+} DR_VARIABLE_STRUCT;
 
-/* int mp_start_joinbss(struct adapter *adapt, struct ndis_802_11_ssid *pssid); */
+/* int mp_start_joinbss(_adapter *padapter, NDIS_802_11_SSID *pssid); */
 
-/* void _irqlevel_changed_(unsigned long *irqlevel, boolunsigned char bLower); */
+/* void _irqlevel_changed_(_irqL *irqlevel, BOOLEANunsigned char bLower); */
+#ifdef PLATFORM_OS_XP
+static void _irqlevel_changed_(_irqL *irqlevel, u8 bLower)
+{
+
+	if (bLower == LOWER) {
+		*irqlevel = KeGetCurrentIrql();
+
+		if (*irqlevel > PASSIVE_LEVEL)
+			KeLowerIrql(PASSIVE_LEVEL);
+	} else {
+		if (KeGetCurrentIrql() == PASSIVE_LEVEL)
+			KeRaiseIrql(DISPATCH_LEVEL, irqlevel);
+	}
+
+}
+#else
 #define _irqlevel_changed_(a, b)
+#endif
 
 /* oid_rtl_seg_81_80_00 */
-uint oid_rt_pro_set_data_rate_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_start_test_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_stop_test_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_set_channel_direct_call_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_set_antenna_bb_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_set_tx_power_control_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_set_data_rate_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_start_test_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_stop_test_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_set_channel_direct_call_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_set_antenna_bb_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_set_tx_power_control_hdl(struct oid_par_priv *poid_par_priv);
 /* oid_rtl_seg_81_80_20 */
-uint oid_rt_pro_query_tx_packet_sent_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_query_rx_packet_received_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_query_rx_packet_crc32_error_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_query_tx_packet_sent_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_query_rx_packet_received_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_query_rx_packet_crc32_error_hdl(struct oid_par_priv *poid_par_priv);
 
-uint oid_rt_pro_reset_tx_packet_sent_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_reset_rx_packet_received_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_set_modulation_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_reset_tx_packet_sent_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_reset_rx_packet_received_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_set_modulation_hdl(struct oid_par_priv *poid_par_priv);
 
-uint oid_rt_pro_set_continuous_tx_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_set_single_carrier_tx_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_set_carrier_suppression_tx_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_set_single_tone_tx_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_set_continuous_tx_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_set_single_carrier_tx_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_set_carrier_suppression_tx_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_set_single_tone_tx_hdl(struct oid_par_priv *poid_par_priv);
 
 
 /* oid_rtl_seg_81_87 */
-uint oid_rt_pro_write_bb_reg_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_read_bb_reg_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_write_bb_reg_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_read_bb_reg_hdl(struct oid_par_priv *poid_par_priv);
 
-uint oid_rt_pro_write_rf_reg_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_read_rf_reg_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_write_rf_reg_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_read_rf_reg_hdl(struct oid_par_priv *poid_par_priv);
 
 
 /* oid_rtl_seg_81_85 */
-uint oid_rt_wireless_mode_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_wireless_mode_hdl(struct oid_par_priv *poid_par_priv);
 
 
 /* oid_rtl_seg_87_11_00 */
-uint oid_rt_pro8711_join_bss_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_read_register_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_write_register_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_burst_read_register_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_burst_write_register_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_write_txcmd_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_read16_eeprom_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_write16_eeprom_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro8711_wi_poll_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro8711_pkt_loss_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_rd_attrib_mem_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_wr_attrib_mem_hdl(struct oid_par_priv *poid_par_priv);
-uint  oid_rt_pro_set_rf_intfs_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_poll_rx_status_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro8711_join_bss_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_read_register_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_write_register_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_burst_read_register_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_burst_write_register_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_write_txcmd_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_read16_eeprom_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_write16_eeprom_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro8711_wi_poll_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro8711_pkt_loss_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_rd_attrib_mem_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_wr_attrib_mem_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS  oid_rt_pro_set_rf_intfs_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_poll_rx_status_hdl(struct oid_par_priv *poid_par_priv);
 /* oid_rtl_seg_87_11_20 */
-uint oid_rt_pro_cfg_debug_message_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_set_data_rate_ex_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_set_basic_rate_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_read_tssi_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_set_power_tracking_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_cfg_debug_message_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_set_data_rate_ex_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_set_basic_rate_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_read_tssi_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_set_power_tracking_hdl(struct oid_par_priv *poid_par_priv);
 /* oid_rtl_seg_87_11_50 */
-uint oid_rt_pro_qry_pwrstate_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_set_pwrstate_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_qry_pwrstate_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_set_pwrstate_hdl(struct oid_par_priv *poid_par_priv);
 /* oid_rtl_seg_87_11_F0 */
-uint oid_rt_pro_h2c_set_rate_table_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_h2c_get_rate_table_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_h2c_set_rate_table_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_h2c_get_rate_table_hdl(struct oid_par_priv *poid_par_priv);
 
 
 /* oid_rtl_seg_87_12_00 */
-uint oid_rt_pro_encryption_ctrl_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_add_sta_info_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_dele_sta_info_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_query_dr_variable_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_rx_packet_type_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_encryption_ctrl_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_add_sta_info_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_dele_sta_info_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_query_dr_variable_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_rx_packet_type_hdl(struct oid_par_priv *poid_par_priv);
 
-uint oid_rt_pro_read_efuse_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_write_efuse_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_rw_efuse_pgpkt_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_get_efuse_current_size_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_efuse_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_efuse_map_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_read_efuse_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_write_efuse_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_rw_efuse_pgpkt_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_get_efuse_current_size_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_efuse_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_efuse_map_hdl(struct oid_par_priv *poid_par_priv);
 
-uint oid_rt_set_bandwidth_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_set_crystal_cap_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_set_rx_packet_type_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_get_efuse_max_size_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_pro_set_tx_agc_offset_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_set_bandwidth_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_set_crystal_cap_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_set_rx_packet_type_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_get_efuse_max_size_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_set_tx_agc_offset_hdl(struct oid_par_priv *poid_par_priv);
 
-uint oid_rt_pro_set_pkt_test_mode_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_set_pkt_test_mode_hdl(struct oid_par_priv *poid_par_priv);
 
-uint oid_rt_get_thermal_meter_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_get_thermal_meter_hdl(struct oid_par_priv *poid_par_priv);
 
-uint oid_rt_reset_phy_rx_packet_count_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_get_phy_rx_packet_received_hdl(struct oid_par_priv *poid_par_priv);
-uint oid_rt_get_phy_rx_packet_crc32_error_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_reset_phy_rx_packet_count_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_get_phy_rx_packet_received_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_get_phy_rx_packet_crc32_error_hdl(struct oid_par_priv *poid_par_priv);
 
-uint oid_rt_set_power_down_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_set_power_down_hdl(struct oid_par_priv *poid_par_priv);
 
-uint oid_rt_get_power_mode_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_get_power_mode_hdl(struct oid_par_priv *poid_par_priv);
 
-uint oid_rt_pro_trigger_gpio_hdl(struct oid_par_priv *poid_par_priv);
+NDIS_STATUS oid_rt_pro_trigger_gpio_hdl(struct oid_par_priv *poid_par_priv);
 
 #ifdef _RTW_MP_IOCTL_C_
 
@@ -394,13 +429,13 @@ struct rfintfs_parm {
 	u32 rfintfs;
 };
 
-struct mp_xmit_parm {
+typedef struct _mp_xmit_parm_ {
 	u8 enable;
 	u32 count;
 	u16 length;
 	u8 payload_type;
 	u8 da[ETH_ALEN];
-};
+} MP_XMIT_PARM, *PMP_XMIT_PARM;
 
 struct mp_xmit_packet {
 	u32 len;
@@ -410,6 +445,12 @@ struct mp_xmit_packet {
 struct psmode_param {
 	u32 ps_mode;
 	u32 smart_ps;
+};
+
+/* for OID_RT_PRO_READ16_EEPROM & OID_RT_PRO_WRITE16_EEPROM */
+struct eeprom_rw_param {
+	u32 offset;
+	u16 value;
 };
 
 struct mp_ioctl_handler {
@@ -506,7 +547,7 @@ struct mp_ioctl_handler mp_ioctl_hdl[] = {
 
 	GEN_MP_IOCTL_HANDLER(sizeof(struct eeprom_rw_param), NULL, 0)
 	GEN_MP_IOCTL_HANDLER(sizeof(struct eeprom_rw_param), NULL, 0)
-	GEN_MP_IOCTL_HANDLER(sizeof(struct efuse_access_struct), oid_rt_pro_efuse_hdl, OID_RT_PRO_EFUSE)
+	GEN_MP_IOCTL_HANDLER(sizeof(EFUSE_ACCESS_STRUCT), oid_rt_pro_efuse_hdl, OID_RT_PRO_EFUSE)
 	/*25*/	GEN_MP_IOCTL_HANDLER(0, oid_rt_pro_efuse_map_hdl, OID_RT_PRO_EFUSE_MAP)
 	GEN_MP_IOCTL_HANDLER(sizeof(u32), oid_rt_get_efuse_max_size_hdl, OID_RT_GET_EFUSE_MAX_SIZE)
 	GEN_MP_IOCTL_HANDLER(sizeof(u32), oid_rt_get_efuse_current_size_hdl, OID_RT_GET_EFUSE_CURRENT_SIZE)

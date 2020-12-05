@@ -1,10 +1,20 @@
-// SPDX-License-Identifier: GPL-2.0
-/* Copyright(c) 2007 - 2017 Realtek Corporation */
-
+/******************************************************************************
+ *
+ * Copyright(c) 2007 - 2017 Realtek Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ *****************************************************************************/
 #define  _RTW_SECURITY_C_
 
 #include <drv_types.h>
-#include <rtw_security.h>
 
 static const char *_security_type_str[] = {
 	"N/A",
@@ -29,6 +39,7 @@ const char *security_type_str(u8 value)
 	return NULL;
 }
 
+#ifdef DBG_SW_SEC_CNT
 #define WEP_SW_ENC_CNT_INC(sec, ra) do {\
 	if (is_broadcast_mac_addr(ra)) \
 		sec->wep_sw_enc_cnt_bc++; \
@@ -82,6 +93,15 @@ const char *security_type_str(u8 value)
 	else \
 		sec->aes_sw_dec_cnt_uc++; \
 	} while (0)
+#else
+#define WEP_SW_ENC_CNT_INC(sec, ra)
+#define WEP_SW_DEC_CNT_INC(sec, ra)
+#define TKIP_SW_ENC_CNT_INC(sec, ra)
+#define TKIP_SW_DEC_CNT_INC(sec, ra)
+#define AES_SW_ENC_CNT_INC(sec, ra)
+#define AES_SW_DEC_CNT_INC(sec, ra)
+#endif /* DBG_SW_SEC_CNT */
+
 /* *****WEP related***** */
 
 #define CRC32_POLY 0x04c11db7
@@ -146,7 +166,7 @@ static void arcfour_encrypt(struct arc4context	*parc4ctx,
 		dest[i] = src[i] ^ (unsigned char)arcfour_byte(parc4ctx);
 }
 
-static int bcrc32initialized = 0;
+static sint bcrc32initialized = 0;
 static u32 crc32_table[256];
 
 
@@ -161,7 +181,7 @@ static void crc32_init(void)
 	if (bcrc32initialized == 1)
 		goto exit;
 	else {
-		int i, j;
+		sint i, j;
 		u32 c;
 		u8 *p = (u8 *)&c, *p1;
 		u8 k;
@@ -185,7 +205,7 @@ exit:
 	return;
 }
 
-static __le32 getcrc32(u8 *buf, int len)
+static u32 getcrc32(u8 *buf, sint len)
 {
 	u8 *p;
 	u32  crc;
@@ -196,34 +216,45 @@ static __le32 getcrc32(u8 *buf, int len)
 
 	for (p = buf; len > 0; ++p, --len)
 		crc = crc32_table[(crc ^ *p) & 0xff] ^ (crc >> 8);
-	return cpu_to_le32(~crc);    /* transmit complement, per CRC-32 spec */
+	return ~crc;    /* transmit complement, per CRC-32 spec */
 }
 
 
 /*
 	Need to consider the fragment  situation
 */
-void rtw_wep_encrypt(struct adapter *adapt, u8 *pxmitframe)
+void rtw_wep_encrypt(_adapter *padapter, u8 *pxmitframe)
 {
 	/* exclude ICV */
 
 	unsigned char	crc[4];
 	struct arc4context	 mycontext;
 
-	int	curfragnum, length;
+	sint	curfragnum, length;
 	u32	keylength;
 
 	u8	*pframe, *payload, *iv;   /* ,*wepkey */
 	u8	wepkey[16];
 	u8   hw_hdr_offset = 0;
 	struct	pkt_attrib	*pattrib = &((struct xmit_frame *)pxmitframe)->attrib;
-	struct	security_priv	*psecuritypriv = &adapt->securitypriv;
-	struct	xmit_priv		*pxmitpriv = &adapt->xmitpriv;
+	struct	security_priv	*psecuritypriv = &padapter->securitypriv;
+	struct	xmit_priv		*pxmitpriv = &padapter->xmitpriv;
 
-	if (!((struct xmit_frame *)pxmitframe)->buf_addr)
+
+
+	if (((struct xmit_frame *)pxmitframe)->buf_addr == NULL)
 		return;
 
+#ifdef CONFIG_USB_TX_AGGREGATION
+	hw_hdr_offset = TXDESC_SIZE +
+		(((struct xmit_frame *)pxmitframe)->pkt_offset * PACKET_OFFSET_SZ);
+#else
+#ifdef CONFIG_TX_EARLY_MODE
+	hw_hdr_offset = TXDESC_OFFSET + EARLY_MODE_INFO_SIZE;
+#else
 	hw_hdr_offset = TXDESC_OFFSET;
+#endif
+#endif
 
 	pframe = ((struct xmit_frame *)pxmitframe)->buf_addr + hw_hdr_offset;
 
@@ -233,8 +264,8 @@ void rtw_wep_encrypt(struct adapter *adapt, u8 *pxmitframe)
 
 		for (curfragnum = 0; curfragnum < pattrib->nr_frags; curfragnum++) {
 			iv = pframe + pattrib->hdrlen;
-			memcpy(&wepkey[0], iv, 3);
-			memcpy(&wepkey[3], &psecuritypriv->dot11DefKey[psecuritypriv->dot11PrivacyKeyIndex].skey[0], keylength);
+			_rtw_memcpy(&wepkey[0], iv, 3);
+			_rtw_memcpy(&wepkey[3], &psecuritypriv->dot11DefKey[psecuritypriv->dot11PrivacyKeyIndex].skey[0], keylength);
 			payload = pframe + pattrib->iv_len + pattrib->hdrlen;
 
 			if ((curfragnum + 1) == pattrib->nr_frags) {
@@ -242,7 +273,7 @@ void rtw_wep_encrypt(struct adapter *adapt, u8 *pxmitframe)
 
 				length = pattrib->last_txcmdsz - pattrib->hdrlen - pattrib->iv_len - pattrib->icv_len;
 
-				*((__le32 *)crc) = getcrc32(payload, length);
+				*((u32 *)crc) = cpu_to_le32(getcrc32(payload, length));
 
 				arcfour_init(&mycontext, wepkey, 3 + keylength);
 				arcfour_encrypt(&mycontext, payload, payload, length);
@@ -250,7 +281,7 @@ void rtw_wep_encrypt(struct adapter *adapt, u8 *pxmitframe)
 
 			} else {
 				length = pxmitpriv->frag_len - pattrib->hdrlen - pattrib->iv_len - pattrib->icv_len ;
-				*((__le32 *)crc) = getcrc32(payload, length);
+				*((u32 *)crc) = cpu_to_le32(getcrc32(payload, length));
 				arcfour_init(&mycontext, wepkey, 3 + keylength);
 				arcfour_encrypt(&mycontext, payload, payload, length);
 				arcfour_encrypt(&mycontext, payload + length, crc, 4);
@@ -268,17 +299,17 @@ void rtw_wep_encrypt(struct adapter *adapt, u8 *pxmitframe)
 
 }
 
-void rtw_wep_decrypt(struct adapter  *adapt, u8 *precvframe)
+void rtw_wep_decrypt(_adapter  *padapter, u8 *precvframe)
 {
 	/* exclude ICV */
 	u8	crc[4];
 	struct arc4context	 mycontext;
-	int	length;
+	sint	length;
 	u32	keylength;
 	u8	*pframe, *payload, *iv, wepkey[16];
 	u8	 keyindex;
 	struct	rx_pkt_attrib	*prxattrib = &(((union recv_frame *)precvframe)->u.hdr.attrib);
-	struct	security_priv	*psecuritypriv = &adapt->securitypriv;
+	struct	security_priv	*psecuritypriv = &padapter->securitypriv;
 
 
 	pframe = (unsigned char *)((union recv_frame *)precvframe)->u.hdr.rx_data;
@@ -289,9 +320,9 @@ void rtw_wep_decrypt(struct adapter  *adapt, u8 *precvframe)
 		/* keyindex=(iv[3]&0x3); */
 		keyindex = prxattrib->key_index;
 		keylength = psecuritypriv->dot11DefKeylen[keyindex];
-		memcpy(&wepkey[0], iv, 3);
-		/* memcpy(&wepkey[3], &psecuritypriv->dot11DefKey[psecuritypriv->dot11PrivacyKeyIndex].skey[0],keylength); */
-		memcpy(&wepkey[3], &psecuritypriv->dot11DefKey[keyindex].skey[0], keylength);
+		_rtw_memcpy(&wepkey[0], iv, 3);
+		/* _rtw_memcpy(&wepkey[3], &psecuritypriv->dot11DefKey[psecuritypriv->dot11PrivacyKeyIndex].skey[0],keylength); */
+		_rtw_memcpy(&wepkey[3], &psecuritypriv->dot11DefKey[keyindex].skey[0], keylength);
 		length = ((union recv_frame *)precvframe)->u.hdr.len - prxattrib->hdrlen - prxattrib->iv_len;
 
 		payload = pframe + prxattrib->iv_len + prxattrib->hdrlen;
@@ -301,7 +332,7 @@ void rtw_wep_decrypt(struct adapter  *adapt, u8 *precvframe)
 		arcfour_encrypt(&mycontext, payload, payload,  length);
 
 		/* calculate icv and compare the icv */
-		*((__le32 *)crc) = getcrc32(payload, length - 4);
+		*((u32 *)crc) = le32_to_cpu(getcrc32(payload, length - 4));
 
 
 		WEP_SW_DEC_CNT_INC(psecuritypriv, prxattrib->ra);
@@ -315,9 +346,9 @@ void rtw_wep_decrypt(struct adapter  *adapt, u8 *precvframe)
 /* 3		=====TKIP related===== */
 
 static u32 secmicgetuint32(u8 *p)
-/* Convert from Byte[] to u32 in a portable way */
+/* Convert from Byte[] to Us4Byte32 in a portable way */
 {
-	int i;
+	s32 i;
 	u32 res = 0;
 	for (i = 0; i < 4; i++)
 		res |= ((u32)(*p++)) << (8 * i);
@@ -325,7 +356,7 @@ static u32 secmicgetuint32(u8 *p)
 }
 
 static void secmicputuint32(u8 *p, u32 val)
-/* Convert from u32 to Byte[] in a portable way */
+/* Convert from Us4Byte32 to Byte[] in a portable way */
 {
 	long i;
 	for (i = 0; i < 4; i++) {
@@ -551,7 +582,7 @@ static const unsigned short Sbox1[2][256] =      /* Sbox for hash (can be in ROM
 */
 static void phase1(u16 *p1k, const u8 *tk, const u8 *ta, u32 iv32)
 {
-	int  i;
+	sint  i;
 	/* Initialize the 80 bits of P1K[] from IV32 and TA[0..5]    */
 	p1k[0]      = Lo16(iv32);
 	p1k[1]      = Hi16(iv32);
@@ -598,7 +629,7 @@ static void phase1(u16 *p1k, const u8 *tk, const u8 *ta, u32 iv32)
 */
 static void phase2(u8 *rc4key, const u8 *tk, const u16 *p1k, u16 iv16)
 {
-	int  i;
+	sint  i;
 	u16 PPK[6];                          /* temporary key for mixing   */
 	/* Note: all adds in the PPK[] equations below are mod 2**16        */
 	for (i = 0; i < 5; i++)
@@ -641,7 +672,7 @@ static void phase2(u8 *rc4key, const u8 *tk, const u16 *p1k, u16 iv16)
 
 
 /* The hlen isn't include the IV */
-u32	rtw_tkip_encrypt(struct adapter *adapt, u8 *pxmitframe)
+u32	rtw_tkip_encrypt(_adapter *padapter, u8 *pxmitframe)
 {
 	/* exclude ICV */
 	u16	pnl;
@@ -651,21 +682,30 @@ u32	rtw_tkip_encrypt(struct adapter *adapt, u8 *pxmitframe)
 	u8	crc[4];
 	u8   hw_hdr_offset = 0;
 	struct arc4context mycontext;
-	int			curfragnum, length;
+	sint			curfragnum, length;
 	u32	prwskeylen;
 
 	u8	*pframe, *payload, *iv, *prwskey;
 	union pn48 dot11txpn;
 	/* struct	sta_info		*stainfo; */
 	struct	pkt_attrib	*pattrib = &((struct xmit_frame *)pxmitframe)->attrib;
-	struct	security_priv	*psecuritypriv = &adapt->securitypriv;
-	struct	xmit_priv		*pxmitpriv = &adapt->xmitpriv;
+	struct	security_priv	*psecuritypriv = &padapter->securitypriv;
+	struct	xmit_priv		*pxmitpriv = &padapter->xmitpriv;
 	u32	res = _SUCCESS;
 
-	if (!((struct xmit_frame *)pxmitframe)->buf_addr)
+	if (((struct xmit_frame *)pxmitframe)->buf_addr == NULL)
 		return _FAIL;
 
+#ifdef CONFIG_USB_TX_AGGREGATION
+	hw_hdr_offset = TXDESC_SIZE +
+		(((struct xmit_frame *)pxmitframe)->pkt_offset * PACKET_OFFSET_SZ);
+#else
+#ifdef CONFIG_TX_EARLY_MODE
+	hw_hdr_offset = TXDESC_OFFSET + EARLY_MODE_INFO_SIZE;
+#else
 	hw_hdr_offset = TXDESC_OFFSET;
+#endif
+#endif
 
 	pframe = ((struct xmit_frame *)pxmitframe)->buf_addr + hw_hdr_offset;
 	/* 4 start to encrypt each fragment */
@@ -679,7 +719,7 @@ u32	rtw_tkip_encrypt(struct adapter *adapt, u8 *pxmitframe)
 				else
 				{
 					RTW_INFO("%s, call rtw_get_stainfo()\n", __func__);
-					stainfo=rtw_get_stainfo(&adapt->stapriv ,&pattrib->ra[0] );
+					stainfo=rtw_get_stainfo(&padapter->stapriv ,&pattrib->ra[0] );
 				}
 		*/
 		/* if (stainfo!=NULL) */
@@ -716,7 +756,7 @@ u32	rtw_tkip_encrypt(struct adapter *adapt, u8 *pxmitframe)
 
 				if ((curfragnum + 1) == pattrib->nr_frags) {	/* 4 the last fragment */
 					length = pattrib->last_txcmdsz - pattrib->hdrlen - pattrib->iv_len - pattrib->icv_len;
-					*((__le32 *)crc) = getcrc32(payload, length); /* modified by Amy*/
+					*((u32 *)crc) = cpu_to_le32(getcrc32(payload, length)); /* modified by Amy*/
 
 					arcfour_init(&mycontext, rc4key, 16);
 					arcfour_encrypt(&mycontext, payload, payload, length);
@@ -724,7 +764,7 @@ u32	rtw_tkip_encrypt(struct adapter *adapt, u8 *pxmitframe)
 
 				} else {
 					length = pxmitpriv->frag_len - pattrib->hdrlen - pattrib->iv_len - pattrib->icv_len ;
-					*((__le32 *)crc) = getcrc32(payload, length); /* modified by Amy*/
+					*((u32 *)crc) = cpu_to_le32(getcrc32(payload, length)); /* modified by Amy*/
 					arcfour_init(&mycontext, rc4key, 16);
 					arcfour_encrypt(&mycontext, payload, payload, length);
 					arcfour_encrypt(&mycontext, payload + length, crc, 4);
@@ -751,7 +791,7 @@ u32	rtw_tkip_encrypt(struct adapter *adapt, u8 *pxmitframe)
 
 
 /* The hlen isn't include the IV */
-u32 rtw_tkip_decrypt(struct adapter *adapt, u8 *precvframe)
+u32 rtw_tkip_decrypt(_adapter *padapter, u8 *precvframe)
 {
 	/* exclude ICV */
 	u16 pnl;
@@ -760,15 +800,15 @@ u32 rtw_tkip_decrypt(struct adapter *adapt, u8 *precvframe)
 	u8   ttkey[16];
 	u8	crc[4];
 	struct arc4context mycontext;
-	int			length;
+	sint			length;
 	u32	prwskeylen;
 
 	u8	*pframe, *payload, *iv, *prwskey;
 	union pn48 dot11txpn;
 	struct	sta_info		*stainfo;
 	struct	rx_pkt_attrib	*prxattrib = &((union recv_frame *)precvframe)->u.hdr.attrib;
-	struct	security_priv	*psecuritypriv = &adapt->securitypriv;
-	/*	struct	recv_priv		*precvpriv=&adapt->recvpriv; */
+	struct	security_priv	*psecuritypriv = &padapter->securitypriv;
+	/*	struct	recv_priv		*precvpriv=&padapter->recvpriv; */
 	u32		res = _SUCCESS;
 
 
@@ -777,15 +817,15 @@ u32 rtw_tkip_decrypt(struct adapter *adapt, u8 *precvframe)
 	/* 4 start to decrypt recvframe */
 	if (prxattrib->encrypt == _TKIP_) {
 
-		stainfo = rtw_get_stainfo(&adapt->stapriv , &prxattrib->ta[0]);
-		if (stainfo) {
+		stainfo = rtw_get_stainfo(&padapter->stapriv , &prxattrib->ta[0]);
+		if (stainfo != NULL) {
 
 			if (IS_MCAST(prxattrib->ra)) {
-				static unsigned long start = 0;
+				static systime start = 0;
 				static u32 no_gkey_bc_cnt = 0;
 				static u32 no_gkey_mc_cnt = 0;
 
-				if (!psecuritypriv->binstallGrpkey) {
+				if (psecuritypriv->binstallGrpkey == _FALSE) {
 					res = _FAIL;
 
 					if (start == 0)
@@ -799,7 +839,7 @@ u32 rtw_tkip_decrypt(struct adapter *adapt, u8 *precvframe)
 					if (rtw_get_passing_time_ms(start) > 1000) {
 						if (no_gkey_bc_cnt || no_gkey_mc_cnt) {
 							RTW_PRINT(FUNC_ADPT_FMT" no_gkey_bc_cnt:%u, no_gkey_mc_cnt:%u\n",
-								FUNC_ADPT_ARG(adapt), no_gkey_bc_cnt, no_gkey_mc_cnt);
+								FUNC_ADPT_ARG(padapter), no_gkey_bc_cnt, no_gkey_mc_cnt);
 						}
 						start = rtw_get_current_time();
 						no_gkey_bc_cnt = 0;
@@ -810,7 +850,7 @@ u32 rtw_tkip_decrypt(struct adapter *adapt, u8 *precvframe)
 
 				if (no_gkey_bc_cnt || no_gkey_mc_cnt) {
 					RTW_PRINT(FUNC_ADPT_FMT" gkey installed. no_gkey_bc_cnt:%u, no_gkey_mc_cnt:%u\n",
-						FUNC_ADPT_ARG(adapt), no_gkey_bc_cnt, no_gkey_mc_cnt);
+						FUNC_ADPT_ARG(padapter), no_gkey_bc_cnt, no_gkey_mc_cnt);
 				}
 				start = 0;
 				no_gkey_bc_cnt = 0;
@@ -842,7 +882,7 @@ u32 rtw_tkip_decrypt(struct adapter *adapt, u8 *precvframe)
 			arcfour_init(&mycontext, rc4key, 16);
 			arcfour_encrypt(&mycontext, payload, payload, length);
 
-			*((__le32 *)crc) = getcrc32(payload, length - 4);
+			*((u32 *)crc) = le32_to_cpu(getcrc32(payload, length - 4));
 
 			if (crc[3] != payload[length - 1] || crc[2] != payload[length - 2] || crc[1] != payload[length - 3] || crc[0] != payload[length - 4]) {
 				res = _FAIL;
@@ -911,37 +951,38 @@ static  u8 sbox_table[256] = {
 static void bitwise_xor(u8 *ina, u8 *inb, u8 *out);
 static void construct_mic_iv(
 	u8 *mic_header1,
-	int qc_exists,
-	int a4_exists,
+	sint qc_exists,
+	sint a4_exists,
 	u8 *mpdu,
 	uint payload_length,
 	u8 *pn_vector,
 	uint frtype);/* add for CONFIG_IEEE80211W, none 11w also can use */
 static void construct_mic_header1(
 	u8 *mic_header1,
-	int header_length,
+	sint header_length,
 	u8 *mpdu,
 	uint frtype);/* add for CONFIG_IEEE80211W, none 11w also can use */
 static void construct_mic_header2(
 	u8 *mic_header2,
 	u8 *mpdu,
-	int a4_exists,
-	int qc_exists);
+	sint a4_exists,
+	sint qc_exists);
 static void construct_ctr_preload(
 	u8 *ctr_preload,
-	int a4_exists,
-	int qc_exists,
+	sint a4_exists,
+	sint qc_exists,
 	u8 *mpdu,
 	u8 *pn_vector,
-	int c,
+	sint c,
 	uint frtype);/* add for CONFIG_IEEE80211W, none 11w also can use */
 static void xor_128(u8 *a, u8 *b, u8 *out);
 static void xor_32(u8 *a, u8 *b, u8 *out);
 static u8 sbox(u8 a);
-static void next_key(u8 *key, int round);
+static void next_key(u8 *key, sint round);
 static void byte_sub(u8 *in, u8 *out);
 static void shift_row(u8 *in, u8 *out);
 static void mix_column(u8 *in, u8 *out);
+static void aes128k128d(u8 *key, u8 *data, u8 *ciphertext);
 
 
 /****************************************/
@@ -951,7 +992,7 @@ static void mix_column(u8 *in, u8 *out);
 /****************************************/
 static void xor_128(u8 *a, u8 *b, u8 *out)
 {
-	int i;
+	sint i;
 	for (i = 0; i < 16; i++)
 		out[i] = a[i] ^ b[i];
 }
@@ -959,7 +1000,7 @@ static void xor_128(u8 *a, u8 *b, u8 *out)
 
 static void xor_32(u8 *a, u8 *b, u8 *out)
 {
-	int i;
+	sint i;
 	for (i = 0; i < 4; i++)
 		out[i] = a[i] ^ b[i];
 }
@@ -967,11 +1008,11 @@ static void xor_32(u8 *a, u8 *b, u8 *out)
 
 static u8 sbox(u8 a)
 {
-	return sbox_table[(int)a];
+	return sbox_table[(sint)a];
 }
 
 
-static void next_key(u8 *key, int round)
+static void next_key(u8 *key, sint round)
 {
 	u8 rcon;
 	u8 sbox_key[4];
@@ -997,7 +1038,7 @@ static void next_key(u8 *key, int round)
 
 static void byte_sub(u8 *in, u8 *out)
 {
-	int i;
+	sint i;
 	for (i = 0; i < 16; i++)
 		out[i] = sbox(in[i]);
 }
@@ -1026,7 +1067,7 @@ static void shift_row(u8 *in, u8 *out)
 
 static void mix_column(u8 *in, u8 *out)
 {
-	int i;
+	sint i;
 	u8 add1b[4];
 	u8 add1bf7[4];
 	u8 rotl[4];
@@ -1083,8 +1124,8 @@ static void mix_column(u8 *in, u8 *out)
 
 static void aes128k128d(u8 *key, u8 *data, u8 *ciphertext)
 {
-	int round;
-	int i;
+	sint round;
+	sint i;
 	u8 intermediatea[16];
 	u8 intermediateb[16];
 	u8 round_key[16];
@@ -1121,15 +1162,15 @@ static void aes128k128d(u8 *key, u8 *data, u8 *ciphertext)
 /************************************************/
 static void construct_mic_iv(
 	u8 *mic_iv,
-	int qc_exists,
-	int a4_exists,
+	sint qc_exists,
+	sint a4_exists,
 	u8 *mpdu,
 	uint payload_length,
 	u8 *pn_vector,
 	uint frtype/* add for CONFIG_IEEE80211W, none 11w also can use */
 )
 {
-	int i;
+	sint i;
 	mic_iv[0] = 0x59;
 	if (qc_exists && a4_exists)
 		mic_iv[1] = mpdu[30] & 0x0f;    /* QoS_TC          */
@@ -1164,7 +1205,7 @@ static void construct_mic_iv(
 /************************************************/
 static void construct_mic_header1(
 	u8 *mic_header1,
-	int header_length,
+	sint header_length,
 	u8 *mpdu,
 	uint frtype/* add for CONFIG_IEEE80211W, none 11w also can use */
 )
@@ -1203,11 +1244,11 @@ static void construct_mic_header1(
 static void construct_mic_header2(
 	u8 *mic_header2,
 	u8 *mpdu,
-	int a4_exists,
-	int qc_exists
+	sint a4_exists,
+	sint qc_exists
 )
 {
-	int i;
+	sint i;
 	for (i = 0; i < 16; i++)
 		mic_header2[i] = 0x00;
 
@@ -1254,15 +1295,15 @@ static void construct_mic_header2(
 /************************************************/
 static void construct_ctr_preload(
 	u8 *ctr_preload,
-	int a4_exists,
-	int qc_exists,
+	sint a4_exists,
+	sint qc_exists,
 	u8 *mpdu,
 	u8 *pn_vector,
-	int c,
+	sint c,
 	uint frtype /* add for CONFIG_IEEE80211W, none 11w also can use */
 )
 {
-	int i = 0;
+	sint i = 0;
 	for (i = 0; i < 16; i++)
 		ctr_preload[i] = 0x00;
 	i = 0;
@@ -1297,13 +1338,13 @@ static void construct_ctr_preload(
 /************************************/
 static void bitwise_xor(u8 *ina, u8 *inb, u8 *out)
 {
-	int i;
+	sint i;
 	for (i = 0; i < 16; i++)
 		out[i] = ina[i] ^ inb[i];
 }
 
 
-static int aes_cipher(u8 *key, uint	hdrlen,
+static sint aes_cipher(u8 *key, uint	hdrlen,
 		       u8 *pframe, uint plen)
 {
 	/*	static unsigned char	message[MAX_MSG_SIZE]; */
@@ -1328,13 +1369,13 @@ static int aes_cipher(u8 *key, uint	hdrlen,
 	frsubtype = frsubtype >> 4;
 
 
-	memset((void *)mic_iv, 0, 16);
-	memset((void *)mic_header1, 0, 16);
-	memset((void *)mic_header2, 0, 16);
-	memset((void *)ctr_preload, 0, 16);
-	memset((void *)chain_buffer, 0, 16);
-	memset((void *)aes_out, 0, 16);
-	memset((void *)padded_buffer, 0, 16);
+	_rtw_memset((void *)mic_iv, 0, 16);
+	_rtw_memset((void *)mic_header1, 0, 16);
+	_rtw_memset((void *)mic_header2, 0, 16);
+	_rtw_memset((void *)ctr_preload, 0, 16);
+	_rtw_memset((void *)chain_buffer, 0, 16);
+	_rtw_memset((void *)aes_out, 0, 16);
+	_rtw_memset((void *)padded_buffer, 0, 16);
 
 	if ((hdrlen == WLAN_HDR_A3_LEN) || (hdrlen ==  WLAN_HDR_A3_QOS_LEN))
 		a4_exists = 0;
@@ -1346,8 +1387,7 @@ static int aes_cipher(u8 *key, uint	hdrlen,
 		((frtype | frsubtype) == WIFI_DATA_CFPOLL) ||
 		((frtype | frsubtype) == WIFI_DATA_CFACKPOLL)) {
 		qc_exists = 1;
-		if (hdrlen !=  WLAN_HDR_A3_QOS_LEN)
-
+		if (hdrlen != WLAN_HDR_A3_QOS_LEN && hdrlen != WLAN_HDR_A4_QOS_LEN)
 			hdrlen += 2;
 	}
 	/* add for CONFIG_IEEE80211W, none 11w also can use */
@@ -1356,8 +1396,7 @@ static int aes_cipher(u8 *key, uint	hdrlen,
 		  (frsubtype == 0x09) ||
 		  (frsubtype == 0x0a) ||
 		  (frsubtype == 0x0b))) {
-		if (hdrlen !=  WLAN_HDR_A3_QOS_LEN)
-
+		if (hdrlen != WLAN_HDR_A3_QOS_LEN && hdrlen != WLAN_HDR_A4_QOS_LEN)
 			hdrlen += 2;
 		qc_exists = 1;
 	} else
@@ -1498,7 +1537,7 @@ static int aes_cipher(u8 *key, uint	hdrlen,
 
 
 
-u32	rtw_aes_encrypt(struct adapter *adapt, u8 *pxmitframe)
+u32	rtw_aes_encrypt(_adapter *padapter, u8 *pxmitframe)
 {
 	/* exclude ICV */
 
@@ -1507,63 +1546,116 @@ u32	rtw_aes_encrypt(struct adapter *adapt, u8 *pxmitframe)
 	/*	unsigned char	message[MAX_MSG_SIZE]; */
 
 	/* Intermediate Buffers */
-	int	curfragnum, length;
+	sint	curfragnum, length;
 	u32	prwskeylen;
 	u8	*pframe, *prwskey;	/* , *payload,*iv */
 	u8   hw_hdr_offset = 0;
 	/* struct	sta_info		*stainfo=NULL; */
 	struct	pkt_attrib	*pattrib = &((struct xmit_frame *)pxmitframe)->attrib;
-	struct	security_priv	*psecuritypriv = &adapt->securitypriv;
-	struct	xmit_priv		*pxmitpriv = &adapt->xmitpriv;
+	struct	security_priv	*psecuritypriv = &padapter->securitypriv;
+	struct	xmit_priv		*pxmitpriv = &padapter->xmitpriv;
 
 	/*	uint	offset = 0; */
 	u32 res = _SUCCESS;
 
-	if (!((struct xmit_frame *)pxmitframe)->buf_addr)
+	if (((struct xmit_frame *)pxmitframe)->buf_addr == NULL)
 		return _FAIL;
 
+#ifdef CONFIG_USB_TX_AGGREGATION
+	hw_hdr_offset = TXDESC_SIZE +
+		(((struct xmit_frame *)pxmitframe)->pkt_offset * PACKET_OFFSET_SZ);
+#else
+#ifdef CONFIG_TX_EARLY_MODE
+	hw_hdr_offset = TXDESC_OFFSET + EARLY_MODE_INFO_SIZE;
+#else
 	hw_hdr_offset = TXDESC_OFFSET;
+#endif
+#endif
 
 	pframe = ((struct xmit_frame *)pxmitframe)->buf_addr + hw_hdr_offset;
 
 	/* 4 start to encrypt each fragment */
 	if ((pattrib->encrypt == _AES_)) {
-		if (IS_MCAST(pattrib->ra))
-			prwskey = psecuritypriv->dot118021XGrpKey[psecuritypriv->dot118021XGrpKeyid].skey;
-		else {
-			prwskey = pattrib->dot118021x_UncstKey.skey;
-		}
+		/*
+				if(pattrib->psta)
+				{
+					stainfo = pattrib->psta;
+				}
+				else
+				{
+					RTW_INFO("%s, call rtw_get_stainfo()\n", __func__);
+					stainfo=rtw_get_stainfo(&padapter->stapriv ,&pattrib->ra[0] );
+				}
+		*/
+		/* if (stainfo!=NULL) */
+		{
+			/*
+						if(!(stainfo->state &_FW_LINKED))
+						{
+							RTW_INFO("%s, psta->state(0x%x) != _FW_LINKED\n", __func__, stainfo->state);
+							return _FAIL;
+						}
+			*/
 
-		prwskeylen = 16;
-
-		for (curfragnum = 0; curfragnum < pattrib->nr_frags; curfragnum++) {
-
-			if ((curfragnum + 1) == pattrib->nr_frags) {	/* 4 the last fragment */
-				length = pattrib->last_txcmdsz - pattrib->hdrlen - pattrib->iv_len - pattrib->icv_len;
-
-				aes_cipher(prwskey, pattrib->hdrlen, pframe, length);
-			} else {
-				length = pxmitpriv->frag_len - pattrib->hdrlen - pattrib->iv_len - pattrib->icv_len ;
-
-				aes_cipher(prwskey, pattrib->hdrlen, pframe, length);
-				pframe += pxmitpriv->frag_len;
-				pframe = (u8 *)RND4((SIZE_PTR)(pframe));
-
+			if (IS_MCAST(pattrib->ra))
+				prwskey = psecuritypriv->dot118021XGrpKey[psecuritypriv->dot118021XGrpKeyid].skey;
+			else {
+				/* prwskey=&stainfo->dot118021x_UncstKey.skey[0]; */
+				prwskey = pattrib->dot118021x_UncstKey.skey;
 			}
-		}
 
-		AES_SW_ENC_CNT_INC(psecuritypriv, pattrib->ra);
+#ifdef CONFIG_TDLS
+			{
+				/* Swencryption */
+				struct	sta_info		*ptdls_sta;
+				ptdls_sta = rtw_get_stainfo(&padapter->stapriv , &pattrib->dst[0]);
+				if ((ptdls_sta != NULL) && (ptdls_sta->tdls_sta_state & TDLS_LINKED_STATE)) {
+					RTW_INFO("[%s] for tdls link\n", __FUNCTION__);
+					prwskey = &ptdls_sta->tpk.tk[0];
+				}
+			}
+#endif /* CONFIG_TDLS */
+
+			prwskeylen = 16;
+
+			for (curfragnum = 0; curfragnum < pattrib->nr_frags; curfragnum++) {
+
+				if ((curfragnum + 1) == pattrib->nr_frags) {	/* 4 the last fragment */
+					length = pattrib->last_txcmdsz - pattrib->hdrlen - pattrib->iv_len - pattrib->icv_len;
+
+					aes_cipher(prwskey, pattrib->hdrlen, pframe, length);
+				} else {
+					length = pxmitpriv->frag_len - pattrib->hdrlen - pattrib->iv_len - pattrib->icv_len ;
+
+					aes_cipher(prwskey, pattrib->hdrlen, pframe, length);
+					pframe += pxmitpriv->frag_len;
+					pframe = (u8 *)RND4((SIZE_PTR)(pframe));
+
+				}
+			}
+
+			AES_SW_ENC_CNT_INC(psecuritypriv, pattrib->ra);
+		}
+		/*
+				else{
+					RTW_INFO("%s, psta==NUL\n", __func__);
+					res=_FAIL;
+				}
+		*/
 	}
+
+
+
 	return res;
 }
 
-static int aes_decipher(u8 *key, uint	hdrlen,
+static sint aes_decipher(u8 *key, uint	hdrlen,
 			 u8 *pframe, uint plen)
 {
 	static u8	message[MAX_MSG_SIZE];
 	uint	qc_exists, a4_exists, i, j, payload_remainder,
 		num_blocks, payload_index;
-	int res = _SUCCESS;
+	sint res = _SUCCESS;
 	u8 pn_vector[6];
 	u8 mic_iv[16];
 	u8 mic_header1[16];
@@ -1583,13 +1675,13 @@ static int aes_decipher(u8 *key, uint	hdrlen,
 	frsubtype = frsubtype >> 4;
 
 
-	memset((void *)mic_iv, 0, 16);
-	memset((void *)mic_header1, 0, 16);
-	memset((void *)mic_header2, 0, 16);
-	memset((void *)ctr_preload, 0, 16);
-	memset((void *)chain_buffer, 0, 16);
-	memset((void *)aes_out, 0, 16);
-	memset((void *)padded_buffer, 0, 16);
+	_rtw_memset((void *)mic_iv, 0, 16);
+	_rtw_memset((void *)mic_header1, 0, 16);
+	_rtw_memset((void *)mic_header2, 0, 16);
+	_rtw_memset((void *)ctr_preload, 0, 16);
+	_rtw_memset((void *)chain_buffer, 0, 16);
+	_rtw_memset((void *)aes_out, 0, 16);
+	_rtw_memset((void *)padded_buffer, 0, 16);
 
 	/* start to decrypt the payload */
 
@@ -1614,8 +1706,7 @@ static int aes_decipher(u8 *key, uint	hdrlen,
 		((frtype | frsubtype) == WIFI_DATA_CFPOLL) ||
 		((frtype | frsubtype) == WIFI_DATA_CFACKPOLL)) {
 		qc_exists = 1;
-		if (hdrlen !=  WLAN_HDR_A3_QOS_LEN)
-
+		if (hdrlen != WLAN_HDR_A3_QOS_LEN && hdrlen != WLAN_HDR_A4_QOS_LEN)
 			hdrlen += 2;
 	} /* only for data packet . add for CONFIG_IEEE80211W, none 11w also can use */
 	else if ((frtype == WIFI_DATA) &&
@@ -1623,8 +1714,7 @@ static int aes_decipher(u8 *key, uint	hdrlen,
 		  (frsubtype == 0x09) ||
 		  (frsubtype == 0x0a) ||
 		  (frsubtype == 0x0b))) {
-		if (hdrlen !=  WLAN_HDR_A3_QOS_LEN)
-
+		if (hdrlen != WLAN_HDR_A3_QOS_LEN && hdrlen != WLAN_HDR_A4_QOS_LEN)
 			hdrlen += 2;
 		qc_exists = 1;
 	} else
@@ -1677,7 +1767,7 @@ static int aes_decipher(u8 *key, uint	hdrlen,
 
 	/* start to calculate the mic	 */
 	if ((hdrlen + plen + 8) <= MAX_MSG_SIZE)
-		memcpy((void *)message, pframe, (hdrlen + plen + 8)); /* 8 is for ext iv len */
+		_rtw_memcpy((void *)message, pframe, (hdrlen + plen + 8)); /* 8 is for ext iv len */
 
 
 	pn_vector[0] = pframe[hdrlen];
@@ -1819,7 +1909,7 @@ static int aes_decipher(u8 *key, uint	hdrlen,
 	return res;
 }
 
-u32	rtw_aes_decrypt(struct adapter *adapt, u8 *precvframe)
+u32	rtw_aes_decrypt(_adapter *padapter, u8 *precvframe)
 {
 	/* exclude ICV */
 
@@ -1831,25 +1921,32 @@ u32	rtw_aes_decrypt(struct adapter *adapt, u8 *precvframe)
 	/* Intermediate Buffers */
 
 
-	int		length;
+	sint		length;
 	u8	*pframe, *prwskey;	/* , *payload,*iv */
 	struct	sta_info		*stainfo;
 	struct	rx_pkt_attrib	*prxattrib = &((union recv_frame *)precvframe)->u.hdr.attrib;
-	struct	security_priv	*psecuritypriv = &adapt->securitypriv;
-	/*	struct	recv_priv		*precvpriv=&adapt->recvpriv; */
+	struct	security_priv	*psecuritypriv = &padapter->securitypriv;
+	/*	struct	recv_priv		*precvpriv=&padapter->recvpriv; */
 	u32	res = _SUCCESS;
 	pframe = (unsigned char *)((union recv_frame *)precvframe)->u.hdr.rx_data;
 	/* 4 start to encrypt each fragment */
-
 	if ((prxattrib->encrypt == _AES_)) {
-		stainfo = rtw_get_stainfo(&adapt->stapriv , &prxattrib->ta[0]);
-		if (stainfo) {
+
+		stainfo = rtw_get_stainfo(&padapter->stapriv , &prxattrib->ta[0]);
+		if (stainfo != NULL) {
+
 			if (IS_MCAST(prxattrib->ra)) {
-				static unsigned long start = 0;
+				static systime start = 0;
 				static u32 no_gkey_bc_cnt = 0;
 				static u32 no_gkey_mc_cnt = 0;
 
-				if (!psecuritypriv->binstallGrpkey) {
+				/* RTW_INFO("rx bc/mc packets, to perform sw rtw_aes_decrypt\n"); */
+				/* prwskey = psecuritypriv->dot118021XGrpKey[psecuritypriv->dot118021XGrpKeyid].skey; */
+				if ((!MLME_IS_MESH(padapter) && psecuritypriv->binstallGrpkey == _FALSE)
+					#ifdef CONFIG_RTW_MESH
+					|| !(stainfo->gtk_bmp | BIT(prxattrib->key_index))
+					#endif
+				) {
 					res = _FAIL;
 
 					if (start == 0)
@@ -1863,7 +1960,7 @@ u32	rtw_aes_decrypt(struct adapter *adapt, u8 *precvframe)
 					if (rtw_get_passing_time_ms(start) > 1000) {
 						if (no_gkey_bc_cnt || no_gkey_mc_cnt) {
 							RTW_PRINT(FUNC_ADPT_FMT" no_gkey_bc_cnt:%u, no_gkey_mc_cnt:%u\n",
-								FUNC_ADPT_ARG(adapt), no_gkey_bc_cnt, no_gkey_mc_cnt);
+								FUNC_ADPT_ARG(padapter), no_gkey_bc_cnt, no_gkey_mc_cnt);
 						}
 						start = rtw_get_current_time();
 						no_gkey_bc_cnt = 0;
@@ -1875,23 +1972,54 @@ u32	rtw_aes_decrypt(struct adapter *adapt, u8 *precvframe)
 
 				if (no_gkey_bc_cnt || no_gkey_mc_cnt) {
 					RTW_PRINT(FUNC_ADPT_FMT" gkey installed. no_gkey_bc_cnt:%u, no_gkey_mc_cnt:%u\n",
-						FUNC_ADPT_ARG(adapt), no_gkey_bc_cnt, no_gkey_mc_cnt);
+						FUNC_ADPT_ARG(padapter), no_gkey_bc_cnt, no_gkey_mc_cnt);
 				}
 				start = 0;
 				no_gkey_bc_cnt = 0;
 				no_gkey_mc_cnt = 0;
 
-				prwskey = psecuritypriv->dot118021XGrpKey[prxattrib->key_index].skey;
-				if (psecuritypriv->dot118021XGrpKeyid != prxattrib->key_index) {
-					RTW_DBG("not match packet_index=%d, install_index=%d\n"
-						, prxattrib->key_index, psecuritypriv->dot118021XGrpKeyid);
-					res = _FAIL;
-					goto exit;
+				#ifdef CONFIG_RTW_MESH
+				if (MLME_IS_MESH(padapter)) {
+					/* TODO: multiple GK? */
+					prwskey = &stainfo->gtk.skey[0];
+				} else
+				#endif
+				{
+					prwskey = psecuritypriv->dot118021XGrpKey[prxattrib->key_index].skey;
+					if (psecuritypriv->dot118021XGrpKeyid != prxattrib->key_index) {
+						RTW_DBG("not match packet_index=%d, install_index=%d\n"
+							, prxattrib->key_index, psecuritypriv->dot118021XGrpKeyid);
+						res = _FAIL;
+						goto exit;
+					}
 				}
 			} else
 				prwskey = &stainfo->dot118021x_UncstKey.skey[0];
 
 			length = ((union recv_frame *)precvframe)->u.hdr.len - prxattrib->hdrlen - prxattrib->iv_len;
+#if 0
+			/*  add for CONFIG_IEEE80211W, debug */
+			if (0)
+				printk("@@@@@@@@@@@@@@@@@@ length=%d, prxattrib->hdrlen=%d, prxattrib->pkt_len=%d\n"
+				       , length, prxattrib->hdrlen, prxattrib->pkt_len);
+			if (0) {
+				int no;
+				/* test print PSK */
+				printk("PSK key below:\n");
+				for (no = 0; no < 16; no++)
+					printk(" %02x ", prwskey[no]);
+				printk("\n");
+			}
+			if (0) {
+				int no;
+				/* test print PSK */
+				printk("frame:\n");
+				for (no = 0; no < prxattrib->pkt_len; no++)
+					printk(" %02x ", pframe[no]);
+				printk("\n");
+			}
+#endif
+
 			res = aes_decipher(prwskey, prxattrib->hdrlen, pframe, length);
 
 			AES_SW_DEC_CNT_INC(psecuritypriv, prxattrib->ra);
@@ -1905,7 +2033,7 @@ exit:
 }
 
 #ifdef CONFIG_IEEE80211W
-u32	rtw_BIP_verify(struct adapter *adapt, u8 *whdr_pos, int flen
+u32	rtw_BIP_verify(_adapter *padapter, u8 *whdr_pos, sint flen
 	, const u8 *key, u16 keyid, u64* ipn)
 {
 	u8 *BIP_AAD, *mme;
@@ -1921,7 +2049,7 @@ u32	rtw_BIP_verify(struct adapter *adapt, u8 *whdr_pos, int flen
 		return RTW_RX_HANDLED;
 
 	/* copy key index */
-	memcpy(&pkt_keyid, mme + 2, 2);
+	_rtw_memcpy(&pkt_keyid, mme + 2, 2);
 	pkt_keyid = le16_to_cpu(pkt_keyid);
 	if (pkt_keyid != keyid) {
 		RTW_INFO("BIP key index error!\n");
@@ -1929,7 +2057,7 @@ u32	rtw_BIP_verify(struct adapter *adapt, u8 *whdr_pos, int flen
 	}
 
 	/* save packet number */
-	memcpy(&pkt_ipn, mme + 4, 6);
+	_rtw_memcpy(&pkt_ipn, mme + 4, 6);
 	pkt_ipn = le64_to_cpu(pkt_ipn);
 	/* BIP packet number should bigger than previous BIP packet */
 	if (pkt_ipn <= *ipn) { /* wrap around? */
@@ -1939,7 +2067,7 @@ u32	rtw_BIP_verify(struct adapter *adapt, u8 *whdr_pos, int flen
 
 	ori_len = flen - WLAN_HDR_A3_LEN + BIP_AAD_SIZE;
 	BIP_AAD = rtw_zmalloc(ori_len);
-	if (!BIP_AAD) {
+	if (BIP_AAD == NULL) {
 		RTW_INFO("BIP AAD allocate fail\n");
 		return _FAIL;
 	}
@@ -1948,27 +2076,48 @@ u32	rtw_BIP_verify(struct adapter *adapt, u8 *whdr_pos, int flen
 	pwlanhdr = (struct rtw_ieee80211_hdr *)whdr_pos;
 
 	/* save the frame body + MME */
-	memcpy(BIP_AAD + BIP_AAD_SIZE, whdr_pos + WLAN_HDR_A3_LEN, flen - WLAN_HDR_A3_LEN);
+	_rtw_memcpy(BIP_AAD + BIP_AAD_SIZE, whdr_pos + WLAN_HDR_A3_LEN, flen - WLAN_HDR_A3_LEN);
 
 	/* point mme to the copy */
 	mme = BIP_AAD + ori_len - 18;
 
 	/* clear the MIC field of MME to zero */
-	memset(mme + 10, 0, 8);
+	_rtw_memset(mme + 10, 0, 8);
 
 	/* conscruct AAD, copy frame control field */
-	memcpy(BIP_AAD, &pwlanhdr->frame_ctl, 2);
+	_rtw_memcpy(BIP_AAD, &pwlanhdr->frame_ctl, 2);
 	ClearRetry(BIP_AAD);
 	ClearPwrMgt(BIP_AAD);
 	ClearMData(BIP_AAD);
 	/* conscruct AAD, copy address 1 to address 3 */
-	memcpy(BIP_AAD + 2, pwlanhdr->addr1, 18);
+	_rtw_memcpy(BIP_AAD + 2, pwlanhdr->addr1, 18);
 
 	if (omac1_aes_128(key, BIP_AAD, ori_len, mic))
 		goto BIP_exit;
 
+#if 0
+	/* management packet content */
+	{
+		int pp;
+		RTW_INFO("pkt: ");
+		for (pp = 0; pp < flen; pp++)
+			printk(" %02x ", whdr_pos[pp]);
+		RTW_INFO("\n");
+		/* BIP AAD + management frame body + MME(MIC is zero) */
+		RTW_INFO("AAD+PKT: ");
+		for (pp = 0; pp < ori_len; pp++)
+			RTW_INFO(" %02x ", BIP_AAD[pp]);
+		RTW_INFO("\n");
+		/* show the MIC result */
+		RTW_INFO("mic: ");
+		for (pp = 0; pp < 16; pp++)
+			RTW_INFO(" %02x ", mic[pp]);
+		RTW_INFO("\n");
+	}
+#endif
+
 	/* MIC field should be last 8 bytes of packet (packet without FCS) */
-	if (!memcmp(mic, whdr_pos + flen - 8, 8)) {
+	if (_rtw_memcmp(mic, whdr_pos + flen - 8, 8)) {
 		*ipn = pkt_ipn;
 		res = _SUCCESS;
 	} else
@@ -1980,6 +2129,337 @@ BIP_exit:
 	return res;
 }
 #endif /* CONFIG_IEEE80211W */
+
+#ifndef PLATFORM_FREEBSD
+#if defined(CONFIG_TDLS)
+/* compress 512-bits */
+static int sha256_compress(struct sha256_state *md, unsigned char *buf)
+{
+	u32 S[8], W[64], t0, t1;
+	u32 t;
+	int i;
+
+	/* copy state into S */
+	for (i = 0; i < 8; i++)
+		S[i] = md->state[i];
+
+	/* copy the state into 512-bits into W[0..15] */
+	for (i = 0; i < 16; i++)
+		W[i] = WPA_GET_BE32(buf + (4 * i));
+
+	/* fill W[16..63] */
+	for (i = 16; i < 64; i++) {
+		W[i] = Gamma1(W[i - 2]) + W[i - 7] + Gamma0(W[i - 15]) +
+		       W[i - 16];
+	}
+
+	/* Compress */
+#define RND(a, b, c, d, e, f, g, h, i)                          do {\
+	t0 = h + Sigma1(e) + Ch(e, f, g) + K[i] + W[i];	\
+	t1 = Sigma0(a) + Maj(a, b, c);			\
+	d += t0;					\
+	h  = t0 + t1;	\
+	} while (0)
+
+	for (i = 0; i < 64; ++i) {
+		RND(S[0], S[1], S[2], S[3], S[4], S[5], S[6], S[7], i);
+		t = S[7];
+		S[7] = S[6];
+		S[6] = S[5];
+		S[5] = S[4];
+		S[4] = S[3];
+		S[3] = S[2];
+		S[2] = S[1];
+		S[1] = S[0];
+		S[0] = t;
+	}
+
+	/* feedback */
+	for (i = 0; i < 8; i++)
+		md->state[i] = md->state[i] + S[i];
+	return 0;
+}
+
+/* Initialize the hash state */
+static void sha256_init(struct sha256_state *md)
+{
+	md->curlen = 0;
+	md->length = 0;
+	md->state[0] = 0x6A09E667UL;
+	md->state[1] = 0xBB67AE85UL;
+	md->state[2] = 0x3C6EF372UL;
+	md->state[3] = 0xA54FF53AUL;
+	md->state[4] = 0x510E527FUL;
+	md->state[5] = 0x9B05688CUL;
+	md->state[6] = 0x1F83D9ABUL;
+	md->state[7] = 0x5BE0CD19UL;
+}
+
+/**
+   Process a block of memory though the hash
+   @param md     The hash state
+   @param in     The data to hash
+   @param inlen  The length of the data (octets)
+   @return CRYPT_OK if successful
+*/
+static int sha256_process(struct sha256_state *md, unsigned char *in,
+			  unsigned long inlen)
+{
+	unsigned long n;
+#define block_size 64
+
+	if (md->curlen >= sizeof(md->buf))
+		return -1;
+
+	while (inlen > 0) {
+		if (md->curlen == 0 && inlen >= block_size) {
+			if (sha256_compress(md, (unsigned char *) in) < 0)
+				return -1;
+			md->length += block_size * 8;
+			in += block_size;
+			inlen -= block_size;
+		} else {
+			n = MIN(inlen, (block_size - md->curlen));
+			_rtw_memcpy(md->buf + md->curlen, in, n);
+			md->curlen += n;
+			in += n;
+			inlen -= n;
+			if (md->curlen == block_size) {
+				if (sha256_compress(md, md->buf) < 0)
+					return -1;
+				md->length += 8 * block_size;
+				md->curlen = 0;
+			}
+		}
+	}
+
+	return 0;
+}
+
+
+/**
+   Terminate the hash to get the digest
+   @param md  The hash state
+   @param out [out] The destination of the hash (32 bytes)
+   @return CRYPT_OK if successful
+*/
+static int sha256_done(struct sha256_state *md, unsigned char *out)
+{
+	int i;
+
+	if (md->curlen >= sizeof(md->buf))
+		return -1;
+
+	/* increase the length of the message */
+	md->length += md->curlen * 8;
+
+	/* append the '1' bit */
+	md->buf[md->curlen++] = (unsigned char) 0x80;
+
+	/* if the length is currently above 56 bytes we append zeros
+	 * then compress.  Then we can fall back to padding zeros and length
+	 * encoding like normal.
+	 */
+	if (md->curlen > 56) {
+		while (md->curlen < 64)
+			md->buf[md->curlen++] = (unsigned char) 0;
+		sha256_compress(md, md->buf);
+		md->curlen = 0;
+	}
+
+	/* pad upto 56 bytes of zeroes */
+	while (md->curlen < 56)
+		md->buf[md->curlen++] = (unsigned char) 0;
+
+	/* store length */
+	WPA_PUT_BE64(md->buf + 56, md->length);
+	sha256_compress(md, md->buf);
+
+	/* copy output */
+	for (i = 0; i < 8; i++)
+		WPA_PUT_BE32(out + (4 * i), md->state[i]);
+
+	return 0;
+}
+
+/**
+ * sha256_vector - SHA256 hash for data vector
+ * @num_elem: Number of elements in the data vector
+ * @addr: Pointers to the data areas
+ * @len: Lengths of the data blocks
+ * @mac: Buffer for the hash
+ * Returns: 0 on success, -1 of failure
+ */
+static int sha256_vector(size_t num_elem, u8 *addr[], size_t *len,
+			 u8 *mac)
+{
+	struct sha256_state ctx;
+	size_t i;
+
+	sha256_init(&ctx);
+	for (i = 0; i < num_elem; i++)
+		if (sha256_process(&ctx, addr[i], len[i]))
+			return -1;
+	if (sha256_done(&ctx, mac))
+		return -1;
+	return 0;
+}
+
+static u8 os_strlen(const char *s)
+{
+	const char *p = s;
+	while (*p)
+		p++;
+	return p - s;
+}
+#endif
+
+#if defined(CONFIG_TDLS) || defined(CONFIG_RTW_MESH_AEK)
+static int os_memcmp(const void *s1, const void *s2, u8 n)
+{
+	const unsigned char *p1 = s1, *p2 = s2;
+
+	if (n == 0)
+		return 0;
+
+	while (*p1 == *p2) {
+		p1++;
+		p2++;
+		n--;
+		if (n == 0)
+			return 0;
+	}
+
+	return *p1 - *p2;
+}
+#endif
+
+/**
+ * hmac_sha256_vector - HMAC-SHA256 over data vector (RFC 2104)
+ * @key: Key for HMAC operations
+ * @key_len: Length of the key in bytes
+ * @num_elem: Number of elements in the data vector
+ * @addr: Pointers to the data areas
+ * @len: Lengths of the data blocks
+ * @mac: Buffer for the hash (32 bytes)
+ */
+#if defined(CONFIG_TDLS)
+static void hmac_sha256_vector(u8 *key, size_t key_len, size_t num_elem,
+			       u8 *addr[], size_t *len, u8 *mac)
+{
+	unsigned char k_pad[64]; /* padding - key XORd with ipad/opad */
+	unsigned char tk[32];
+	u8 *_addr[6];
+	size_t _len[6], i;
+
+	if (num_elem > 5) {
+		/*
+		 * Fixed limit on the number of fragments to avoid having to
+		 * allocate memory (which could fail).
+		 */
+		return;
+	}
+
+	/* if key is longer than 64 bytes reset it to key = SHA256(key) */
+	if (key_len > 64) {
+		sha256_vector(1, &key, &key_len, tk);
+		key = tk;
+		key_len = 32;
+	}
+
+	/* the HMAC_SHA256 transform looks like:
+	 *
+	 * SHA256(K XOR opad, SHA256(K XOR ipad, text))
+	 *
+	 * where K is an n byte key
+	 * ipad is the byte 0x36 repeated 64 times
+	 * opad is the byte 0x5c repeated 64 times
+	 * and text is the data being protected */
+
+	/* start out by storing key in ipad */
+	_rtw_memset(k_pad, 0, sizeof(k_pad));
+	_rtw_memcpy(k_pad, key, key_len);
+	/* XOR key with ipad values */
+	for (i = 0; i < 64; i++)
+		k_pad[i] ^= 0x36;
+
+	/* perform inner SHA256 */
+	_addr[0] = k_pad;
+	_len[0] = 64;
+	for (i = 0; i < num_elem; i++) {
+		_addr[i + 1] = addr[i];
+		_len[i + 1] = len[i];
+	}
+	sha256_vector(1 + num_elem, _addr, _len, mac);
+
+	_rtw_memset(k_pad, 0, sizeof(k_pad));
+	_rtw_memcpy(k_pad, key, key_len);
+	/* XOR key with opad values */
+	for (i = 0; i < 64; i++)
+		k_pad[i] ^= 0x5c;
+
+	/* perform outer SHA256 */
+	_addr[0] = k_pad;
+	_len[0] = 64;
+	_addr[1] = mac;
+	_len[1] = 32;
+	sha256_vector(2, _addr, _len, mac);
+}
+#endif /* CONFIG_TDLS */
+#endif /* PLATFORM_FREEBSD */
+/**
+ * sha256_prf - SHA256-based Pseudo-Random Function (IEEE 802.11r, 8.5.1.5.2)
+ * @key: Key for PRF
+ * @key_len: Length of the key in bytes
+ * @label: A unique label for each purpose of the PRF
+ * @data: Extra data to bind into the key
+ * @data_len: Length of the data
+ * @buf: Buffer for the generated pseudo-random key
+ * @buf_len: Number of bytes of key to generate
+ *
+ * This function is used to derive new, cryptographically separate keys from a
+ * given key.
+ */
+#ifndef PLATFORM_FREEBSD /* Baron */
+#if defined(CONFIG_TDLS)
+static void sha256_prf(u8 *key, size_t key_len, char *label,
+		       u8 *data, size_t data_len, u8 *buf, size_t buf_len)
+{
+	u16 counter = 1;
+	size_t pos, plen;
+	u8 hash[SHA256_MAC_LEN];
+	u8 *addr[4];
+	size_t len[4];
+	u8 counter_le[2], length_le[2];
+
+	addr[0] = counter_le;
+	len[0] = 2;
+	addr[1] = (u8 *) label;
+	len[1] = os_strlen(label);
+	addr[2] = data;
+	len[2] = data_len;
+	addr[3] = length_le;
+	len[3] = sizeof(length_le);
+
+	WPA_PUT_LE16(length_le, buf_len * 8);
+	pos = 0;
+	while (pos < buf_len) {
+		plen = buf_len - pos;
+		WPA_PUT_LE16(counter_le, counter);
+		if (plen >= SHA256_MAC_LEN) {
+			hmac_sha256_vector(key, key_len, 4, addr, len,
+					   &buf[pos]);
+			pos += SHA256_MAC_LEN;
+		} else {
+			hmac_sha256_vector(key, key_len, 4, addr, len, hash);
+			_rtw_memcpy(&buf[pos], hash, plen);
+			break;
+		}
+		counter++;
+	}
+}
+#endif
+#endif /* PLATFORM_FREEBSD Baron */
 
 /* AES tables*/
 const u32 Te0[256] = {
@@ -2048,7 +2528,6 @@ const u32 Te0[256] = {
 	0x824141c3U, 0x299999b0U, 0x5a2d2d77U, 0x1e0f0f11U,
 	0x7bb0b0cbU, 0xa85454fcU, 0x6dbbbbd6U, 0x2c16163aU,
 };
-
 const u32 Td0[256] = {
 	0x51f4a750U, 0x7e416553U, 0x1a17a4c3U, 0x3a275e96U,
 	0x3bab6bcbU, 0x1f9d45f1U, 0xacfa58abU, 0x4be30393U,
@@ -2115,7 +2594,6 @@ const u32 Td0[256] = {
 	0x39a80171U, 0x080cb3deU, 0xd8b4e49cU, 0x6456c190U,
 	0x7bcb8461U, 0xd532b670U, 0x486c5c74U, 0xd0b85742U,
 };
-
 const u8 Td4s[256] = {
 	0x52U, 0x09U, 0x6aU, 0xd5U, 0x30U, 0x36U, 0xa5U, 0x38U,
 	0xbfU, 0x40U, 0xa3U, 0x9eU, 0x81U, 0xf3U, 0xd7U, 0xfbU,
@@ -2150,7 +2628,6 @@ const u8 Td4s[256] = {
 	0x17U, 0x2bU, 0x04U, 0x7eU, 0xbaU, 0x77U, 0xd6U, 0x26U,
 	0xe1U, 0x69U, 0x14U, 0x63U, 0x55U, 0x21U, 0x0cU, 0x7dU,
 };
-
 const u8 rcons[] = {
 	0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36
 	/* for 128-bit blocks, Rijndael never uses more than 10 rcon values */
@@ -2161,6 +2638,7 @@ const u8 rcons[] = {
  *
  * @return	the number of rounds for the given cipher key size.
  */
+#ifndef PLATFORM_FREEBSD /* Baron */
 static void rijndaelKeySetupEnc(u32 rk[/*44*/], const u8 cipherKey[])
 {
 	int i;
@@ -2256,7 +2734,7 @@ static void *aes_encrypt_init(const u8 *key, size_t len)
 	if (len != 16)
 		return NULL;
 	rk = (u32 *)rtw_malloc(AES_PRIV_SIZE);
-	if (!rk)
+	if (rk == NULL)
 		return NULL;
 	rijndaelKeySetupEnc(rk, key);
 	return rk;
@@ -2282,7 +2760,7 @@ static void gf_mulx(u8 *pad)
 
 static void aes_encrypt_deinit(void *ctx)
 {
-	memset(ctx, 0, AES_PRIV_SIZE);
+	_rtw_memset(ctx, 0, AES_PRIV_SIZE);
 	rtw_mfree(ctx, AES_PRIV_SIZE);
 }
 
@@ -2300,7 +2778,7 @@ static void aes_encrypt_deinit(void *ctx)
  * OMAC1 was standardized with the name CMAC by NIST in a Special Publication
  * (SP) 800-38B.
  */
-int omac1_aes_128_vector(const u8 *key, size_t num_elem,
+static int omac1_aes_128_vector(const u8 *key, size_t num_elem,
 			 const u8 *addr[], const size_t *len, u8 *mac)
 {
 	void *ctx;
@@ -2309,9 +2787,9 @@ int omac1_aes_128_vector(const u8 *key, size_t num_elem,
 	size_t i, e, left, total_len;
 
 	ctx = aes_encrypt_init(key, 16);
-	if (!ctx)
+	if (ctx == NULL)
 		return -1;
-	memset(cbc, 0, AES_BLOCK_SIZE);
+	_rtw_memset(cbc, 0, AES_BLOCK_SIZE);
 
 	total_len = 0;
 	for (e = 0; e < num_elem; e++)
@@ -2336,7 +2814,7 @@ int omac1_aes_128_vector(const u8 *key, size_t num_elem,
 		left -= AES_BLOCK_SIZE;
 	}
 
-	memset(pad, 0, AES_BLOCK_SIZE);
+	_rtw_memset(pad, 0, AES_BLOCK_SIZE);
 	aes_128_encrypt(ctx, pad, pad);
 	gf_mulx(pad);
 
@@ -2373,36 +2851,485 @@ int omac1_aes_128_vector(const u8 *key, size_t num_elem,
  * OMAC1 was standardized with the name CMAC by NIST in a Special Publication
  * (SP) 800-38B.
  */ /* modify for CONFIG_IEEE80211W */
+int omac1_aes_128(const u8 *key, const u8 *data, size_t data_len, u8 *mac)
+{
+	return omac1_aes_128_vector(key, 1, &data, &data_len, mac);
+}
+#endif /* PLATFORM_FREEBSD Baron */
+
+#ifdef CONFIG_RTW_MESH_AEK
+/* for AES-SIV */
+#define os_memset _rtw_memset
+#define os_memcpy _rtw_memcpy
+#define os_malloc rtw_malloc
+#define bin_clear_free(bin, len) \
+	do { \
+		if (bin) { \
+			os_memset(bin, 0, len); \
+			rtw_mfree(bin, len); \
+		} \
+	} while (0)
+
+static const u8 zero[AES_BLOCK_SIZE];
+
+static void dbl(u8 *pad)
+{
+	int i, carry;
+
+	carry = pad[0] & 0x80;
+	for (i = 0; i < AES_BLOCK_SIZE - 1; i++)
+		pad[i] = (pad[i] << 1) | (pad[i + 1] >> 7);
+	pad[AES_BLOCK_SIZE - 1] <<= 1;
+	if (carry)
+		pad[AES_BLOCK_SIZE - 1] ^= 0x87;
+}
+
+static void xor(u8 *a, const u8 *b)
+{
+	int i;
+
+	for (i = 0; i < AES_BLOCK_SIZE; i++)
+		*a++ ^= *b++;
+}
+
+static void xorend(u8 *a, int alen, const u8 *b, int blen)
+{
+	int i;
+
+	if (alen < blen)
+		return;
+
+	for (i = 0; i < blen; i++)
+		a[alen - blen + i] ^= b[i];
+}
+
+static void pad_block(u8 *pad, const u8 *addr, size_t len)
+{
+	os_memset(pad, 0, AES_BLOCK_SIZE);
+	os_memcpy(pad, addr, len);
+
+	if (len < AES_BLOCK_SIZE)
+		pad[len] = 0x80;
+}
+
+static int aes_s2v(const u8 *key, size_t num_elem, const u8 *addr[],
+		   size_t *len, u8 *mac)
+{
+	u8 tmp[AES_BLOCK_SIZE], tmp2[AES_BLOCK_SIZE];
+	u8 *buf = NULL;
+	int ret;
+	size_t i;
+
+	if (!num_elem) {
+		os_memcpy(tmp, zero, sizeof(zero));
+		tmp[AES_BLOCK_SIZE - 1] = 1;
+		return omac1_aes_128(key, tmp, sizeof(tmp), mac);
+	}
+
+	ret = omac1_aes_128(key, zero, sizeof(zero), tmp);
+	if (ret)
+		return ret;
+
+	for (i = 0; i < num_elem - 1; i++) {
+		ret = omac1_aes_128(key, addr[i], len[i], tmp2);
+		if (ret)
+			return ret;
+
+		dbl(tmp);
+		xor(tmp, tmp2);
+	}
+	if (len[i] >= AES_BLOCK_SIZE) {
+		buf = os_malloc(len[i]);
+		if (!buf)
+			return -ENOMEM;
+
+		os_memcpy(buf, addr[i], len[i]);
+		xorend(buf, len[i], tmp, AES_BLOCK_SIZE);
+		ret = omac1_aes_128(key, buf, len[i], mac);
+		bin_clear_free(buf, len[i]);
+		return ret;
+	}
+
+	dbl(tmp);
+	pad_block(tmp2, addr[i], len[i]);
+	xor(tmp, tmp2);
+
+	return omac1_aes_128(key, tmp, sizeof(tmp), mac);
+}
+
+/**
+ * aes_128_ctr_encrypt - AES-128 CTR mode encryption
+ * @key: Key for encryption (16 bytes)
+ * @nonce: Nonce for counter mode (16 bytes)
+ * @data: Data to encrypt in-place
+ * @data_len: Length of data in bytes
+ * Returns: 0 on success, -1 on failure
+ */
+int aes_128_ctr_encrypt(const u8 *key, const u8 *nonce,
+			u8 *data, size_t data_len)
+{
+	void *ctx;
+	size_t j, len, left = data_len;
+	int i;
+	u8 *pos = data;
+	u8 counter[AES_BLOCK_SIZE], buf[AES_BLOCK_SIZE];
+
+	ctx = aes_encrypt_init(key, 16);
+	if (ctx == NULL)
+		return -1;
+	os_memcpy(counter, nonce, AES_BLOCK_SIZE);
+
+	while (left > 0) {
+		#if 0
+		aes_encrypt(ctx, counter, buf);
+		#else
+		aes_128_encrypt(ctx, counter, buf);
+		#endif
+
+		len = (left < AES_BLOCK_SIZE) ? left : AES_BLOCK_SIZE;
+		for (j = 0; j < len; j++)
+			pos[j] ^= buf[j];
+		pos += len;
+		left -= len;
+
+		for (i = AES_BLOCK_SIZE - 1; i >= 0; i--) {
+			counter[i]++;
+			if (counter[i])
+				break;
+		}
+	}
+	aes_encrypt_deinit(ctx);
+	return 0;
+}
+
+int aes_siv_encrypt(const u8 *key, const u8 *pw,
+		    size_t pwlen, size_t num_elem,
+		    const u8 *addr[], const size_t *len, u8 *out)
+{
+	const u8 *_addr[6];
+	size_t _len[6];
+	const u8 *k1 = key, *k2 = key + 16;
+	u8 v[AES_BLOCK_SIZE];
+	size_t i;
+	u8 *iv, *crypt_pw;
+
+	if (num_elem > ARRAY_SIZE(_addr) - 1)
+		return -1;
+
+	for (i = 0; i < num_elem; i++) {
+		_addr[i] = addr[i];
+		_len[i] = len[i];
+	}
+	_addr[num_elem] = pw;
+	_len[num_elem] = pwlen;
+
+	if (aes_s2v(k1, num_elem + 1, _addr, _len, v))
+		return -1;
+
+	iv = out;
+	crypt_pw = out + AES_BLOCK_SIZE;
+
+	os_memcpy(iv, v, AES_BLOCK_SIZE);
+	os_memcpy(crypt_pw, pw, pwlen);
+
+	/* zero out 63rd and 31st bits of ctr (from right) */
+	v[8] &= 0x7f;
+	v[12] &= 0x7f;
+	return aes_128_ctr_encrypt(k2, v, crypt_pw, pwlen);
+}
+
+int aes_siv_decrypt(const u8 *key, const u8 *iv_crypt, size_t iv_c_len,
+		    size_t num_elem, const u8 *addr[], const size_t *len,
+		    u8 *out)
+{
+	const u8 *_addr[6];
+	size_t _len[6];
+	const u8 *k1 = key, *k2 = key + 16;
+	size_t crypt_len;
+	size_t i;
+	int ret;
+	u8 iv[AES_BLOCK_SIZE];
+	u8 check[AES_BLOCK_SIZE];
+
+	if (iv_c_len < AES_BLOCK_SIZE || num_elem > ARRAY_SIZE(_addr) - 1)
+		return -1;
+	crypt_len = iv_c_len - AES_BLOCK_SIZE;
+
+	for (i = 0; i < num_elem; i++) {
+		_addr[i] = addr[i];
+		_len[i] = len[i];
+	}
+	_addr[num_elem] = out;
+	_len[num_elem] = crypt_len;
+
+	os_memcpy(iv, iv_crypt, AES_BLOCK_SIZE);
+	os_memcpy(out, iv_crypt + AES_BLOCK_SIZE, crypt_len);
+
+	iv[8] &= 0x7f;
+	iv[12] &= 0x7f;
+
+	ret = aes_128_ctr_encrypt(k2, iv, out, crypt_len);
+	if (ret)
+		return ret;
+
+	ret = aes_s2v(k1, num_elem + 1, _addr, _len, check);
+	if (ret)
+		return ret;
+	if (os_memcmp(check, iv_crypt, AES_BLOCK_SIZE) == 0)
+		return 0;
+
+	return -1;
+}
+#endif /* CONFIG_RTW_MESH_AEK */
+
+#ifdef CONFIG_TDLS
+void wpa_tdls_generate_tpk(_adapter *padapter, PVOID sta)
+{
+	struct sta_info *psta = (struct sta_info *)sta;
+	struct mlme_priv	*pmlmepriv = &padapter->mlmepriv;
+	u8 *SNonce = psta->SNonce;
+	u8 *ANonce = psta->ANonce;
+
+	u8 key_input[SHA256_MAC_LEN];
+	u8 *nonce[2];
+	size_t len[2];
+	u8 data[3 * ETH_ALEN];
+
+	/* IEEE Std 802.11z-2010 8.5.9.1:
+	 * TPK-Key-Input = SHA-256(min(SNonce, ANonce) || max(SNonce, ANonce))
+	 */
+	len[0] = 32;
+	len[1] = 32;
+	if (os_memcmp(SNonce, ANonce, 32) < 0) {
+		nonce[0] = SNonce;
+		nonce[1] = ANonce;
+	} else {
+		nonce[0] = ANonce;
+		nonce[1] = SNonce;
+	}
+
+	sha256_vector(2, nonce, len, key_input);
+
+	/*
+	 * TPK-Key-Data = KDF-N_KEY(TPK-Key-Input, "TDLS PMK",
+	 *	min(MAC_I, MAC_R) || max(MAC_I, MAC_R) || BSSID || N_KEY)
+	 * TODO: is N_KEY really included in KDF Context and if so, in which
+	 * presentation format (little endian 16-bit?) is it used? It gets
+	 * added by the KDF anyway..
+	 */
+
+	if (os_memcmp(adapter_mac_addr(padapter), psta->cmn.mac_addr, ETH_ALEN) < 0) {
+		_rtw_memcpy(data, adapter_mac_addr(padapter), ETH_ALEN);
+		_rtw_memcpy(data + ETH_ALEN, psta->cmn.mac_addr, ETH_ALEN);
+	} else {
+		_rtw_memcpy(data, psta->cmn.mac_addr, ETH_ALEN);
+		_rtw_memcpy(data + ETH_ALEN, adapter_mac_addr(padapter), ETH_ALEN);
+	}
+	_rtw_memcpy(data + 2 * ETH_ALEN, get_bssid(pmlmepriv), ETH_ALEN);
+
+	sha256_prf(key_input, SHA256_MAC_LEN, "TDLS PMK", data, sizeof(data), (u8 *) &psta->tpk, sizeof(psta->tpk));
+
+
+}
+
+/**
+ * wpa_tdls_ftie_mic - Calculate TDLS FTIE MIC
+ * @kck: TPK-KCK
+ * @lnkid: Pointer to the beginning of Link Identifier IE
+ * @rsnie: Pointer to the beginning of RSN IE used for handshake
+ * @timeoutie: Pointer to the beginning of Timeout IE used for handshake
+ * @ftie: Pointer to the beginning of FT IE
+ * @mic: Pointer for writing MIC
+ *
+ * Calculate MIC for TDLS frame.
+ */
+int wpa_tdls_ftie_mic(u8 *kck, u8 trans_seq,
+		      u8 *lnkid, u8 *rsnie, u8 *timeoutie, u8 *ftie,
+		      u8 *mic)
+{
+	u8 *buf, *pos;
+	struct wpa_tdls_ftie *_ftie;
+	struct wpa_tdls_lnkid *_lnkid;
+	int ret;
+	int len = 2 * ETH_ALEN + 1 + 2 + lnkid[1] + 2 + rsnie[1] +
+		  2 + timeoutie[1] + 2 + ftie[1];
+	buf = rtw_zmalloc(len);
+	if (!buf) {
+		RTW_INFO("TDLS: No memory for MIC calculation\n");
+		return -1;
+	}
+
+	pos = buf;
+	_lnkid = (struct wpa_tdls_lnkid *) lnkid;
+	/* 1) TDLS initiator STA MAC address */
+	_rtw_memcpy(pos, _lnkid->init_sta, ETH_ALEN);
+	pos += ETH_ALEN;
+	/* 2) TDLS responder STA MAC address */
+	_rtw_memcpy(pos, _lnkid->resp_sta, ETH_ALEN);
+	pos += ETH_ALEN;
+	/* 3) Transaction Sequence number */
+	*pos++ = trans_seq;
+	/* 4) Link Identifier IE */
+	_rtw_memcpy(pos, lnkid, 2 + lnkid[1]);
+	pos += 2 + lnkid[1];
+	/* 5) RSN IE */
+	_rtw_memcpy(pos, rsnie, 2 + rsnie[1]);
+	pos += 2 + rsnie[1];
+	/* 6) Timeout Interval IE */
+	_rtw_memcpy(pos, timeoutie, 2 + timeoutie[1]);
+	pos += 2 + timeoutie[1];
+	/* 7) FTIE, with the MIC field of the FTIE set to 0 */
+	_rtw_memcpy(pos, ftie, 2 + ftie[1]);
+	_ftie = (struct wpa_tdls_ftie *) pos;
+	_rtw_memset(_ftie->mic, 0, TDLS_MIC_LEN);
+	pos += 2 + ftie[1];
+
+	ret = omac1_aes_128(kck, buf, pos - buf, mic);
+	rtw_mfree(buf, len);
+	return ret;
+
+}
+
+/**
+ * wpa_tdls_teardown_ftie_mic - Calculate TDLS TEARDOWN FTIE MIC
+ * @kck: TPK-KCK
+ * @lnkid: Pointer to the beginning of Link Identifier IE
+ * @reason: Reason code of TDLS Teardown
+ * @dialog_token: Dialog token that was used in the MIC calculation for TPK Handshake Message 3
+ * @trans_seq: Transaction Sequence number (1 octet) which shall be set to the value 4
+ * @ftie: Pointer to the beginning of FT IE
+ * @mic: Pointer for writing MIC
+ *
+ * Calculate MIC for TDLS TEARDOWN frame according to Section 10.22.5 in IEEE 802.11 - 2012.
+ */
+int wpa_tdls_teardown_ftie_mic(u8 *kck, u8 *lnkid, u16 reason,
+			       u8 dialog_token, u8 trans_seq, u8 *ftie, u8 *mic)
+{
+	u8 *buf, *pos;
+	struct wpa_tdls_ftie *_ftie;
+	int ret;
+	int len = 2 + lnkid[1] + 2 + 1 + 1 + 2 + ftie[1];
+
+	buf = rtw_zmalloc(len);
+	if (!buf) {
+		RTW_INFO("TDLS: No memory for MIC calculation\n");
+		return -1;
+	}
+
+	pos = buf;
+	/* 1) Link Identifier IE */
+	_rtw_memcpy(pos, lnkid, 2 + lnkid[1]);
+	pos += 2 + lnkid[1];
+	/* 2) Reason Code */
+	_rtw_memcpy(pos, (u8 *)&reason, 2);
+	pos += 2;
+	/* 3) Dialog Token */
+	*pos++ = dialog_token;
+	/* 4) Transaction Sequence number */
+	*pos++ = trans_seq;
+	/* 5) FTIE, with the MIC field of the FTIE set to 0 */
+	_rtw_memcpy(pos, ftie, 2 + ftie[1]);
+	_ftie = (struct wpa_tdls_ftie *) pos;
+	_rtw_memset(_ftie->mic, 0, TDLS_MIC_LEN);
+	pos += 2 + ftie[1];
+
+	ret = omac1_aes_128(kck, buf, pos - buf, mic);
+	rtw_mfree(buf, len);
+	return ret;
+
+}
+
+int tdls_verify_mic(u8 *kck, u8 trans_seq,
+		    u8 *lnkid, u8 *rsnie, u8 *timeoutie, u8 *ftie)
+{
+	u8 *buf, *pos;
+	int len;
+	u8 mic[16];
+	int ret;
+	u8 *rx_ftie, *tmp_ftie;
+
+	if (lnkid == NULL || rsnie == NULL ||
+	    timeoutie == NULL || ftie == NULL)
+		return _FAIL;
+
+	len = 2 * ETH_ALEN + 1 + 2 + 18 + 2 + *(rsnie + 1) + 2 + *(timeoutie + 1) + 2 + *(ftie + 1);
+
+	buf = rtw_zmalloc(len);
+	if (buf == NULL)
+		return _FAIL;
+
+	pos = buf;
+	/* 1) TDLS initiator STA MAC address */
+	_rtw_memcpy(pos, lnkid + ETH_ALEN + 2, ETH_ALEN);
+	pos += ETH_ALEN;
+	/* 2) TDLS responder STA MAC address */
+	_rtw_memcpy(pos, lnkid + 2 * ETH_ALEN + 2, ETH_ALEN);
+	pos += ETH_ALEN;
+	/* 3) Transaction Sequence number */
+	*pos++ = trans_seq;
+	/* 4) Link Identifier IE */
+	_rtw_memcpy(pos, lnkid, 2 + 18);
+	pos += 2 + 18;
+	/* 5) RSN IE */
+	_rtw_memcpy(pos, rsnie, 2 + *(rsnie + 1));
+	pos += 2 + *(rsnie + 1);
+	/* 6) Timeout Interval IE */
+	_rtw_memcpy(pos, timeoutie, 2 + *(timeoutie + 1));
+	pos += 2 + *(timeoutie + 1);
+	/* 7) FTIE, with the MIC field of the FTIE set to 0 */
+	_rtw_memcpy(pos, ftie, 2 + *(ftie + 1));
+	pos += 2;
+	tmp_ftie = (u8 *)(pos + 2);
+	_rtw_memset(tmp_ftie, 0, 16);
+	pos += *(ftie + 1);
+
+	ret = omac1_aes_128(kck, buf, pos - buf, mic);
+	rtw_mfree(buf, len);
+	if (ret)
+		return _FAIL;
+	rx_ftie = ftie + 4;
+
+	if (os_memcmp(mic, rx_ftie, 16) == 0) {
+		/* Valid MIC */
+		return _SUCCESS;
+	}
+
+	/* Invalid MIC */
+	RTW_INFO("[%s] Invalid MIC\n", __FUNCTION__);
+	return _FAIL;
+
+}
+#endif /* CONFIG_TDLS */
 
 /* Restore HW wep key setting according to key_mask */
-void rtw_sec_restore_wep_key(struct adapter *adapter)
+void rtw_sec_restore_wep_key(_adapter *adapter)
 {
 	struct security_priv *securitypriv = &(adapter->securitypriv);
-	int keyid;
+	sint keyid;
 
 	if ((_WEP40_ == securitypriv->dot11PrivacyAlgrthm) || (_WEP104_ == securitypriv->dot11PrivacyAlgrthm)) {
 		for (keyid = 0; keyid < 4; keyid++) {
 			if (securitypriv->key_mask & BIT(keyid)) {
 				if (keyid == securitypriv->dot11PrivacyKeyIndex)
-					rtw_set_key(adapter, securitypriv, keyid, 1, false);
+					rtw_set_key(adapter, securitypriv, keyid, 1, _FALSE);
 				else
-					rtw_set_key(adapter, securitypriv, keyid, 0, false);
+					rtw_set_key(adapter, securitypriv, keyid, 0, _FALSE);
 			}
 		}
 	}
 }
 
-u8 rtw_handle_tkip_countermeasure(struct adapter *adapter, const char *caller)
+u8 rtw_handle_tkip_countermeasure(_adapter *adapter, const char *caller)
 {
 	struct security_priv *securitypriv = &(adapter->securitypriv);
 	u8 status = _SUCCESS;
 
-	if (securitypriv->btkip_countermeasure) {
+	if (securitypriv->btkip_countermeasure == _TRUE) {
 		u32 passing_ms = rtw_get_passing_time_ms(securitypriv->btkip_countermeasure_time);
 		if (passing_ms > 60 * 1000) {
 			RTW_PRINT("%s("ADPT_FMT") countermeasure time:%ds > 60s\n",
 				  caller, ADPT_ARG(adapter), passing_ms / 1000);
-			securitypriv->btkip_countermeasure = false;
+			securitypriv->btkip_countermeasure = _FALSE;
 			securitypriv->btkip_countermeasure_time = 0;
 		} else {
 			RTW_PRINT("%s("ADPT_FMT") countermeasure time:%ds < 60s\n",
@@ -2413,3 +3340,69 @@ u8 rtw_handle_tkip_countermeasure(struct adapter *adapter, const char *caller)
 
 	return status;
 }
+
+#ifdef CONFIG_WOWLAN
+u16 rtw_cal_crc16(u8 data, u16 crc)
+{
+	u8 shift_in, data_bit;
+	u8 crc_bit4, crc_bit11, crc_bit15;
+	u16 crc_result;
+	int index;
+
+	for (index = 0; index < 8; index++) {
+		crc_bit15 = ((crc & BIT15) ? 1 : 0);
+		data_bit = (data & (BIT0 << index) ? 1 : 0);
+		shift_in = crc_bit15 ^ data_bit;
+		/*printf("crc_bit15=%d, DataBit=%d, shift_in=%d\n",
+		 * crc_bit15, data_bit, shift_in);*/
+
+		crc_result = crc << 1;
+
+		if (shift_in == 0)
+			crc_result &= (~BIT0);
+		else
+			crc_result |= BIT0;
+		/*printf("CRC =%x\n",CRC_Result);*/
+
+		crc_bit11 = ((crc & BIT11) ? 1 : 0) ^ shift_in;
+
+		if (crc_bit11 == 0)
+			crc_result &= (~BIT12);
+		else
+			crc_result |= BIT12;
+
+		/*printf("bit12 CRC =%x\n",CRC_Result);*/
+
+		crc_bit4 = ((crc & BIT4) ? 1 : 0) ^ shift_in;
+
+		if (crc_bit4 == 0)
+			crc_result &= (~BIT5);
+		else
+			crc_result |= BIT5;
+
+		/* printf("bit5 CRC =%x\n",CRC_Result); */
+		/* repeat using the last result*/
+		crc = crc_result;
+	}
+	return crc;
+}
+
+/*
+ * function name :rtw_calc_crc
+ *
+ * input: char* pattern , pattern size
+ *
+ */
+u16 rtw_calc_crc(u8  *pdata, int length)
+{
+	u16 crc = 0xffff;
+	int i;
+
+	for (i = 0; i < length; i++)
+		crc = rtw_cal_crc16(pdata[i], crc);
+	/* get 1' complement */
+	crc = ~crc;
+
+	return crc;
+}
+#endif /*CONFIG_WOWLAN*/

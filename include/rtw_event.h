@@ -1,6 +1,17 @@
-/* SPDX-License-Identifier: GPL-2.0 */
-/* Copyright(c) 2007 - 2017 Realtek Corporation */
-
+/******************************************************************************
+ *
+ * Copyright(c) 2007 - 2017 Realtek Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ *****************************************************************************/
 #ifndef _RTW_EVENT_H_
 #define _RTW_EVENT_H_
 
@@ -13,7 +24,7 @@ Used to report a bss has been scanned
 
 */
 struct survey_event	{
-	struct wlan_bssid_ex bss;
+	WLAN_BSSID_EX bss;
 };
 
 /*
@@ -86,7 +97,7 @@ struct c2hlbk_event {
 
 struct fwevent {
 	u32	parmsize;
-	void (*event_callback)(struct adapter *dev, u8 *pbuf);
+	void (*event_callback)(_adapter *dev, u8 *pbuf);
 };
 
 
@@ -112,7 +123,7 @@ struct c2hevent_queue {
 struct network_queue {
 	volatile int	head;
 	volatile int	tail;
-	struct wlan_bssid_ex networks[NETWORK_QUEUE_SZ];
+	WLAN_BSSID_EX networks[NETWORK_QUEUE_SZ];
 };
 
 

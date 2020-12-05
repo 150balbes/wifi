@@ -1,6 +1,17 @@
-/* SPDX-License-Identifier: GPL-2.0 */
-/* Copyright(c) 2007 - 2017 Realtek Corporation */
-
+/******************************************************************************
+ *
+ * Copyright(c) 2007 - 2017 Realtek Corporation.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ *****************************************************************************/
 #ifndef __HAL_COMMON_REG_H__
 #define __HAL_COMMON_REG_H__
 
@@ -14,6 +25,7 @@
 #define RXPKT_BUF_SELECT				0xA5
 #define DISABLE_TRXPKT_BUF_ACCESS		0x0
 
+#ifndef RTW_HALMAC
 /* ************************************************************
 *
 * ************************************************************ */
@@ -245,7 +257,7 @@
 #define REG_LIFETIME_CTRL				0x0426
 #define REG_MULTI_BCNQ_OFFSET			0x0427
 #define REG_SPEC_SIFS					0x0428
-#define REG_RL							0x042A
+#define REG_RETRY_LIMIT					0x042A
 #define REG_DARFRC						0x0430
 #define REG_RARFRC						0x0438
 #define REG_RRSR						0x0440
@@ -301,6 +313,11 @@
 #define REG_MACID_SLEEP	0x04D4
 
 #define REG_NQOS_SEQ					0x04DC
+#define REG_HW_SEQ0						0x04D8
+#define REG_HW_SEQ1						0x04DA
+#define REG_HW_SEQ2						0x04DC
+#define REG_HW_SEQ3						0x04DE
+
 #define REG_QOS_SEQ					0x04DE
 #define REG_NEED_CPU_HANDLE			0x04E0
 #define REG_PKT_LOSE_RPT				0x04E1
@@ -352,7 +369,7 @@
 #define REG_BCN_CTRL_1					0x0551
 #define REG_MBID_NUM					0x0552
 #define REG_DUAL_TSF_RST				0x0553
-#define REG_BCN_INTERVAL				0x0554	/* The same as REG_MBSSID_BCN_SPACE */
+#define REG_MBSSID_BCN_SPACE			0x0554
 #define REG_DRVERLYINT					0x0558
 #define REG_BCNDMATIM					0x0559
 #define REG_ATIMWND					0x055A
@@ -367,6 +384,7 @@
 #define REG_PSTIMER						0x0580
 #define REG_TIMER0						0x0584
 #define REG_TIMER1						0x0588
+#define REG_HIQ_NO_LMT_EN				0x05A7
 #define REG_ACMHWCTRL					0x05C0
 #define REG_NOA_DESC_SEL				0x05CF
 #define REG_NOA_DESC_DURATION		0x05E0
@@ -411,18 +429,20 @@
 #define REG_CTS2TO						0x0641
 #define REG_EIFS							0x0642
 
+/*REG_TCR*/
+#define BIT_PWRBIT_OW_EN BIT(7)
 
 /* RXERR_RPT */
 #define RXERR_TYPE_OFDM_PPDU			0
-#define RXERR_TYPE_OFDMfalse_ALARM	1
+#define RXERR_TYPE_OFDM_FALSE_ALARM	1
 #define RXERR_TYPE_OFDM_MPDU_OK		2
 #define RXERR_TYPE_OFDM_MPDU_FAIL	3
 #define RXERR_TYPE_CCK_PPDU			4
-#define RXERR_TYPE_CCKfalse_ALARM	5
+#define RXERR_TYPE_CCK_FALSE_ALARM	5
 #define RXERR_TYPE_CCK_MPDU_OK		6
 #define RXERR_TYPE_CCK_MPDU_FAIL		7
 #define RXERR_TYPE_HT_PPDU				8
-#define RXERR_TYPE_HTfalse_ALARM	9
+#define RXERR_TYPE_HT_FALSE_ALARM	9
 #define RXERR_TYPE_HT_MPDU_TOTAL		10
 #define RXERR_TYPE_HT_MPDU_OK			11
 #define RXERR_TYPE_HT_MPDU_FAIL		12
@@ -472,9 +492,25 @@
 #define REG_BCN_PSR_RPT				0x06A8
 #define REG_BT_COEX_TABLE				0x06C0
 
+#define BIT_WKFCAM_WE					BIT(16)
+#define BIT_WKFCAM_POLLING_V1				BIT(31)
+#define BIT_WKFCAM_CLR_V1				BIT(30)
+#define BIT_SHIFT_WKFCAM_ADDR_V2			8
+#define BIT_MASK_WKFCAM_ADDR_V2			0xff
+#define BIT_WKFCAM_ADDR_V2(x)				(((x) & BIT_MASK_WKFCAM_ADDR_V2) << BIT_SHIFT_WKFCAM_ADDR_V2)
+
 /* Hardware Port 1 */
 #define REG_MACID1						0x0700
 #define REG_BSSID1						0x0708
+
+/* Enable/Disable Port 0 and Port 1 for Specific ICs (ex. 8192F)*/
+#define REG_WLAN_ACT_MASK_CTRL_1		0x076C
+
+/* GPIO Control */
+#define REG_SW_GPIO_SHARE_CTRL			0x1038
+#define REG_SW_GPIO_A_OUT				0x1040
+#define REG_SW_GPIO_A_OEN				0x1044
+
 /* Hardware Port 2 */
 #define REG_MACID2						0x1620
 #define REG_BSSID2						0x1628
@@ -694,6 +730,8 @@ Default: 00b.
 #define BIT_BCN_PORT_SEL		BIT(5)
 #define BIT_EN_BCN_PKT_REL		BIT(6)
 
+#endif /* RTW_HALMAC */
+
 /* ----------------------------------------------------------------------------
  * Rate Definition
  * ---------------------------------------------------------------------------- */
@@ -804,8 +842,8 @@ Default: 00b.
 #define TOTAL_CAM_ENTRY		32
 #define HALF_CAM_ENTRY			16
 
-#define CAM_CONFIG_USEDK		true
-#define CAM_CONFIG_NO_USEDK	false
+#define CAM_CONFIG_USEDK		_TRUE
+#define CAM_CONFIG_NO_USEDK	_FALSE
 
 #define CAM_WRITE				BIT(16)
 #define CAM_READ				0x00000000
@@ -1214,6 +1252,15 @@ Current IOREG MAP
 #define EFUSE_BT_SEL_1			0x2
 #define EFUSE_BT_SEL_2			0x3
 
+/* 2 REG_GPIO_INTM				(Offset 0x0048) */
+#define BIT_EXTWOL_EN 			BIT(16)
+
+/* 2 REG_LED_CFG				(Offset 0x004C) */
+#define BIT_SW_SPDT_SEL			BIT(22)
+
+/* 2 REG_SW_GPIO_SHARE_CTRL		(Offset 0x1038) */
+#define BIT_BTGP_WAKE_LOC		(BIT(10) | BIT(11))
+#define BIT_SW_GPIO_FUNC 		BIT(0)
 
 /* 2 8051FWDL
  * 2 MCUFWDL */
@@ -1359,7 +1406,8 @@ Current IOREG MAP
 #define QUEUE_LOW				1
 #define QUEUE_NORMAL			2
 #define QUEUE_HIGH				3
-
+#define QUEUE_EXTRA_1			4
+#define QUEUE_EXTRA_2			5
 
 /* 2 TRXFF_BNDY */
 
@@ -1461,8 +1509,13 @@ Current IOREG MAP
 #define _SPEC_SIFS_OFDM(x)			(((x) & 0xFF) << 8)
 
 /* 2 RL */
-#define	RETRY_LIMIT_SHORT_SHIFT			8
-#define	RETRY_LIMIT_LONG_SHIFT			0
+#define BIT_SHIFT_SRL 8
+#define BIT_MASK_SRL 0x3f
+#define BIT_SRL(x) (((x) & BIT_MASK_SRL) << BIT_SHIFT_SRL)
+
+#define BIT_SHIFT_LRL 0
+#define BIT_MASK_LRL 0x3f
+#define BIT_LRL(x) (((x) & BIT_MASK_LRL) << BIT_SHIFT_LRL)
 
 #define	RL_VAL_AP					7
 #ifdef CONFIG_RTW_CUSTOMIZE_RLSTA
@@ -1482,11 +1535,6 @@ Current IOREG MAP
 #define AC_PARAM_ECW_MIN_OFFSET			8
 #define AC_PARAM_AIFS_OFFSET				0
 
-
-#define _LRL(x)					((x) & 0x3F)
-#define _SRL(x)					(((x) & 0x3F) << 8)
-
-
 /* 2 BCN_CTRL */
 #define EN_TXBCN_RPT			BIT(2)
 #define EN_BCN_FUNCTION		BIT(3)
@@ -1496,11 +1544,6 @@ Current IOREG MAP
 #define DIS_ATIM					BIT(0)
 #define DIS_BCNQ_SUB			BIT(1)
 #define DIS_TSF_UDT				BIT(4)
-
-/* The same function but different bit field. */
-#define DIS_TSF_UDT0_NORMAL_CHIP	BIT(4)
-#define DIS_TSF_UDT0_TEST_CHIP	BIT(5)
-
 
 /* 2 ACMHWCTRL */
 #define AcmHw_HwEn				BIT(0)
@@ -1590,6 +1633,13 @@ Current IOREG MAP
 #define BIT_LSIC_TXOP_EN		BIT(17)
 #define BIT_CTS_EN				BIT(16)
 
+/*REG_RXFLTMAP1 (Offset 0x6A2)*/
+#define BIT_CTRLFLT10EN	BIT(10) /*PS-POLL*/
+
+/*REG_WLAN_ACT_MASK_CTRL_1	(Offset 0x76C)*/
+#define EN_PORT_0_FUNCTION		BIT(12)
+#define EN_PORT_1_FUNCTION		BIT(13)
+
 /* -----------------------------------------------------
  *
  *	SDIO Bus Specification
@@ -1599,6 +1649,7 @@ Current IOREG MAP
 /* I/O bus domain address mapping */
 #define SDIO_LOCAL_BASE		0x10250000
 #define WLAN_IOREG_BASE		0x10260000
+#define FIRMWARE_FIFO_BASE	0x10270000
 #define TX_HIQ_BASE				0x10310000
 #define TX_MIQ_BASE				0x10320000
 #define TX_LOQ_BASE				0x10330000
@@ -1630,6 +1681,7 @@ Current IOREG MAP
 #define SDIO_MAX_RX_QUEUE			1
 
 #define SDIO_REG_TX_CTRL			0x0000 /* SDIO Tx Control */
+#define SDIO_REG_TIMEOUT			0x0002/*SDIO status timeout*/
 #define SDIO_REG_HIMR				0x0014 /* SDIO Host Interrupt Mask */
 #define SDIO_REG_HISR				0x0018 /* SDIO Host Interrupt Service Routine */
 #define SDIO_REG_HCPWM			0x0019 /* HCI Current Power Mode */
@@ -1701,6 +1753,21 @@ Current IOREG MAP
 #define SDIO_HISR_MCU_ERR				BIT(28)
 #define SDIO_HISR_TSF_BIT32_TOGGLE	BIT(29)
 
+#define MASK_SDIO_HISR_CLEAR		(SDIO_HISR_TXERR |\
+		SDIO_HISR_RXERR |\
+		SDIO_HISR_TXFOVW |\
+		SDIO_HISR_RXFOVW |\
+		SDIO_HISR_TXBCNOK |\
+		SDIO_HISR_TXBCNERR |\
+		SDIO_HISR_C2HCMD |\
+		SDIO_HISR_CPWM1 |\
+		SDIO_HISR_CPWM2 |\
+		SDIO_HISR_HSISR_IND |\
+		SDIO_HISR_GTINT3_IND |\
+		SDIO_HISR_GTINT4_IND |\
+		SDIO_HISR_PSTIMEOUT |\
+		SDIO_HISR_OCPINT)
+
 /* SDIO HCI Suspend Control Register */
 #define HCI_RESUME_PWR_RDY			BIT(1)
 #define HCI_SUS_CTRL					BIT(0)
@@ -1709,8 +1776,25 @@ Current IOREG MAP
 #define SDIO_TX_FREE_PG_QUEUE			4	/* The number of Tx FIFO free page */
 #define SDIO_TX_FIFO_PAGE_SZ			128
 
-#define MAX_TX_AGG_PACKET_NUMBER	0xFF
-#define MAX_TX_AGG_PACKET_NUMBER_8812	64
+/* indirect access */
+#ifdef CONFIG_SDIO_INDIRECT_ACCESS
+#define SDIO_REG_INDIRECT_REG_CFG		0x40
+#define SDIO_REG_INDIRECT_REG_DATA	0x44
+#define SET_INDIRECT_REG_ADDR(_cmd, _addr)	SET_BITS_TO_LE_2BYTE(((u8 *)(_cmd)) + 0, 0, 16, (_addr))
+#define SET_INDIRECT_REG_SIZE_1BYTE(_cmd)		SET_BITS_TO_LE_1BYTE(((u8 *)(_cmd)) + 2, 0, 2, 0)
+#define SET_INDIRECT_REG_SIZE_2BYTE(_cmd)		SET_BITS_TO_LE_1BYTE(((u8 *)(_cmd)) + 2, 0, 2, 1)
+#define SET_INDIRECT_REG_SIZE_4BYTE(_cmd)		SET_BITS_TO_LE_1BYTE(((u8 *)(_cmd)) + 2, 0, 2, 2)
+#define SET_INDIRECT_REG_WRITE(_cmd)			SET_BITS_TO_LE_1BYTE(((u8 *)(_cmd)) + 2, 2, 1, 1)
+#define SET_INDIRECT_REG_READ(_cmd)			SET_BITS_TO_LE_1BYTE(((u8 *)(_cmd)) + 2, 3, 1, 1)
+#define GET_INDIRECT_REG_RDY(_cmd)			LE_BITS_TO_1BYTE(((u8 *)(_cmd)) + 2, 4, 1)
+#endif/*CONFIG_SDIO_INDIRECT_ACCESS*/
+
+#ifdef CONFIG_SDIO_HCI
+	#define MAX_TX_AGG_PACKET_NUMBER	0x8
+#else
+	#define MAX_TX_AGG_PACKET_NUMBER	0xFF
+	#define MAX_TX_AGG_PACKET_NUMBER_8812	64
+#endif
 
 /* -----------------------------------------------------
  *
@@ -1760,28 +1844,38 @@ Current IOREG MAP
 #define HAL92C_MSDU_LIFE_TIME_UNIT		128	/* in us, said by Tim. */
 
 /* 2 8192D PartNo. */
-#define PARTNO_92D_NIC				(BIT7 | BIT6)
-#define PARTNO_92D_NIC_REMARK			(BIT5 | BIT4)
-#define PARTNO_SINGLE_BAND_VS			BIT(3)
+#define PARTNO_92D_NIC							(BIT7 | BIT6)
+#define PARTNO_92D_NIC_REMARK				(BIT5 | BIT4)
+#define PARTNO_SINGLE_BAND_VS				BIT(3)
 #define PARTNO_SINGLE_BAND_VS_REMARK		BIT(1)
-#define PARTNO_CONCURRENT_BAND_VC		(BIT3 | BIT2)
+#define PARTNO_CONCURRENT_BAND_VC			(BIT3 | BIT2)
 #define PARTNO_CONCURRENT_BAND_VC_REMARK	(BIT1 | BIT0)
 
 /* ********************************************************
  * General definitions
  * ******************************************************** */
 
-#define LAST_ENTRY_OF_TX_PKT_BUFFER_8188E(__Adapter)	(175)
-#define LAST_ENTRY_OF_TX_PKT_BUFFER_8812		255
+#ifdef CONFIG_USB_HCI
+	#define LAST_ENTRY_OF_TX_PKT_BUFFER_8188E(__Adapter)	(175)
+#else
+	#define LAST_ENTRY_OF_TX_PKT_BUFFER_8188E(__Adapter)	(IS_VENDOR_8188E_I_CUT_SERIES(__Adapter) ? 255 : 175)
+#endif
+#define LAST_ENTRY_OF_TX_PKT_BUFFER_8812			255
 #define LAST_ENTRY_OF_TX_PKT_BUFFER_8723B		255
 #define LAST_ENTRY_OF_TX_PKT_BUFFER_8192C		255
 #define LAST_ENTRY_OF_TX_PKT_BUFFER_8703B		255
-#define LAST_ENTRY_OF_TX_PKT_BUFFER_DUAL_MAC		127
+#define LAST_ENTRY_OF_TX_PKT_BUFFER_DUAL_MAC	127
 #define LAST_ENTRY_OF_TX_PKT_BUFFER_8188F		255
+#define LAST_ENTRY_OF_TX_PKT_BUFFER_8188GTV		255
 #define LAST_ENTRY_OF_TX_PKT_BUFFER_8723D		255
-
+#define LAST_ENTRY_OF_TX_PKT_BUFFER_8710B		255
+#define LAST_ENTRY_OF_TX_PKT_BUFFER_8192F		255
 #define POLLING_LLT_THRESHOLD				20
-#define POLLING_READY_TIMEOUT_COUNT		1000
+#if defined(CONFIG_RTL8723B) && defined(CONFIG_PCI_HCI)
+	#define POLLING_READY_TIMEOUT_COUNT		6000
+#else
+	#define POLLING_READY_TIMEOUT_COUNT		1000
+#endif
 
 
 /* GPIO BIT */
