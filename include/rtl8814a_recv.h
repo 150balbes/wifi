@@ -1,6 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2017 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -11,33 +12,40 @@
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
- *
- *
- ******************************************************************************/
+ *****************************************************************************/
 #ifndef __RTL8814A_RECV_H__
 #define __RTL8814A_RECV_H__
 
 #if defined(CONFIG_USB_HCI)
 
 	#ifndef MAX_RECVBUF_SZ
-		#ifndef CONFIG_MINIMAL_MEMORY_USAGE
-			#ifdef CONFIG_PLATFORM_MSTAR
-				#define MAX_RECVBUF_SZ (8192) /* 8K */
-			#else
-				#define MAX_RECVBUF_SZ (32768) /* 32k */
-			#endif
-			/* #define MAX_RECVBUF_SZ (24576) */ /* 24k */
-			/* #define MAX_RECVBUF_SZ (20480) */ /* 20K */
-			/* #define MAX_RECVBUF_SZ (10240) */ /* 10K */
-			/* #define MAX_RECVBUF_SZ (15360) */ /* 15k < 16k */
-			/* #define MAX_RECVBUF_SZ (8192+1024) */ /* 8K+1k */
+		#ifdef PLATFORM_OS_CE
+			#define MAX_RECVBUF_SZ (8192+1024) /* 8K+1k */
 		#else
-			#define MAX_RECVBUF_SZ (4000) /* about 4K */
+			#ifndef CONFIG_MINIMAL_MEMORY_USAGE
+				#ifdef CONFIG_PLATFORM_MSTAR
+					#define MAX_RECVBUF_SZ (8192) /* 8K */
+				#else
+					#define MAX_RECVBUF_SZ (32768) /* 32k */
+				#endif
+				/* #define MAX_RECVBUF_SZ (24576) */ /* 24k */
+				/* #define MAX_RECVBUF_SZ (20480) */ /* 20K */
+				/* #define MAX_RECVBUF_SZ (10240) */ /* 10K */
+				/* #define MAX_RECVBUF_SZ (15360) */ /* 15k < 16k */
+				/* #define MAX_RECVBUF_SZ (8192+1024) */ /* 8K+1k */
+			#else
+				#define MAX_RECVBUF_SZ (4000) /* about 4K */
+			#endif
 		#endif
 	#endif /* !MAX_RECVBUF_SZ */
+
+#elif defined(CONFIG_PCI_HCI)
+	/* #ifndef CONFIG_MINIMAL_MEMORY_USAGE */
+	/*	#define MAX_RECVBUF_SZ (9100) */
+	/* #else */
+	#define MAX_RECVBUF_SZ (4000) /* about 4K
+	* #endif */
+
 
 #elif defined(CONFIG_SDIO_HCI)
 	#if 0
@@ -159,6 +167,11 @@
 #ifdef CONFIG_USB_HCI
 	s32 rtl8814au_init_recv_priv(PADAPTER padapter);
 	void rtl8814au_free_recv_priv(PADAPTER padapter);
+#endif
+
+#ifdef CONFIG_PCI_HCI
+	s32 rtl8814ae_init_recv_priv(PADAPTER padapter);
+	void rtl8814ae_free_recv_priv(PADAPTER padapter);
 #endif
 
 #if 0

@@ -1,6 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2017 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -11,12 +12,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
- *
- *
- ******************************************************************************/
+ *****************************************************************************/
 #ifndef _RTW_MP_IOCTL_H_
 #define _RTW_MP_IOCTL_H_
 
@@ -78,7 +74,24 @@ typedef struct _DR_VARIABLE_STRUCT_ {
 /* int mp_start_joinbss(_adapter *padapter, NDIS_802_11_SSID *pssid); */
 
 /* void _irqlevel_changed_(_irqL *irqlevel, BOOLEANunsigned char bLower); */
+#ifdef PLATFORM_OS_XP
+static void _irqlevel_changed_(_irqL *irqlevel, u8 bLower)
+{
+
+	if (bLower == LOWER) {
+		*irqlevel = KeGetCurrentIrql();
+
+		if (*irqlevel > PASSIVE_LEVEL)
+			KeLowerIrql(PASSIVE_LEVEL);
+	} else {
+		if (KeGetCurrentIrql() == PASSIVE_LEVEL)
+			KeRaiseIrql(DISPATCH_LEVEL, irqlevel);
+	}
+
+}
+#else
 #define _irqlevel_changed_(a, b)
+#endif
 
 /* oid_rtl_seg_81_80_00 */
 NDIS_STATUS oid_rt_pro_set_data_rate_hdl(struct oid_par_priv *poid_par_priv);

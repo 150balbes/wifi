@@ -1,6 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2017 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -11,12 +12,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
- *
- *
- ******************************************************************************/
+ *****************************************************************************/
 #ifndef __INC_HAL8188EPHYCFG_H__
 #define __INC_HAL8188EPHYCFG_H__
 
@@ -68,11 +64,11 @@ void	PHY_SetBBReg8188E(IN	PADAPTER	Adapter,
 			  IN	u32		BitMask,
 			  IN	u32		Data);
 u32	PHY_QueryRFReg8188E(IN	PADAPTER	Adapter,
-			    IN	u8				eRFPath,
+			    IN	enum rf_path		eRFPath,
 			    IN	u32				RegAddr,
 			    IN	u32				BitMask);
 void	PHY_SetRFReg8188E(IN	PADAPTER		Adapter,
-			  IN	u8				eRFPath,
+			  IN	enum rf_path		eRFPath,
 			  IN	u32				RegAddr,
 			  IN	u32				BitMask,
 			  IN	u32				Data);
@@ -86,7 +82,7 @@ int	PHY_BBConfig8188E(IN	PADAPTER	Adapter);
 int	PHY_RFConfig8188E(IN	PADAPTER	Adapter);
 
 /* RF config */
-int	rtl8188e_PHY_ConfigRFWithParaFile(IN PADAPTER Adapter, IN u8 *pFileName, u8 eRFPath);
+int	rtl8188e_PHY_ConfigRFWithParaFile(IN PADAPTER Adapter, IN u8 *pFileName, enum rf_path eRFPath);
 
 /*
  * RF Power setting
@@ -108,14 +104,14 @@ VOID
 PHY_SetTxPowerIndex_8188E(
 	IN	PADAPTER			Adapter,
 	IN	u32					PowerIndex,
-	IN	u8					RFPath,
+	IN	enum rf_path			RFPath,
 	IN	u8					Rate
 );
 
 u8
 PHY_GetTxPowerIndex_8188E(
 	IN	PADAPTER		pAdapter,
-	IN	u8				RFPath,
+	IN	enum rf_path		RFPath,
 	IN	u8				Rate,
 	IN	u8				BandWidth,
 	IN	u8				Channel,
@@ -127,7 +123,7 @@ PHY_GetTxPowerIndex_8188E(
  */
 /* extern	void	PHY_SetBWModeCallback8192C(	IN	PRT_TIMER		pTimer	); */
 void	PHY_SetBWMode8188E(IN	PADAPTER			pAdapter,
-			   IN	CHANNEL_WIDTH	ChnlWidth,
+			   IN	enum channel_width	ChnlWidth,
 			   IN	unsigned char	Offset);
 
 /*
@@ -155,7 +151,7 @@ VOID
 PHY_SetSwChnlBWMode8188E(
 	IN	PADAPTER			Adapter,
 	IN	u8					channel,
-	IN	CHANNEL_WIDTH	Bandwidth,
+	IN	enum channel_width	Bandwidth,
 	IN	u8					Offset40,
 	IN	u8					Offset80
 );
@@ -167,7 +163,7 @@ PHY_SetRFEReg_8188E(
 /*
  * BB/MAC/RF other monitor API
  *   */
-VOID PHY_SetRFPathSwitch_8188E(IN	PADAPTER	pAdapter, IN	BOOLEAN		bMain);
+VOID phy_set_rf_path_switch_8188e(IN	struct dm_struct	*phydm, IN	bool		bMain);
 
 extern	VOID
 PHY_SwitchEphyParameter(
