@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Input remotectl driver configuration
+#
+config SND_SOC_ROCKCHIP_ES8388
+	tristate "ASoC support for Rockchip boards using a ES8388 codec"
+	depends on SND_SOC_ROCKCHIP
+	default m
+	help
+	  Say Y or M here if you want to add support for SoC audio on Rockchip
+	  boards using the ES8388 codec, such as Veyron
